@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+bin/
+coverage.out
+*.test
+local-data/
+.idea/
+.vscode/
+*.log
