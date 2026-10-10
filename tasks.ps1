@@ -22,7 +22,7 @@ try {
       if($unformatted){throw "Run gofmt on: $unformatted"}
       go vet ./...
     }
-    'dev-up' { docker compose up -d postgres minio }
+    'dev-up' { docker compose up -d postgres s3 }
     'dev-down' { docker compose down }
     default {
       $dsn=$env:DATABASE_URL
