@@ -6,7 +6,7 @@ Made-to-order lathe shop backend. Current authorized scope: scaffolding phases 0
 
 - Go, net/http, github.com/go-chi/chi/v5.
 - PostgreSQL with pgx/v5 isolated behind repository implementations. Money: NUMERIC, never float. Stock reservations use transactions and row locking.
-- Goose SQL migrations. Empty initial migration only until feature schema approval.
+- golang-migrate SQL migrations, pinned Go tool. Empty initial migration only until feature schema approval.
 - S3-compatible private object storage (MinIO locally). Store object keys and metadata only; signed upload/download URLs. Evidence never public.
 - Admin and Worker auth first: password hashing, revocable sessions, role permissions. Suppliers have no accounts.
 - PostgreSQL transactional outbox and separate worker. No Redis, broker, or cache.

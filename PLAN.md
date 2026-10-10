@@ -8,15 +8,17 @@
 - [ ] Push phase commits.
 Decision: repository already initialized on main; README.md is untouched. Module and empty entrypoints are bootstrapped in phase 0 to satisfy build-at-every-commit. Problem: original UC Word attachment is missing; no sequence attachment is currently available. Phase push pending verification.
 
-## Phase 1 project skeleton — todo
-- [ ] Feature-oriented structure, API and worker entrypoints.
-- [ ] Config, structured logging, request ID/recovery/timeout/CORS.
-- [ ] Consistent JSON errors, graceful shutdown and GET /health.
-- [ ] Build, vet, meaningful HTTP/config tests, batch commits and phase push.
+## Phase 1 project skeleton — done
+- [x] Feature-oriented structure, API and worker entrypoints.
+- [x] Config, structured logging, request ID/recovery/timeout/CORS.
+- [x] Consistent JSON errors, graceful shutdown and GET /health.
+- [x] Build, vet and HTTP/config tests.
+- [ ] Push phase commits.
+Decision: standard library env config/slog; chi/cors allowlist; middleware timeout produces JSON. Push blocked pending explicit remote confirmation requested by automatic approval review. Phase 0 local commits completed; remote is origin/main at Yoshi4489/SA-Lathe-Shop-BE.
 
-## Phase 2 DB migrations and Docker — todo
+## Phase 2 DB migrations and Docker — in progress
 - [ ] PostgreSQL pool and DB readiness endpoint.
-- [ ] Goose and empty initial migration.
+- [ ] golang-migrate and empty initial up/down migration.
 - [ ] API/worker Dockerfiles, PostgreSQL/MinIO Compose, PowerShell tasks.
 - [ ] Verify build/vet/API/DB, migrate up/down and container entrypoints.
 - [ ] Batch commits, phase push, stop for owner approval.
