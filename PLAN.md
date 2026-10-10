@@ -16,12 +16,14 @@ Decision: repository already initialized on main; README.md is untouched. Module
 - [ ] Push phase commits.
 Decision: standard library env config/slog; chi/cors allowlist; middleware timeout produces JSON. Push blocked pending explicit remote confirmation requested by automatic approval review. Phase 0 local commits completed; remote is origin/main at Yoshi4489/SA-Lathe-Shop-BE.
 
-## Phase 2 DB migrations and Docker — in progress
-- [ ] PostgreSQL pool and DB readiness endpoint.
-- [ ] golang-migrate and empty initial up/down migration.
-- [ ] API/worker Dockerfiles, PostgreSQL/MinIO Compose, PowerShell tasks.
-- [ ] Verify build/vet/API/DB, migrate up/down and container entrypoints.
-- [ ] Batch commits, phase push, stop for owner approval.
+## Phase 2 DB migrations and Docker — done
+- [x] PostgreSQL pool and DB readiness endpoint.
+- [x] golang-migrate and empty initial up/down migration.
+- [x] API/worker Dockerfiles, PostgreSQL/private S3 Compose, PowerShell tasks.
+- [x] Verify build/vet/tests/lint/API/DB, migrate up/down and container entrypoints.
+- [x] Local batch commits; stop before auth/UC feature code.
+- [ ] Phase push: awaiting explicit confirmation of GitHub destination.
+Decision: pgx/v5 in repository only; standard library config/slog/validation; golang-migrate v4.19.0 pinned CLI. Local S3 switched to digest-pinned official SeaweedFS after MinIO registry denial. Official Go/Alpine ECR mirrors resolved Docker Hub timeouts. Verified liveness/readiness 200, DB-down readiness 503 with liveness 200, anonymous S3 listing 403, up/down/up migrations and graceful API/worker stop. Temporary verification containers and newly-created volumes were removed; no existing project files/data deleted. No secrets persisted or committed. See docs/VERIFICATION.md.
 
 ## Phase 3 auth and roles — todo
 - [ ] Admin/Worker authentication, password hashing, revocable sessions and RBAC.
