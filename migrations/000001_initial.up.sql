@@ -1,0 +1,1 @@
+-- Intentionally empty. Business tables, auth and outbox are future phases.

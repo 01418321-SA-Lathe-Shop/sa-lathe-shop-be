@@ -1,0 +1,1 @@
+-- Intentionally empty. No business schema exists to roll back yet.
