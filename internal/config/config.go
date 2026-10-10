@@ -59,7 +59,7 @@ func load(get func(string) string) (Config, error) {
 		}
 		c.DatabaseURL = raw
 	} else {
-		u := url.URL{Scheme: "postgres", Host: net.JoinHostPort(value(get, "DB_HOST", "localhost"), value(get, "DB_PORT", "5432")), Path: "/" + value(get, "DB_NAME", "sa_lathe_shop"), User: url.UserPassword(value(get, "DB_USER", "sa_lathe_shop"), get("DB_PASSWORD"))}
+		u := url.URL{Scheme: "postgres", Host: net.JoinHostPort(value(get, "DB_HOST", "localhost"), value(get, "DB_PORT", "55432")), Path: "/" + value(get, "DB_NAME", "sa_lathe_shop"), User: url.UserPassword(value(get, "DB_USER", "sa_lathe_shop"), get("DB_PASSWORD"))}
 		q := url.Values{"sslmode": {value(get, "DB_SSLMODE", "disable")}}
 		u.RawQuery = q.Encode()
 		c.DatabaseURL = u.String()

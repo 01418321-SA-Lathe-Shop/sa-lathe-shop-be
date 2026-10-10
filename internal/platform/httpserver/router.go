@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func Router(logger *slog.Logger, timeout time.Duration, origins []string, live http.HandlerFunc) http.Handler {
+func Router(logger *slog.Logger, timeout time.Duration, origins []string, live http.HandlerFunc, ready ...http.HandlerFunc) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(RequestLogger(logger))
@@ -23,6 +23,9 @@ func Router(logger *slog.Logger, timeout time.Duration, origins []string, live h
 	})
 	r.Use(Timeout(timeout))
 	r.Get("/health", live)
+	if len(ready) > 0 {
+		r.Get("/health/ready", ready[0])
+	}
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) { WriteError(w, r, 404, "not_found", "Endpoint not found") })
 	r.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, r, 405, "method_not_allowed", "Method not allowed")

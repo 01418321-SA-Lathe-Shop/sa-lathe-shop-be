@@ -19,12 +19,14 @@ func Run(ctx context.Context, logger *slog.Logger, addr string, shutdown time.Du
 		}
 		return err
 	case <-ctx.Done():
+		logger.Info("api shutting down")
 		stop, cancel := context.WithTimeout(context.Background(), shutdown)
 		defer cancel()
 		if err := srv.Shutdown(stop); err != nil {
 			_ = srv.Close()
 			return err
 		}
+		logger.Info("api stopped gracefully")
 		return nil
 	}
 }
