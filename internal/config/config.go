@@ -1,0 +1,75 @@
+package config
+
+import (
+	"fmt"
+	"net"
+	"net/url"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+)
+
+type Config struct {
+	HTTPAddr                                    string
+	HTTPTimeout, ShutdownTimeout, DBPingTimeout time.Duration
+	CORSOrigins                                 []string
+	DatabaseURL                                 string
+	DBMaxConnections                            int32
+}
+
+func Load() (Config, error) { return load(os.Getenv) }
+
+func load(get func(string) string) (Config, error) {
+	c := Config{HTTPAddr: value(get, "HTTP_ADDR", ":8080"), DBMaxConnections: 10}
+	var err error
+	for key, dst := range map[string]*time.Duration{"HTTP_TIMEOUT": &c.HTTPTimeout, "SHUTDOWN_TIMEOUT": &c.ShutdownTimeout, "DB_PING_TIMEOUT": &c.DBPingTimeout} {
+		fallback := "10s"
+		if key == "HTTP_TIMEOUT" {
+			fallback = "30s"
+		}
+		if key == "DB_PING_TIMEOUT" {
+			fallback = "3s"
+		}
+		*dst, err = time.ParseDuration(value(get, key, fallback))
+		if err != nil || *dst <= 0 {
+			return Config{}, fmt.Errorf("%s must be a positive duration", key)
+		}
+	}
+	if _, _, err = net.SplitHostPort(c.HTTPAddr); err != nil {
+		return Config{}, fmt.Errorf("HTTP_ADDR must be host:port")
+	}
+	for _, origin := range strings.Split(value(get, "CORS_ORIGINS", "http://localhost:3000"), ",") {
+		origin = strings.TrimSpace(origin)
+		u, e := url.Parse(origin)
+		if e != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.Path != "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
+			return Config{}, fmt.Errorf("CORS_ORIGINS must contain explicit HTTP origins")
+		}
+		c.CORSOrigins = append(c.CORSOrigins, origin)
+	}
+	max, err := strconv.ParseInt(value(get, "DB_MAX_CONNECTIONS", "10"), 10, 32)
+	if err != nil || max <= 0 {
+		return Config{}, fmt.Errorf("DB_MAX_CONNECTIONS must be positive")
+	}
+	c.DBMaxConnections = int32(max)
+	if raw := get("DATABASE_URL"); raw != "" {
+		u, e := url.Parse(raw)
+		if e != nil || (u.Scheme != "postgres" && u.Scheme != "postgresql") || u.Host == "" {
+			return Config{}, fmt.Errorf("invalid DATABASE_URL")
+		}
+		c.DatabaseURL = raw
+	} else {
+		u := url.URL{Scheme: "postgres", Host: net.JoinHostPort(value(get, "DB_HOST", "localhost"), value(get, "DB_PORT", "5432")), Path: "/" + value(get, "DB_NAME", "sa_lathe_shop"), User: url.UserPassword(value(get, "DB_USER", "sa_lathe_shop"), get("DB_PASSWORD"))}
+		q := url.Values{"sslmode": {value(get, "DB_SSLMODE", "disable")}}
+		u.RawQuery = q.Encode()
+		c.DatabaseURL = u.String()
+	}
+	return c, nil
+}
+
+func value(get func(string) string, key, fallback string) string {
+	if v := get(key); v != "" {
+		return v
+	}
+	return fallback
+}
