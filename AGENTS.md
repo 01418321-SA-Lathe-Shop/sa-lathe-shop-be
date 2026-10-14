@@ -1,6 +1,8 @@
 # SA-Lathe-Shop-BE
 
-Made-to-order lathe shop backend. Current authorized scope: scaffolding phases 0-2 only. Stop after phase 2; obtain the owner's go-ahead before auth or UC features.
+Made-to-order lathe shop backend. The owner authorized Phase 3 (Admin/Worker auth and account management) after scaffolding phases 0-2. Stop after Phase 3; UC1-UC9 remain unapproved.
+
+Phase 3 is implemented and verified. Staff auth routes and schema are documented in docs/AUTH.md. Update this scope when the owner authorizes another phase.
 
 ## Stack
 
@@ -8,7 +10,7 @@ Made-to-order lathe shop backend. Current authorized scope: scaffolding phases 0
 - PostgreSQL with pgx/v5 isolated behind repository implementations. Money: NUMERIC, never float. Stock reservations use transactions and row locking.
 - golang-migrate SQL migrations, pinned Go tool. Empty initial migration only until feature schema approval.
 - S3-compatible private object storage (SeaweedFS locally, pinned official GHCR image digest). Store object keys and metadata only; signed upload/download URLs. Evidence never public. MinIO registries were unavailable during setup, so local provider was replaced without changing the S3 contract.
-- Admin and Worker auth first: password hashing, revocable sessions, role permissions. Suppliers have no accounts.
+- Admin and Worker auth: Argon2id password hashing, opaque Bearer sessions checked in PostgreSQL on every protected request, and role permissions. Suppliers have no accounts. First Admin is provisioned through cmd/api -bootstrap-admin, never a public registration route.
 - PostgreSQL transactional outbox and separate worker. No Redis, broker, or cache.
 - Standard library environment config, log/slog, JSON parsing/validation. Configuration and external dependencies behind small interfaces.
 
@@ -35,6 +37,7 @@ At each completed phase, make separate logical commits containing 3-8 related fi
 ## Open questions
 
 - Customer login and customer authorization are undecided.
+- Staff frontend session persistence/cookie strategy and trusted proxy handling require deployment/frontend decisions. Current auth uses opaque Authorization Bearer tokens, not cookies.
 - Profit target 60%: markup on materials, markup on total costs, or margin on sale price?
 - Rejection limit: owner's wording says more than five rejections (sixth); confirm cancellation semantics before implementing.
 - No deposit/PO deadline is defined; do not implement timed cancellation.

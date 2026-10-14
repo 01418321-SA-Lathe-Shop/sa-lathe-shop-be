@@ -2,7 +2,8 @@
 
 The original README.md is preserved. This document is the backend runbook.
 
-Scaffolding only: no auth, uploads, notifications or UC implementations yet.
+Phase 3 staff authentication is implemented; see AUTH.md. Uploads, notifications
+and UC1-UC9 remain future phases.
 Requires Go 1.25+, Git, PowerShell 7+, Docker Desktop with Linux containers.
 
 Dependencies: chi/v5 and chi/cors; pgx/v5; golang-migrate v4. Standard library config,
@@ -19,9 +20,10 @@ failures return {"error":{"code":"...","message":"...","request_id":"..."}}.
    and S3_SECRET_KEY (at least 8 characters). No committed passwords exist.
 3. ./tasks.ps1 dev-up
 4. ./tasks.ps1 migrate-up
-5. ./tasks.ps1 run (in another terminal).
-6. Invoke-RestMethod http://localhost:8080/health
-7. Invoke-RestMethod http://localhost:8080/health/ready
+5. ./tasks.ps1 bootstrap-admin (one-time, hidden password prompt).
+6. ./tasks.ps1 run (in another terminal).
+7. Invoke-RestMethod http://localhost:8080/health
+8. Invoke-RestMethod http://localhost:8080/health/ready
 
 Tasks read .env as data (never execute it); explicit process variables win.
 Direct go run uses process variables only. Use ./tasks.ps1 worker in a separate
@@ -41,8 +43,8 @@ Build/test/lint: ./tasks.ps1 build; ./tasks.ps1 test; ./tasks.ps1 lint.
 Migrations: ./tasks.ps1 migrate-up; ./tasks.ps1 migrate-version;
 ./tasks.ps1 migrate-down (one migration only; avoid production rollback).
 The pinned golang-migrate CLI v4.19.0 runs with the postgres build tag; the first
-run fetches the tool. The initial migration intentionally creates no business
-tables. Only the migration tool's tracking table exists.
+run fetches the tool. Migration 000001 is intentionally empty; migration 000002
+adds staff identity and revocable sessions. No shop UC tables exist yet.
 
 /health is liveness; /health/ready checks PostgreSQL with a bounded timeout and
 returns HTTP 503 if unavailable. API can start while DB is unavailable. Worker
