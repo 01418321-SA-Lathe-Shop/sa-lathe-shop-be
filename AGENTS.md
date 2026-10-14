@@ -32,7 +32,16 @@ See docs/SETUP.md. PowerShell: ./tasks.ps1 test; ./tasks.ps1 lint; ./tasks.ps1 r
 
 ## Commit and push rules
 
-At each completed phase, make separate logical commits containing 3-8 related files. Use short Conventional Commit messages with purpose. Run go build ./... before every commit. Never include unrelated changes, secrets, outputs or local data. Inspect git status and git log --oneline before each phase push. Push only after that phase completes. If no remote exists, ask the owner for its URL; never invent one. Preserve all files that predate this work. PLAN.md must be updated at the end of each phase with checklists, status, decisions and problems.
+These are mandatory for every phase, not optional cleanup at the end:
+
+1. Plan reasonable commit groups and commit completed logical units as work progresses. Each commit has one purpose, normally 3-8 related files. Keep dependencies in buildable order; include the tests needed to explain that change.
+2. Never collect a whole multi-feature phase or several phases into one giant commit and push. Do not split cohesive changes artificially just to increase the commit count. A small documentation-only follow-up may be one focused commit.
+3. Use short Conventional Commit messages describing what changed and why. Avoid vague messages such as update, changes or done. Make each group understandable, independently reviewable and easy to locate with git log or git bisect.
+4. Run go build ./... before every commit and verify that the committed snapshot itself builds, not merely a working tree containing uncommitted dependencies. Run focused tests for each group and the full required checks at phase completion.
+5. At the end of EVERY completed phase, update PLAN.md, review the staged diff, git status and git log --oneline, then push that phase's separate commits to the authorized branch. Do not accumulate completed phases locally. Current destination is origin/develop; do not push main without explicit authorization.
+6. Verify the remote branch tip after pushing and report the branch, commit range and test results. If a push is blocked, report the reason and pending commits; never claim the phase was pushed. Never force-push or rewrite published history without explicit authorization.
+
+Never include unrelated changes, secrets, outputs or local data. If no remote exists, ask the owner for its URL; never invent one. Preserve pre-existing user files and changes. PLAN.md must record phase status, decisions and problems. See docs/GIT_WORKFLOW.md for examples.
 
 ## Open questions
 
