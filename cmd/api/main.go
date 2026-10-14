@@ -6,9 +6,14 @@ import (
 	"flag"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/auth"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/config"
+	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/file"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/health"
+	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/notification"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/platform/httpserver"
+	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/platform/objectstore"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/repository/postgres"
+	req "github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/request"
+	"github.com/go-chi/chi/v5"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -33,7 +38,8 @@ func main() {
 		os.Exit(1)
 	}
 	defer db.Close()
-	authService, err := auth.NewService(db, auth.NewArgonHasher(), cfg.SessionTTL)
+	hasher := auth.NewArgonHasher()
+	authService, err := auth.NewService(db, hasher, cfg.SessionTTL)
 	if err != nil {
 		logger.Error("auth initialization failed")
 		os.Exit(1)
@@ -55,7 +61,22 @@ func main() {
 	}
 	healthService := health.NewService(db, cfg.DBPingTimeout)
 	authHandler := auth.NewHandler(authService)
-	router := httpserver.RouterWithRoutes(logger, cfg.HTTPTimeout, cfg.CORSOrigins, health.Live, healthService.Handler, authHandler.Routes)
+	integrations, err := config.LoadIntegrations()
+	if err != nil {
+		logger.Error("invalid integration configuration", "error", err)
+		os.Exit(1)
+	}
+	store := objectstore.New(objectstore.Config{Endpoint: integrations.S3Endpoint, PublicEndpoint: integrations.S3PublicEndpoint, Region: integrations.S3Region, Bucket: integrations.S3Bucket, AccessKey: integrations.S3AccessKey, SecretKey: integrations.S3SecretKey, PathStyle: integrations.S3PathStyle})
+	requestService := req.NewService(db)
+	fileService := file.NewService(db, store, requestService)
+	customerService := auth.NewCustomerService(db, hasher)
+	router := httpserver.RouterWithRoutes(logger, cfg.HTTPTimeout, cfg.CORSOrigins, health.Live, healthService.Handler, func(r chi.Router) {
+		authHandler.Routes(r)
+		authHandler.CustomerRoutes(r, customerService)
+		req.NewHandler(requestService).Routes(r, authHandler.Authenticate)
+		fileService.Routes(r, authHandler.Authenticate)
+		notification.Routes(r, notification.NewInbox(db), authHandler.Authenticate)
+	})
 	if err := httpserver.Run(ctx, logger, cfg.HTTPAddr, cfg.ShutdownTimeout, router); err != nil {
 		logger.Error("api stopped", "error", err)
 		os.Exit(1)

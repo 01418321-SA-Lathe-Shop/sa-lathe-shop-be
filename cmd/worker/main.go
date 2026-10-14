@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/config"
+	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/notification"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/repository/postgres"
 	"log/slog"
 	"os"
@@ -33,7 +34,16 @@ func main() {
 		logger.Error("database not ready")
 		os.Exit(1)
 	}
-	logger.Info("worker skeleton started; notification dispatch is not implemented")
-	<-ctx.Done()
+	integrations, err := config.LoadIntegrations()
+	if err != nil {
+		logger.Error("invalid integration configuration", "error", err)
+		os.Exit(1)
+	}
+	line := notification.NewLINE(integrations.LINEEnabled, integrations.LINEToken, integrations.LINEAdminUserID)
+	logger.Info("notification worker started", "line_enabled", integrations.LINEEnabled)
+	if err = notification.NewDispatcher(db, line, logger).Run(ctx); err != nil {
+		logger.Error("notification worker failed")
+		os.Exit(1)
+	}
 	logger.Info("worker stopped")
 }
