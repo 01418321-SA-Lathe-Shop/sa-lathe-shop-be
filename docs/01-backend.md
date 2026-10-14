@@ -1,0 +1,181 @@
+# Machine Shop Custom Manufacturing System — Backend Guide
+
+## Project summary
+
+The system brings customer requests, quotations, production jobs, purchasing/receiving materials, inventory, delivery, and payments into one workflow. It addresses the current lack of job/payment tracking and reliable stock information. The business is not registered as a company and does not charge VAT, as confirmed by the owner.
+
+| Actor / role | Responsibilities in the workflow | Use cases |
+|---|---|---|
+| Customer (`individual` or `company`) | Submit requests and files, accept/reject quotations, submit Deposit or PO evidence, inspect delivered work, and pay | UC1, UC3, UC4, UC9 |
+| Worker (technician) | Estimate prices, check/reserve stock, order materials, receive goods/record Supplier payment, produce and issue materials, deliver/record payment | UC2, UC5–UC9 |
+| Admin | Manage Workers and order from Suppliers, as confirmed by the owner | No separate UC; UC6 names Worker as its actor |
+| Supplier | Accept/reject orders, deliver materials, and receive payment; an external actor | UC6, UC7 |
+
+### UC1–UC9 workflow
+
+```mermaid
+flowchart TD
+  UC1[UC1 Customer submits request and attachments] --> UC2[UC2 Worker prepares estimate]
+  UC2 -->|Send quotation| UC3[UC3 Customer reviews and responds]
+  UC2 -->|Save draft| UC2
+  UC2 -->|Reject request| CANCELED[Request canceled]
+  UC3 -->|Customer rejects fewer than 5 times| UC2
+  UC3 -->|5th rejection| CANCELED
+  UC3 -->|Accept: determine Deposit/PO| UC4[UC4 Record Deposit and/or PO]
+  UC4 -->|Requirements met within the deadline| JOB[Create JOB: queued]
+  UC4 -->|Deadline missed after 14 days, temporary assumption| CANCELED
+  JOB --> UC5[UC5 Check and reserve materials]
+  UC5 -->|Materials available| UC8[UC8 Produce and record actual usage]
+  UC5 -->|Materials insufficient| UC6[UC6 Order materials from Supplier]
+  UC6 --> UC7[UC7 Receive good/defective goods and record payment]
+  UC7 -.->|Check availability again; connection requires confirmation| UC5
+  UC8 -->|JOB completed| UC9[UC9 Invoice and delivery]
+  UC9 -->|Customer returns the work| UC8
+  UC9 -->|Customer accepts and may pay in installments| DONE[Close when fully allocated/paid]
+```
+
+The sequence and handoffs above come from the Use Cases, Sequence Diagrams, and Collaboration Diagrams summarized in the overview. The UC7-to-UC5 return is a temporary proposal; the source did not clearly specify this handoff.
+
+### Glossary: entities managed by Backend
+
+| Entity / term | Meaning |
+|---|---|
+| `JOB_REQUEST` | A customer's manufacturing request before it becomes a production job |
+| `QUOTATION` | A quotation that may have multiple revisions |
+| `QUOTATION_COST` | Material cost, labor cost, and final price for a quotation |
+| `DEPOSIT` | Customer deposit based on customer type and quoted amount |
+| `PURCHASE_ORDER` (PO) | A PO from a company customer to confirm production |
+| `JOB` | A production job opened after quotation terms are confirmed |
+| `MATERIAL_RESERVATION` | Material quantity reserved for a job |
+| `MATERIAL_ORDER`, `MATERIAL_ORDER_ITEM` | A material order from a Supplier and its line items |
+| `STOCK_MOVEMENT` | History of material receipts, issues, adjustments, or returns |
+| `MATERIAL_DEFECT_LOG` | Defective-material history and Supplier claim status |
+| `DELIVERY` | Delivery or customer pickup, including recipient and evidence |
+| `INVOICE` | Customer invoice; its initial amount is the job price less Deposit |
+| `PAYMENT`, `PAYMENT_ALLOCATION` | Payment receipt and the amount allocated to an invoice; multiple payments are supported |
+| `MATERIAL` | Material; `avg_cost` uses Moving Average based on good stock received, excluding defective goods |
+
+## Technology scope and architecture
+
+| Area | Requirement |
+|---|---|
+| Backend | Go + chi |
+| Database | PostgreSQL |
+| File storage | S3-compatible object storage; store URLs in the database |
+| Authentication | Customer, Admin, and Worker accounts; login is required before every use case |
+| Background work | Outbox + worker |
+| Local development | Docker Compose |
+| IDs / time | UUID; display timezone is `Asia/Bangkok` |
+| Data types | `timestamptz` is proposed for time and `NUMERIC` for money; precision/rounding still needs confirmation |
+
+Request path: `Handler → Service → Repository → PostgreSQL`. Keep Handlers thin; Repository is the only layer that communicates with PostgreSQL. **The concrete folder layout must be defined** because the overview specifies layers but not directory/file names. Preserve these layer boundaries when agreeing on the layout.
+
+The authentication boundary must verify that the user is logged in and has the role required for the action. Do not assume Supplier is a system account: Supplier is currently an external actor. The provider, account table, credential/session design, password reset flow, and account linkage to `PERSON` are not defined.
+
+## Statuses and transitions
+
+The values below preserve those found in the ER/Use Cases. Do not infer transitions that are absent or inconsistent in the source.
+
+| Entity | Statuses found / proposal | Workflow transitions |
+|---|---|---|
+| `JOB_REQUEST` | `pending`, `ongoing`, `completed`, `canceled` | Created as `pending`; becomes `ongoing` when a quotation is sent; becomes `canceled` if rejected or expired; transition to `completed` is not specified |
+| `QUOTATION` | `draft`, `sent`, `approved`, `rejected`; ER also has `requote`, but no transition uses it | `draft` → `sent` when sent → `approved` when accepted; rejection sets `rejected` and a new revision starts as `draft`; five rejections cancel the request |
+| `JOB` | `queued`, `in_progress`, `completed`, `cancelled` | Created as `queued`; production starts as `in_progress`; production completion sets `completed`; customer return changes it back to `in_progress` |
+| `MATERIAL_RESERVATION` | `reserved`, `consumed`, `released` | Reservation sets `reserved`; issuing material sets `consumed`; `released` exists in the ER but has no workflow transition |
+| `MATERIAL_ORDER` | `ordered`, `partially_received`, `received`, `cancelled` | Created as `ordered`; partial receipt sets `partially_received`; full receipt sets `received`; Supplier rejection sets `cancelled` |
+| `MATERIAL_ORDER_ITEM` | ER: `ordered`, `preparing`, `in_transit`, `received`, `damaged`, `cancelled`; **proposal:** add `partially_received` to align with UC7 | Cumulative partial receipt sets `partially_received`; full receipt sets `received`; an entirely defective item may be `damaged`; `preparing`/`in_transit` transitions are absent from the workflow |
+| `MATERIAL_DEFECT_LOG` | `PENDING_CLAIM`, `CLAIMED`, `RESOLVED`, `WRITTEN_OFF` | Record defect as `PENDING_CLAIM`; notify Supplier to set `CLAIMED`; transitions to `RESOLVED`/`WRITTEN_OFF` are not specified |
+| `DELIVERY` | `preparing`, `shipping`, `delivered`, `returned` | UC9 creates `shipping`; customer acceptance sets `delivered`; customer return sets `returned`; `preparing` has no workflow transition |
+| `INVOICE` | `unpaid`, `partial`, `paid` | Created as `unpaid`; partial allocation sets `partial`; full payment sets `paid` |
+| `MATERIAL_ORDER.payment_status` | `unpaid`, `pending`, `paid` | Created as `unpaid`; `CREDIT` sets `pending`; other methods set `paid` per UC7; actual methods still need definition |
+| `WORKER.status`, `ADMIN.status` | `active`, `inactive` | Enums exist in the ER; status-change rules are not specified |
+
+Adding `partially_received` to `MATERIAL_ORDER_ITEM` is a proposal to align its enum. `JOB_REQUEST.completed`, `QUOTATION.requote`, `DELIVERY.preparing`, `MATERIAL_RESERVATION.released`, and other statuses without transitions must be defined before finalizing the API contract.
+
+## Business rules, stock, pricing, and data integrity
+
+| Topic | Rule / requirement |
+|---|---|
+| Login | Customer, Admin, and Worker must log in before using a UC; Supplier is external |
+| Customer type and terms | `individual`: 50% Deposit, no PO; `company` with price ≤ THB 10,000: PO, no Deposit; `company` with price > THB 10,000: PO + 50% Deposit |
+| Rejections | Customer may reject up to 5 times; the request is automatically canceled on the 5th rejection |
+| Customer payments | Installments are allowed; `INVOICE` is `partial` while the balance remains and `paid` when fully allocated/paid |
+| Payment period | 14 days; start date and whether it applies to Deposit/PO, invoice, or both are unconfirmed |
+| Pricing | `final_price` consists of material cost + labor cost + minimum 60% profit; the 60% basis is unknown, so no numeric formula is confirmed |
+| Available stock | `qty_available = qty_on_hand - qty_reserved`, where `qty_reserved` represents active reservations |
+| Receiving / costing | Only good materials increase `qty_on_hand` and contribute to Moving Average |
+| Stock ledger | Updating `qty_on_hand` must be in the same transaction as recording `STOCK_MOVEMENT` |
+| Defects | Keep defective goods separate from good stock, do not add them to good `qty_on_hand`, and record them in `MATERIAL_DEFECT_LOG` for Supplier claims |
+| Files | Documents and images up to 100 MB; after upload failure, the user starts a new upload; store files in S3-compatible storage and URLs in the DB |
+| IDs / time / VAT | UUID; display timezone `Asia/Bangkok`; no VAT |
+
+### Transactions to preserve
+
+- **UC2:** Update `JOB_REQUEST` and create `QUOTATION` and `QUOTATION_COST` in one transaction.
+- **UC7:** Keep received line items, material records, `STOCK_MOVEMENT`, `MATERIAL_DEFECT_LOG`, and `MATERIAL_ORDER` status/payment consistent within a transaction.
+- **UC8:** Record material usage, decrement `qty_on_hand`, record `STOCK_MOVEMENT`, and change the reservation to `consumed` in one transaction.
+- **File upload:** Validate file type and size before saving the URL. Retry means starting a new upload, not automatic retry.
+
+### Outbox and notifications
+
+The system requires Outbox + worker. Notifications should inform the shop/customer and remind staff to follow up on collection. Notification channels, events, retry policy, recipients, and duplicate-delivery semantics **must be defined**. Do not assume a provider or event contract exists.
+
+## UC1–UC9: triggers, flow, data, and errors
+
+The tables/data listed are entity touchpoints from the overview. Endpoints, full field schemas, and error codes are not specified and must be defined. Every UC has a login precondition.
+
+| UC | Trigger / steps | Related data/tables | Errors / issues to handle |
+|---|---|---|---|
+| UC1 Submit request | Customer submits job details and attachments; create `JOB_REQUEST` | `JOB_REQUEST`, file/URL (file stored externally; URL in DB) | Validate details and files; after upload failure, start again. Exact fields/error codes must be defined |
+| UC2 Estimate price | Worker estimates; saves draft, sends quotation, or rejects request; may create revisions | `JOB_REQUEST`, `QUOTATION`, `QUOTATION_COST` | UC2 transaction required; 60% profit basis is unclear; other validation/errors must be defined |
+| UC3 Respond to quotation | Customer reviews and accepts/rejects; rejection returns to UC2; fifth rejection cancels | `QUOTATION`, `JOB_REQUEST` | Make rejection counting and cancellation atomic, including concurrent actions; exact error codes must be defined |
+| UC4 Record Deposit/PO | Record required evidence/terms; create `JOB: queued` when requirements are met | `DEPOSIT`, `PURCHASE_ORDER`, `QUOTATION`, `JOB_REQUEST`, `JOB` | Apply customer type/amount rules; 14-day expiry is a temporary assumption; start date and missed-deadline behavior need confirmation |
+| UC5 Check/reserve stock | Worker checks availability; if sufficient, proceed to UC8; if insufficient, go to UC6. UC5 says reserve what is available and order only the shortage | `MATERIAL`, `MATERIAL_RESERVATION`; no confirmed planned-material entity per JOB | Shortage formula conflicts with Q6.1; concurrency, over-reservation behavior, and error responses must be defined |
+| UC6 Order materials | Worker is the UC actor; owner separately confirmed Admin can order from Suppliers; select Supplier and order shortage | `MATERIAL_ORDER`, `MATERIAL_ORDER_ITEM`, `MATERIAL`, Supplier | UC6 role is inconsistent; Supplier rejection sets `cancelled`; validations/errors must be defined |
+| UC7 Receive goods and pay Supplier | Worker receives good/defective goods, updates stock/cost, records Supplier payment | `MATERIAL_ORDER`, `MATERIAL_ORDER_ITEM`, `MATERIAL`, `STOCK_MOVEMENT`, `MATERIAL_DEFECT_LOG`, payment status | Must be atomic; actual payment methods and settlement of outstanding credit are undefined; return to UC5 is a proposal |
+| UC8 Produce | Worker starts/continues production, issues materials, records images and actual cost/time; customer return from UC9 resumes work | `JOB`, `MATERIAL_RESERVATION`, `MATERIAL`, `STOCK_MOVEMENT`, `JOB_MATERIAL_USAGE` (actual usage), files/URLs | UC8 transaction required; planned material data is unclear; validation/error codes must be defined |
+| UC9 Deliver/receive payment | Worker delivers or arranges pickup and issues invoice; Customer inspects and may pay in installments; returned work goes back to UC8 | `DELIVERY`, `INVOICE`, `PAYMENT`, `PAYMENT_ALLOCATION`, `JOB` | Applicability of 14-day terms is unclear; invoice balance/allocation and evidence validation details/error codes must be defined |
+
+## Open questions and temporary assumptions affecting schema or logic
+
+| Topic | Known information | Status / question |
+|---|---|---|
+| 60% profit formula | Price = material + labor + minimum 60% profit | Confirm whether 60% is based on total cost or is a sales margin; no numeric formula is used yet |
+| 14 days | Payment period is 14 days | Temporary assumption: applies to submitting Deposit/PO after quotation approval to support UC4 expiry; confirm start date and whether invoices are included |
+| Planned materials | UC5 accepts `requiredMaterials`; ER has `JOB_MATERIAL_USAGE` for actual use but no planned list per JOB | Confirm whether Worker enters required quantities each time or a planned-material table should be added per JOB |
+| Reservation/shortage | UC5: reserve available quantity and order shortage; Q6.1 calculates shortage from total reservations compared with `qty_on_hand` | Temporary proposal: calculate shortage per JOB/material and store planned quantity; review Q6.1 formula |
+| Who can order | Owner says Admin orders from Supplier; UC6 says Worker | Temporary assumption: both Admin and Worker can use UC6 until confirmed |
+| `JOB_REQUEST.completed` | Exists in ER; no UC updates it; JOB is completed before delivery | Confirm whether the request becomes complete at delivery or after the invoice is fully paid |
+| Authentication | Customer/Admin/Worker must log in; ER has no account/credential details | Define provider, account table, password/session, reset flow, and linkage to `PERSON` |
+| Master data | Admin manages Workers/orders; `MATERIAL`, `UNIT`, `SUPPLIER` have no complete CRUD UC | Confirm whether Admin manages these master records |
+| Supplier payment | UC7: `CREDIT` → `pending`; other methods → `paid` | Define allowed payment methods and how outstanding credit is settled |
+| File types | Documents and images up to 100 MB | Define MIME/extension allowlist, signed URL lifetime, and handling of partial uploads |
+| Notifications | Notify shop/customer and remind staff to follow up on collection; Outbox + worker | Define channel, event, retry policy, and recipients |
+| Precision | UUID, `Asia/Bangkok`; threshold is in baht | `timestamptz` and `NUMERIC` are recommendations; confirm precision, rounding, and API time boundary |
+| Status gaps | Proposed item status `partially_received`; `JOB_REQUEST.completed`, `QUOTATION.requote`, `DELIVERY.preparing`, `MATERIAL_RESERVATION.released`, and some other statuses lack transitions | Confirm before finalizing schema/API contract |
+| Folder layout | Only Handler → Service → Repository → DB is specified | Define directory/file layout |
+
+## Backend day-one checklist
+
+- Install Go and Docker Compose; prepare the chi server, PostgreSQL connection, and migration runner.
+- Set up Handler → Service → Repository, keeping Handlers thin and Repository as the only layer that communicates with PostgreSQL; agree on folder layout.
+- Prepare the authentication boundary for Customer/Admin/Worker; do not choose a provider or design credentials before confirmation.
+- Start migrations from the ER entities using UUIDs; apply the UC2, UC7, and UC8 transaction requirements.
+- Add an S3-compatible storage adapter and Outbox/worker interface; store URLs in the DB.
+- Before locking schema/API, review planned materials, pricing formula, status transitions, invoice/payment terms, roles, Supplier payment, and precision.
+
+## Coverage from the source overview
+
+| Section in `00-overview.md` | Location in this file |
+|---|---|
+| Goals and problems addressed / registration and VAT status | Project summary |
+| Technology scope | Technology scope and architecture |
+| Actors and workflow permissions | Project summary; Open questions |
+| Glossary | Glossary: entities managed by Backend |
+| Process overview and UC1–UC9 | UC1–UC9 workflow; UC1–UC9 table |
+| Statuses and transitions | Statuses and transitions |
+| Confirmed business rules | Business rules, stock, pricing, and data integrity |
+| Transactions and data integrity | Transactions to preserve; UC1–UC9 table |
+| Open questions and temporary assumptions | Open questions and temporary assumptions |
+| Backend day-one checklist | Backend day-one checklist |
+| Use case traceability | UC1–UC9 table |
