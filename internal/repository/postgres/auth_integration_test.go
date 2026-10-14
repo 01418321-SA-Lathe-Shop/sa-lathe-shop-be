@@ -47,7 +47,7 @@ func TestStaffAuthIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 	var adminCount int
-	if err = db.pool.QueryRow(ctx, `SELECT count(*) FROM staff_account WHERE role='admin'`).Scan(&adminCount); err != nil {
+	if err = db.pool.QueryRow(ctx, `SELECT count(*) FROM account WHERE role='admin'`).Scan(&adminCount); err != nil {
 		t.Fatal(err)
 	}
 	if adminCount != 0 {

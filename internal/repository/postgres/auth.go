@@ -42,7 +42,7 @@ func authError(err error) error {
 	return err
 }
 func (d *Database) FindAccount(ctx context.Context, username string) (auth.Account, error) {
-	return accountRow(d.pool.QueryRow(ctx, `SELECT `+accountFields+` FROM staff_account a JOIN person p ON p.id=a.person_id WHERE a.username=$1`, username))
+	return accountRow(d.pool.QueryRow(ctx, `SELECT `+accountFields+` FROM account a JOIN person p ON p.id=a.person_id WHERE a.username=$1`, username))
 }
 
 func (d *Database) CreateSession(ctx context.Context, s auth.Session, expectedHash string) error {
@@ -53,7 +53,7 @@ func (d *Database) CreateSession(ctx context.Context, s auth.Session, expectedHa
 	defer tx.Rollback(ctx)
 	var active bool
 	var hash, username string
-	err = tx.QueryRow(ctx, `SELECT is_active,password_hash,username FROM staff_account WHERE id=$1 FOR UPDATE`, s.Account.ID).Scan(&active, &hash, &username)
+	err = tx.QueryRow(ctx, `SELECT is_active,password_hash,username FROM account WHERE id=$1 FOR UPDATE`, s.Account.ID).Scan(&active, &hash, &username)
 	if errors.Is(err, pgx.ErrNoRows) || err == nil && (!active || hash != expectedHash || username != s.Account.Username) {
 		return auth.ErrUnauthenticated
 	}
@@ -70,7 +70,7 @@ func (d *Database) FindSession(ctx context.Context, hash []byte) (auth.Session, 
 	var s auth.Session
 	targets := []any{&s.ID, &s.TokenHash, &s.CreatedAt, &s.ExpiresAt, &s.RevokedAt}
 	targets = append(targets, accountTargets(&s.Account)...)
-	err := d.pool.QueryRow(ctx, `SELECT s.id::text,s.token_hash,s.created_at,s.expires_at,s.revoked_at,`+accountFields+` FROM auth_session s JOIN staff_account a ON a.id=s.account_id JOIN person p ON p.id=a.person_id WHERE s.token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at>clock_timestamp() AND a.is_active`, hash).Scan(targets...)
+	err := d.pool.QueryRow(ctx, `SELECT s.id::text,s.token_hash,s.created_at,s.expires_at,s.revoked_at,`+accountFields+` FROM auth_session s JOIN account a ON a.id=s.account_id JOIN person p ON p.id=a.person_id WHERE s.token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at>clock_timestamp() AND a.is_active`, hash).Scan(targets...)
 	return s, authError(err)
 }
 func (d *Database) RevokeSession(ctx context.Context, hash []byte) error {
@@ -84,7 +84,7 @@ func insertStaff(ctx context.Context, tx pgx.Tx, input auth.NewStaff) (auth.Acco
 	if err != nil {
 		return auth.Account{}, authError(err)
 	}
-	err = tx.QueryRow(ctx, `INSERT INTO staff_account(id,person_id,username,password_hash,role,is_active) VALUES($1,$2,$3,$4,$5,true) RETURNING created_at`, a.ID, a.PersonID, a.Username, a.PasswordHash, a.Role).Scan(&a.CreatedAt)
+	err = tx.QueryRow(ctx, `INSERT INTO account(id,person_id,username,password_hash,role,is_active) VALUES($1,$2,$3,$4,$5,true) RETURNING created_at`, a.ID, a.PersonID, a.Username, a.PasswordHash, a.Role).Scan(&a.CreatedAt)
 	if err != nil {
 		return auth.Account{}, authError(err)
 	}
@@ -106,7 +106,7 @@ func (d *Database) BootstrapAdmin(ctx context.Context, input auth.NewStaff) (aut
 		return auth.Account{}, err
 	}
 	var exists bool
-	if err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM staff_account WHERE role='admin')`).Scan(&exists); err != nil {
+	if err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM account WHERE role='admin')`).Scan(&exists); err != nil {
 		return auth.Account{}, err
 	}
 	if exists {
@@ -134,7 +134,7 @@ func (d *Database) CreateWorker(ctx context.Context, input auth.NewStaff) (auth.
 	return w, tx.Commit(ctx)
 }
 func (d *Database) ListWorkers(ctx context.Context, limit, offset int) ([]auth.Worker, error) {
-	rows, err := d.pool.Query(ctx, `SELECT `+accountFields+`,w.employee_no,w.position FROM staff_account a JOIN person p ON p.id=a.person_id JOIN worker w ON w.person_id=p.id WHERE a.role='worker' ORDER BY a.created_at,a.id LIMIT $1 OFFSET $2`, limit, offset)
+	rows, err := d.pool.Query(ctx, `SELECT `+accountFields+`,w.employee_no,w.position FROM account a JOIN person p ON p.id=a.person_id JOIN worker w ON w.person_id=p.id WHERE a.role='worker' ORDER BY a.created_at,a.id LIMIT $1 OFFSET $2`, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +150,7 @@ func (d *Database) ListWorkers(ctx context.Context, limit, offset int) ([]auth.W
 	return result, rows.Err()
 }
 func (d *Database) GetWorker(ctx context.Context, id string) (auth.Worker, error) {
-	return workerRow(d.pool.QueryRow(ctx, `SELECT `+accountFields+`,w.employee_no,w.position FROM staff_account a JOIN person p ON p.id=a.person_id JOIN worker w ON w.person_id=p.id WHERE a.id=$1 AND a.role='worker'`, id))
+	return workerRow(d.pool.QueryRow(ctx, `SELECT `+accountFields+`,w.employee_no,w.position FROM account a JOIN person p ON p.id=a.person_id JOIN worker w ON w.person_id=p.id WHERE a.id=$1 AND a.role='worker'`, id))
 }
 func (d *Database) UpdateWorker(ctx context.Context, id string, c auth.WorkerChanges) (auth.Worker, error) {
 	tx, err := d.pool.Begin(ctx)
@@ -158,7 +158,7 @@ func (d *Database) UpdateWorker(ctx context.Context, id string, c auth.WorkerCha
 		return auth.Worker{}, err
 	}
 	defer tx.Rollback(ctx)
-	w, err := workerRow(tx.QueryRow(ctx, `SELECT `+accountFields+`,w.employee_no,w.position FROM staff_account a JOIN person p ON p.id=a.person_id JOIN worker w ON w.person_id=p.id WHERE a.id=$1 AND a.role='worker' FOR UPDATE OF a`, id))
+	w, err := workerRow(tx.QueryRow(ctx, `SELECT `+accountFields+`,w.employee_no,w.position FROM account a JOIN person p ON p.id=a.person_id JOIN worker w ON w.person_id=p.id WHERE a.id=$1 AND a.role='worker' FOR UPDATE OF a`, id))
 	if err != nil {
 		return auth.Worker{}, err
 	}
@@ -180,7 +180,7 @@ func (d *Database) UpdateWorker(ctx context.Context, id string, c auth.WorkerCha
 	if c.PasswordHash != nil {
 		w.PasswordHash = *c.PasswordHash
 	}
-	_, err = tx.Exec(ctx, `UPDATE staff_account SET username=$2,password_hash=$3,is_active=$4,edited_at=now() WHERE id=$1`, id, w.Username, w.PasswordHash, w.Active)
+	_, err = tx.Exec(ctx, `UPDATE account SET username=$2,password_hash=$3,is_active=$4,edited_at=now() WHERE id=$1`, id, w.Username, w.PasswordHash, w.Active)
 	if err != nil {
 		return auth.Worker{}, authError(err)
 	}
