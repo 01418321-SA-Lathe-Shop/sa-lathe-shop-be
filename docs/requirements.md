@@ -39,3 +39,8 @@ configuration; real LINE sending is disabled by default.
 The guide specifies documents/images up to 100 MB but no exact allowlist.
 Use the owner's newer decisions above instead of the guide's stale fifth
 rejection, undecided deadline and permanent URL wording.
+
+Phase 4 implementation and isolated PostgreSQL/S3/Docker verification completed
+2026-10-15. Pushed to the confirmed organization repository's develop branch;
+main remains unchanged. API contracts and deployment limitations: docs/UC1.md.
+UC2-UC9 require separate authorization.

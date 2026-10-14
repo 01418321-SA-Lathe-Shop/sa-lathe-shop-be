@@ -5,7 +5,7 @@
 - [x] Read available schema and prior fully-read UC context; record missing originals.
 - [x] Add ignore rules, environment template, AGENTS.md and setup documentation.
 - [x] Create buildable module bootstrap so every commit builds.
-- [ ] Push phase commits.
+- [x] Push phase commits (verified before Phase 4).
 Decision: repository already initialized on main; README.md is untouched. Module and empty entrypoints are bootstrapped in phase 0 to satisfy build-at-every-commit. Problem: original UC Word attachment is missing; no sequence attachment is currently available. Phase push pending verification.
 
 ## Phase 1 project skeleton — done
@@ -13,7 +13,7 @@ Decision: repository already initialized on main; README.md is untouched. Module
 - [x] Config, structured logging, request ID/recovery/timeout/CORS.
 - [x] Consistent JSON errors, graceful shutdown and GET /health.
 - [x] Build, vet and HTTP/config tests.
-- [ ] Push phase commits.
+- [x] Push phase commits (verified before Phase 4).
 Decision: standard library env config/slog; chi/cors allowlist; middleware timeout produces JSON. Push blocked pending explicit remote confirmation requested by automatic approval review. Phase 0 local commits completed; remote is origin/main at Yoshi4489/SA-Lathe-Shop-BE.
 
 ## Phase 2 DB migrations and Docker — done
@@ -22,7 +22,7 @@ Decision: standard library env config/slog; chi/cors allowlist; middleware timeo
 - [x] API/worker Dockerfiles, PostgreSQL/private S3 Compose, PowerShell tasks.
 - [x] Verify build/vet/tests/lint/API/DB, migrate up/down and container entrypoints.
 - [x] Local batch commits; stop before auth/UC feature code.
-- [ ] Phase push: awaiting explicit confirmation of GitHub destination.
+- [x] Phase push: completed to the confirmed organization repository before Phase 4.
 Decision: pgx/v5 in repository only; standard library config/slog/validation; golang-migrate v4.19.0 pinned CLI. Local S3 switched to digest-pinned official SeaweedFS after MinIO registry denial. Official Go/Alpine ECR mirrors resolved Docker Hub timeouts. Verified liveness/readiness 200, DB-down readiness 503 with liveness 200, anonymous S3 listing 403, up/down/up migrations and graceful API/worker stop. Temporary verification containers and newly-created volumes were removed; no existing project files/data deleted. No secrets persisted or committed. See docs/VERIFICATION.md.
 
 ## Phase 3 auth and roles — done
@@ -33,8 +33,8 @@ Decision: pgx/v5 in repository only; standard library config/slog/validation; go
 - [x] Service mock tests, HTTP tests and real PostgreSQL integration/race checks.
 - [x] Build/vet/tests/lint, migrations up/down/up and Docker auth verified.
 - [x] Update runbook and local 3-8-file buildable commit batches.
-- [x] Customer login remains an open question for UC1; suppliers have no login.
-- [ ] Push phase batches: exact GitHub destination confirmation remains pending.
+- [x] Customer login was an open question at Phase 3 completion, resolved in Phase 4; suppliers have no login.
+- [x] Push phase batches: completed before Phase 4.
 Decision: Argon2id 64 MiB/3 passes/2 lanes; random 256-bit Bearer tokens, SHA-256 token digests only in PostgreSQL, configurable absolute TTL (default 12h). Login and Worker credential/activity changes serialize on the account row. Deactivation/password/username changes revoke sessions atomically; already-running requests may finish, subsequent requests reauthenticate. No session cache. Local login abuse limiter is bounded and trusts only the socket IP. See docs/AUTH.md and docs/AUTH_VERIFICATION.md. Phase 4 remains unapproved; current missing original UC/sequence files and customer authorization must be resolved before UC1 work.
 
 ## Phase 4 UC1 submit job request — done
@@ -50,7 +50,8 @@ Decision: Argon2id 64 MiB/3 passes/2 lanes; random 256-bit Bearer tokens, SHA-25
 - [x] Per-user inbox and separate outbox worker, LINE Admin-only push with stable retry keys.
 - [x] Mock/unit/HTTP and real PostgreSQL/S3 integration, staff regression, migration down/up and Docker checks.
 - [x] Update runbook and verification documentation.
-- [ ] Create logical buildable commits and push completed phase to develop only.
+- [x] Create nine logical 3-8-file commits; independently build each exact commit tree.
+- [x] Push completed implementation to develop only; remote 451a0e8 verified on 2026-10-15, main unchanged at 86d5be1.
 Decision: customer self-registration, owner-issued one-use company invitations and company-shared request reads. Input follows ER: selected customer ID verified against membership, description, positive int64 qty, material_spec and optional future requested deadline. Text bounds 10,000/2,000 Unicode characters; no artificial quantity business cap. Final evidence uses distinct private keys and ETag-conditional copy after inspection. Requests/outbox and inbox/acknowledgement are atomic; LINE targets only the configured Admin user and is disabled by default. Real LINE messages were not sent. See docs/UC1.md and docs/UC1_VERIFICATION.md. Original detailed UC/sequence files remain unavailable; reviewed guide, ER and owner decisions cover this phase. Stop before UC2.
 ## Phase 5 UC2 estimate and quote — todo
 - [ ] Draft/send estimates, queue review and rejection reason.

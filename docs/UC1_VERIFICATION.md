@@ -27,6 +27,8 @@ Disposable Compose projects used:
 
 - `sa-lathe-uc1-781657a2` — first PostgreSQL/S3 integration pass.
 - `sa-lathe-uc1-e0775fce` — full regression and Docker flow.
+- `sa-lathe-uc1-c21c02a3` — repeat using the checked-in verification script with
+  an explicit empty Compose env file and process-environment restoration.
 
 Only these projects' newly created containers, networks and volumes were removed.
 No user database was migrated or deleted. Test credentials were random process
@@ -42,3 +44,9 @@ Operational limitations: no malware scanner or email verification in this phase;
 LINE needs private credentials and an eligible Admin recipient; S3 CORS, private
 policy, lifecycle and failed-outbox monitoring must be set for production. See
 UC1.md. Phase 5 remains unapproved.
+
+Git: implementation committed in nine logical 3-8-file batches. Each exact
+staged commit tree was exported and independently passed `go build ./...`
+before its commit. Final repository lint/build/vet/tests passed. Implementation
+tip 451a0e8 was pushed and verified on origin/develop; origin/main remained
+86d5be1. No force push, secret commit or production database change occurred.
