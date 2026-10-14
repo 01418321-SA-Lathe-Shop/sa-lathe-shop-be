@@ -2,8 +2,9 @@
 
 The original README.md is preserved. This document is the backend runbook.
 
-Phase 3 staff authentication is implemented; see AUTH.md. Uploads, notifications
-and UC1-UC9 remain future phases.
+Phase 4 UC1 customer registration, requests, private uploads and notifications
+are implemented; see UC1.md and UC1_VERIFICATION.md. UC2-UC9 remain future phases.
+Apply all migrations (including 000003) before running the new API and worker.
 Requires Go 1.25+, Git, PowerShell 7+, Docker Desktop with Linux containers.
 
 Dependencies: chi/v5 and chi/cors; pgx/v5; golang-migrate v4. Standard library config,

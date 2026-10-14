@@ -1,12 +1,14 @@
 # SA-Lathe-Shop-BE backend
 
 Go + chi API and separate worker with PostgreSQL and private S3-compatible
-local storage. Scaffolding phases 0-2 and Phase 3 staff auth are complete.
+local storage. Scaffolding phases 0-2, Phase 3 staff auth and Phase 4 UC1 are complete.
 
 The existing README.md has been preserved exactly.
 
 - [Setup and commands](docs/SETUP.md)
 - [Staff auth API and first Admin setup](docs/AUTH.md)
+- [Customer registration, company invitations, requests and files](docs/UC1.md)
+- [Phase 4 verification](docs/UC1_VERIFICATION.md)
 - [Architecture and open questions](AGENTS.md)
 - [Phased plan](PLAN.md)
 - [Verification and commands run](docs/VERIFICATION.md)

@@ -1,5 +1,10 @@
 # Phase 3 staff authentication
 
+Phase 4 update: customer self-registration and login are now implemented; see
+UC1.md. Migration 000003 renames `staff_account` to `account`, preserving staff
+IDs/hashes/sessions. The staff rules below remain applicable; the original
+Phase 3-only customer/registration scope statement is historical.
+
 Admin and Worker accounts only. Customer login remains undecided. Suppliers
 have no accounts. No public registration or Admin-promotion API exists.
 

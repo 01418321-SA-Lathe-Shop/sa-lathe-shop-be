@@ -1,5 +1,14 @@
 # Machine Shop Custom Manufacturing System — Backend Guide
 
+> Owner-confirmed implementation clarifications (2026-10-15): customers
+> self-register; company users join by invitation and share company requests.
+> Cancel on the sixth rejection, not the fifth. Deposit/PO deadline is 14 days
+> after quotation acceptance. Store private object keys and metadata, not public
+> URLs. Uploads: PDF, DOC/DOCX, XLS/XLSX, TXT, JPEG/PNG, maximum 100 MB. LINE alerts
+> target only the configured Admin user; inbox notifications are per-user.
+> These decisions override conflicting older assumptions below. See UC1.md
+> for implemented auth, storage, folder boundaries and API contracts.
+
 ## Project summary
 
 The system brings customer requests, quotations, production jobs, purchasing/receiving materials, inventory, delivery, and payments into one workflow. It addresses the current lack of job/payment tracking and reliable stock information. The business is not registered as a company and does not charge VAT, as confirmed by the owner.
