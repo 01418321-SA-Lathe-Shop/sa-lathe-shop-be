@@ -78,7 +78,7 @@ func (s *Service) Authenticate(ctx context.Context, token string) (Account, erro
 	if !session.Account.Active || session.RevokedAt != nil || !s.now().Before(session.ExpiresAt) {
 		return Account{}, ErrUnauthenticated
 	}
-	if session.Account.Role != RoleAdmin && session.Account.Role != RoleWorker {
+	if session.Account.Role != RoleAdmin && session.Account.Role != RoleWorker && session.Account.Role != RoleCustomer {
 		return Account{}, ErrUnauthenticated
 	}
 	session.Account.PasswordHash = ""

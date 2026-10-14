@@ -59,7 +59,7 @@ func writeAuthError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, ErrNotFound):
 		status, code, message = 404, "not_found", "Worker not found"
 	case errors.Is(err, ErrConflict):
-		status, code, message = 409, "conflict", "Username or employee number already exists"
+		status, code, message = 409, "conflict", "Account, employee number or membership already exists"
 	}
 	httpserver.WriteError(w, r, status, code, message)
 }

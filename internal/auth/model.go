@@ -6,8 +6,9 @@ import (
 )
 
 const (
-	RoleAdmin  = "admin"
-	RoleWorker = "worker"
+	RoleAdmin    = "admin"
+	RoleWorker   = "worker"
+	RoleCustomer = "customer"
 )
 
 var (
