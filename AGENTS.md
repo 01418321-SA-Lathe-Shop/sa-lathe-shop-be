@@ -1,14 +1,14 @@
 # SA-Lathe-Shop-BE
 
-Made-to-order lathe shop backend. The owner authorized Phase 3 (Admin/Worker auth and account management) after scaffolding phases 0-2. Stop after Phase 3; UC1-UC9 remain unapproved.
+Made-to-order lathe shop backend. The owner authorized Phase 4 (UC1 customer login and job request submission) on develop on 2026-10-14. Stop after Phase 4; UC2-UC9 remain unapproved.
 
-Phase 3 is implemented and verified. Staff auth routes and schema are documented in docs/AUTH.md. Update this scope when the owner authorizes another phase.
+Phases 3 and 4 are implemented and verified. See docs/AUTH.md and docs/UC1.md. Customers self-register; company users join by one-use invitation and share company requests. PDF, DOC/DOCX, XLS/XLSX, TXT, JPEG/PNG only, maximum 100 MB. LINE alerts target one configured Admin user; inbox notifications are per-account. Never infer company membership from a name or tax ID alone. Stop before UC2 unless separately authorized.
 
 ## Stack
 
 - Go, net/http, github.com/go-chi/chi/v5.
 - PostgreSQL with pgx/v5 isolated behind repository implementations. Money: NUMERIC, never float. Stock reservations use transactions and row locking.
-- golang-migrate SQL migrations, pinned Go tool. Empty initial migration only until feature schema approval.
+- golang-migrate SQL migrations, pinned Go tool. Migrations 000002 (staff) and 000003 (customer/UC1) are implemented. Apply migrations before deploying binaries that use them.
 - S3-compatible private object storage (SeaweedFS locally, pinned official GHCR image digest). Store object keys and metadata only; signed upload/download URLs. Evidence never public. MinIO registries were unavailable during setup, so local provider was replaced without changing the S3 contract.
 - Admin and Worker auth: Argon2id password hashing, opaque Bearer sessions checked in PostgreSQL on every protected request, and role permissions. Suppliers have no accounts. First Admin is provisioned through cmd/api -bootstrap-admin, never a public registration route.
 - PostgreSQL transactional outbox and separate worker. No Redis, broker, or cache.
@@ -36,15 +36,15 @@ At each completed phase, make separate logical commits containing 3-8 related fi
 
 ## Open questions
 
-- Customer login and customer authorization are undecided.
+- Customer self-registration and invitation-only company joining/shared request access are confirmed. Invitation lifetime defaults to 24h, owner-only issuance; production business identity verification and membership-transfer policy remain future work.
 - Staff frontend session persistence/cookie strategy and trusted proxy handling require deployment/frontend decisions. Current auth uses opaque Authorization Bearer tokens, not cookies.
 - Profit target 60%: markup on materials, markup on total costs, or margin on sale price?
-- Rejection limit: owner's wording says more than five rejections (sixth); confirm cancellation semantics before implementing.
-- No deposit/PO deadline is defined; do not implement timed cancellation.
-- Notification channel/provider, template and delivery policy are undecided.
-- Hosting, expected load, performance targets and file size/type limits are undecided.
+- Cancel on the sixth quotation rejection (more than five), confirmed by owner.
+- Deposit/PO deadline is quotation acceptance time plus 14 days, confirmed by owner. Do not extend this rule to invoice terms without confirmation.
+- LINE targets only the configured Admin user, never a group or broadcast. In-system notifications are per-user. Credentials remain private environment variables; real LINE delivery is disabled by default and was not tested against a real recipient.
+- Hosting, expected load, performance targets, production malware scanning, bucket lifecycle/retention and failed-outbox monitoring remain deployment decisions. File allowlist and 100 MB limit are confirmed.
 - Whether one approved quotation can create multiple jobs/invoices requires confirmation.
-- Original Word use-case attachment is no longer present at its supplied path. Obtain current requirements/sequence documents before feature implementation; do not use unrelated project documents.
+- Original Word/sequence files remain unavailable; Phase 4 used docs/01-backend.md, the original ER and direct owner clarifications. Resolve later-UC ambiguities before their phases; do not use unrelated project documents.
 
 ## Confirmed rules
 

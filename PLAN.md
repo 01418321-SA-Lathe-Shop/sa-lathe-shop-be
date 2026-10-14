@@ -37,8 +37,21 @@ Decision: pgx/v5 in repository only; standard library config/slog/validation; go
 - [ ] Push phase batches: exact GitHub destination confirmation remains pending.
 Decision: Argon2id 64 MiB/3 passes/2 lanes; random 256-bit Bearer tokens, SHA-256 token digests only in PostgreSQL, configurable absolute TTL (default 12h). Login and Worker credential/activity changes serialize on the account row. Deactivation/password/username changes revoke sessions atomically; already-running requests may finish, subsequent requests reauthenticate. No session cache. Local login abuse limiter is bounded and trusts only the socket IP. See docs/AUTH.md and docs/AUTH_VERIFICATION.md. Phase 4 remains unapproved; current missing original UC/sequence files and customer authorization must be resolved before UC1 work.
 
-## Phase 4 UC1 submit job request — todo
-- [ ] Customer details, request validation, private attachments and notifications.
+## Phase 4 UC1 submit job request — done
+- [x] Owner authorized Phase 4 on develop on 2026-10-14; working tree inspected and clean.
+- [x] Read docs/01-backend.md, requirements baseline, attached ER schema and existing auth contracts.
+- [x] Record owner decisions: customer login required; sixth rejection cancels; Deposit/PO deadline is acceptance plus 14 days; private object keys and metadata only.
+- [x] Confirm customer account provisioning and company account cardinality: self-registration; multiple users per company.
+- [x] Confirm upload categories (documents/images) and notification channels (LINE/in-system).
+- [x] Implement UC1 request domain/service, mock tests and authenticated routes.
+- [x] Confirm exact file allowlist, invitation-only company access, and LINE Admin user target.
+- [x] Customer accounts and ownership authorization, without weakening staff sessions.
+- [x] Request validation, private signed uploads/downloads, content checks and transactional outbox.
+- [x] Per-user inbox and separate outbox worker, LINE Admin-only push with stable retry keys.
+- [x] Mock/unit/HTTP and real PostgreSQL/S3 integration, staff regression, migration down/up and Docker checks.
+- [x] Update runbook and verification documentation.
+- [ ] Create logical buildable commits and push completed phase to develop only.
+Decision: customer self-registration, owner-issued one-use company invitations and company-shared request reads. Input follows ER: selected customer ID verified against membership, description, positive int64 qty, material_spec and optional future requested deadline. Text bounds 10,000/2,000 Unicode characters; no artificial quantity business cap. Final evidence uses distinct private keys and ETag-conditional copy after inspection. Requests/outbox and inbox/acknowledgement are atomic; LINE targets only the configured Admin user and is disabled by default. Real LINE messages were not sent. See docs/UC1.md and docs/UC1_VERIFICATION.md. Original detailed UC/sequence files remain unavailable; reviewed guide, ER and owner decisions cover this phase. Stop before UC2.
 ## Phase 5 UC2 estimate and quote — todo
 - [ ] Draft/send estimates, queue review and rejection reason.
 ## Phase 6 UC3 verify customer terms — todo
@@ -56,4 +69,4 @@ Decision: Argon2id 64 MiB/3 passes/2 lanes; random 256-bit Bearer tokens, SHA-25
 ## Phase 12 UC9 deliver and settle — todo
 - [ ] Self/third-party delivery, invoices, post-completion payments and returns.
 
-Every future phase: update this file, test business rules, build before each 3-8-file commit, inspect status/log, push at phase end, record decisions/problems. Owner authorized Phase 3; UC1-UC9 remain unapproved. Customer login does not block staff authentication but must be resolved before customer-facing authorization.
+Every future phase: update this file, test business rules, build before each 3-8-file commit, inspect status/log, push at phase end, record decisions/problems. Owner authorized Phase 4 on develop only; UC2-UC9 remain unapproved. Historical push-pending notes in Phases 0-3 were resolved by verified pushes to the new organization repository before Phase 4. Customer joining/access rules are now confirmed and implemented.
