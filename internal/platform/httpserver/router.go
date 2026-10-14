@@ -10,6 +10,14 @@ import (
 )
 
 func Router(logger *slog.Logger, timeout time.Duration, origins []string, live http.HandlerFunc, ready ...http.HandlerFunc) http.Handler {
+	var readyHandler http.HandlerFunc
+	if len(ready) > 0 {
+		readyHandler = ready[0]
+	}
+	return RouterWithRoutes(logger, timeout, origins, live, readyHandler, nil)
+}
+
+func RouterWithRoutes(logger *slog.Logger, timeout time.Duration, origins []string, live, ready http.HandlerFunc, register func(chi.Router)) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(RequestLogger(logger))
@@ -23,8 +31,11 @@ func Router(logger *slog.Logger, timeout time.Duration, origins []string, live h
 	})
 	r.Use(Timeout(timeout))
 	r.Get("/health", live)
-	if len(ready) > 0 {
-		r.Get("/health/ready", ready[0])
+	if ready != nil {
+		r.Get("/health/ready", ready)
+	}
+	if register != nil {
+		register(r)
 	}
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) { WriteError(w, r, 404, "not_found", "Endpoint not found") })
 	r.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
