@@ -16,6 +16,7 @@ type Config struct {
 	CORSOrigins                                 []string
 	DatabaseURL                                 string
 	DBMaxConnections                            int32
+	SessionTTL                                  time.Duration
 }
 
 func Load() (Config, error) { return load(os.Getenv) }
@@ -23,6 +24,10 @@ func Load() (Config, error) { return load(os.Getenv) }
 func load(get func(string) string) (Config, error) {
 	c := Config{HTTPAddr: value(get, "HTTP_ADDR", ":8080"), DBMaxConnections: 10}
 	var err error
+	c.SessionTTL, err = time.ParseDuration(value(get, "AUTH_SESSION_TTL", "12h"))
+	if err != nil || c.SessionTTL <= 0 || c.SessionTTL > 7*24*time.Hour {
+		return Config{}, fmt.Errorf("AUTH_SESSION_TTL must be positive and at most 168h")
+	}
 	for key, dst := range map[string]*time.Duration{"HTTP_TIMEOUT": &c.HTTPTimeout, "SHUTDOWN_TIMEOUT": &c.ShutdownTimeout, "DB_PING_TIMEOUT": &c.DBPingTimeout} {
 		fallback := "10s"
 		if key == "HTTP_TIMEOUT" {

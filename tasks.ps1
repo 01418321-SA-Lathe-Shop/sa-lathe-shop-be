@@ -1,4 +1,4 @@
-param([ValidateSet('run','worker','build','test','lint','migrate-up','migrate-down','migrate-version','dev-up','dev-down')][string]$Task='test')
+param([ValidateSet('run','worker','build','test','lint','migrate-up','migrate-down','migrate-version','dev-up','dev-down','bootstrap-admin')][string]$Task='test')
 $ErrorActionPreference='Stop'
 Push-Location $PSScriptRoot
 try {
@@ -24,6 +24,20 @@ try {
     }
     'dev-up' { docker compose up -d postgres s3 }
     'dev-down' { docker compose down }
+    'bootstrap-admin' {
+      $env:BOOTSTRAP_ADMIN_USERNAME=Read-Host 'Initial Admin username'
+      $env:BOOTSTRAP_ADMIN_NAME=Read-Host 'Admin display name'
+      $secure=Read-Host 'Admin password (at least 12 characters, at most 128 UTF-8 bytes)' -AsSecureString
+      $ptr=[Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
+      try {
+        $env:BOOTSTRAP_ADMIN_PASSWORD=[Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)
+        go run ./cmd/api -bootstrap-admin
+      } finally {
+        [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)
+        Remove-Item Env:BOOTSTRAP_ADMIN_PASSWORD,Env:BOOTSTRAP_ADMIN_USERNAME,Env:BOOTSTRAP_ADMIN_NAME -ErrorAction SilentlyContinue
+        $secure.Dispose()
+      }
+    }
     default {
       $dsn=$env:DATABASE_URL
       if(-not $dsn){

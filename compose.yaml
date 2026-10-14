@@ -38,6 +38,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:?Set a private DB_PASSWORD}
       DB_SSLMODE: disable
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      AUTH_SESSION_TTL: ${AUTH_SESSION_TTL:-12h}
       S3_ENDPOINT: http://s3:8333
     ports:
       - "127.0.0.1:${API_PORT:-8080}:8080"
