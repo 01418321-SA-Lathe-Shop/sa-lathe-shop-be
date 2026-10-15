@@ -4,7 +4,12 @@ Authorized 2026-10-15 on develop. Sources: docs/01-backend.md, requirements.md,
 existing UC1 code and direct owner decisions. Keep Go/chi, PostgreSQL NUMERIC,
 Handler -> Service -> Repository, repository interfaces and existing private auth.
 
-## Blocking pricing decisions
+## Confirmed pricing decisions
+
+Owner selected total-cost markup: `(material_cost + labor_cost) * 1.60`.
+All amounts are totals for the entire requested quantity, not unit prices.
+THB amounts have two decimal places; round the minimum upward to a satang.
+The alternatives below are historical options, not remaining blockers.
 
 The owner confirmed a 60% profit target, but not its calculation basis. Do not
 select any of these incompatible minimum-price rules without confirmation:

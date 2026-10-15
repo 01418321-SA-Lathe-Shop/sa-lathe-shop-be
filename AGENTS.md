@@ -1,6 +1,6 @@
 # SA-Lathe-Shop-BE
 
-Made-to-order lathe shop backend. The owner authorized Phase 5 (UC2 estimation and quotations) on develop on 2026-10-15. Stop after Phase 5; UC3-UC9 remain unapproved. Resolve the outstanding 60% pricing basis and quotation amount scope before implementing pricing rules.
+Made-to-order lathe shop backend. The owner authorized Phase 5 (UC2 estimation and quotations) on develop on 2026-10-15. Stop after Phase 5; UC3-UC9 remain unapproved. Confirmed pricing: minimum = (material + labor) * 1.60 for the entire requested quantity, two decimals, minimum rounded upward to a satang, no VAT.
 
 Phases 3 and 4 are implemented and verified. See docs/AUTH.md and docs/UC1.md. Customers self-register; company users join by one-use invitation and share company requests. PDF, DOC/DOCX, XLS/XLSX, TXT, JPEG/PNG only, maximum 100 MB. LINE alerts target one configured Admin user; inbox notifications are per-account. Never infer company membership from a name or tax ID alone. Phase 5 is in progress; see docs/UC2_PLAN.md. Do not implement customer acceptance/rejection or Deposit/PO handling in this phase.
 
@@ -47,7 +47,7 @@ Never include unrelated changes, secrets, outputs or local data. If no remote ex
 
 - Customer self-registration and invitation-only company joining/shared request access are confirmed. Invitation lifetime defaults to 24h, owner-only issuance; production business identity verification and membership-transfer policy remain future work.
 - Staff frontend session persistence/cookie strategy and trusted proxy handling require deployment/frontend decisions. Current auth uses opaque Authorization Bearer tokens, not cookies.
-- Profit target 60%: markup on materials, markup on total costs, or margin on sale price?
+- Pricing confirmed: 60% markup on total material+labor costs, whole-request totals, two decimal THB amounts; round minimum upward to the next satang. No float arithmetic or VAT.
 - Cancel on the sixth quotation rejection (more than five), confirmed by owner.
 - Deposit/PO deadline is quotation acceptance time plus 14 days, confirmed by owner. Do not extend this rule to invoice terms without confirmation.
 - LINE targets only the configured Admin user, never a group or broadcast. In-system notifications are per-user. Credentials remain private environment variables; real LINE delivery is disabled by default and was not tested against a real recipient.
