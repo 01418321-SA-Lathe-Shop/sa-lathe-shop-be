@@ -42,6 +42,10 @@ func (f *fakeRepo) ListQuotations(context.Context, string, string, int, int) ([]
 	f.calls++
 	return []Quotation{f.q}, f.err
 }
+func (f *fakeRepo) GetRequestRejection(context.Context, string, string) (Rejection, error) {
+	f.calls++
+	return Rejection{}, f.err
+}
 func worker() auth.Account { return auth.Account{ID: testID, Active: true, Role: auth.RoleWorker} }
 func input(t *testing.T, price string) DraftInput {
 	m, l, p := amount(t, "800"), amount(t, "200"), amount(t, price)

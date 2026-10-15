@@ -197,6 +197,11 @@ func (d *Database) RejectRequest(ctx context.Context, actor, requestID, reason s
 
 const quoteVisible = ` AND (q.status<>'draft' OR EXISTS(SELECT 1 FROM account a WHERE a.id=$1 AND a.is_active AND a.role IN ('admin','worker')))`
 
+func (d *Database) GetRequestRejection(ctx context.Context, actor, requestID string) (q.Rejection, error) {
+	var value q.Rejection
+	err := d.pool.QueryRow(ctx, `SELECT x.request_id::text,x.reason,x.rejected_by::text,x.created_at FROM request_rejection x JOIN job_request r ON r.id=x.request_id WHERE r.id=$2 AND `+accessibleRequest, actor, requestID).Scan(&value.RequestID, &value.Reason, &value.RejectedBy, &value.CreatedAt)
+	return value, quoteError(err)
+}
 func (d *Database) GetQuotation(ctx context.Context, actor, id string) (q.Quotation, error) {
 	return quoteRow(d.pool.QueryRow(ctx, `SELECT `+quoteFields+` FROM quotation q JOIN quotation_cost c ON c.quotation_id=q.id JOIN job_request r ON r.id=q.request_id WHERE q.id=$2 AND `+accessibleRequest+quoteVisible, actor, id))
 }

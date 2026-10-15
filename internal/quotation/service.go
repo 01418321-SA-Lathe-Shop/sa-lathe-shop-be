@@ -101,7 +101,7 @@ func (s *Service) Reject(ctx context.Context, a auth.Account, requestID, reason 
 		return ErrForbidden
 	}
 	reason = strings.TrimSpace(reason)
-	if !validID(requestID) || !utf8.ValidString(reason) || reason == "" || utf8.RuneCountInString(reason) > 2000 {
+	if !validID(requestID) || !utf8.ValidString(reason) || strings.ContainsRune(reason, 0) || reason == "" || utf8.RuneCountInString(reason) > 2000 {
 		return ErrInvalidInput
 	}
 	return s.repo.RejectRequest(ctx, a.ID, requestID, reason)
@@ -148,4 +148,13 @@ func (s *Service) List(ctx context.Context, a auth.Account, requestID string, li
 		result = append(result, view)
 	}
 	return result, nil
+}
+func (s *Service) Rejection(ctx context.Context, a auth.Account, requestID string) (Rejection, error) {
+	if !reader(a) {
+		return Rejection{}, ErrForbidden
+	}
+	if !validID(requestID) {
+		return Rejection{}, ErrInvalidInput
+	}
+	return s.repo.GetRequestRejection(ctx, a.ID, requestID)
 }

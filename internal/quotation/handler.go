@@ -29,6 +29,14 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 func (h *Handler) Routes(r chi.Router, authenticate func(http.Handler) http.Handler) {
 	r.Group(func(r chi.Router) {
 		r.Use(authenticate)
+		r.Get("/requests/{request_id}/rejection", func(w http.ResponseWriter, r *http.Request) {
+			result, err := h.service.Rejection(r.Context(), auth.CurrentAccount(r.Context()), chi.URLParam(r, "request_id"))
+			if err != nil {
+				writeError(w, r, err)
+				return
+			}
+			httpserver.JSON(w, 200, result)
+		})
 		r.Post("/quotations/estimate", func(w http.ResponseWriter, r *http.Request) {
 			var in DraftInput
 			if err := req.Decode(w, r, &in); err != nil {

@@ -44,6 +44,12 @@ type Draft struct {
 	MaterialCost, LaborCost, FinalPrice Amount
 	ExpectedLockVersion                 int64
 }
+type Rejection struct {
+	RequestID  string    `json:"request_id"`
+	Reason     string    `json:"reason"`
+	RejectedBy string    `json:"rejected_by"`
+	CreatedAt  time.Time `json:"created_at"`
+}
 type Repository interface {
 	CreateDraft(context.Context, string, Draft) (Quotation, error)
 	UpdateDraft(context.Context, string, Draft) (Quotation, error)
@@ -51,6 +57,7 @@ type Repository interface {
 	RejectRequest(context.Context, string, string, string) error
 	GetQuotation(context.Context, string, string) (Quotation, error)
 	ListQuotations(context.Context, string, string, int, int) ([]Quotation, error)
+	GetRequestRejection(context.Context, string, string) (Rejection, error)
 }
 type Service struct{ repo Repository }
 
