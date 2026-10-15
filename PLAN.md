@@ -56,14 +56,14 @@ Decision: customer self-registration, owner-issued one-use company invitations a
 ## Phase 5 UC2 estimate and quote — in progress
 - [x] Owner authorized the next phase on develop on 2026-10-15; clean branch and current workflow rules reviewed.
 - [x] Read the backend guide and requirements; identify quotation transaction/status rules and unresolved pricing basis.
-- [ ] Confirm 60% profit basis and whether all monetary inputs are per-job totals or unit amounts.
-- [ ] Exact money domain and pricing unit tests, no float arithmetic or VAT.
-- [ ] Quotation/revision/cost schema and repository transactions with row locks and concurrency tests.
-- [ ] Worker draft/edit/send and request rejection with reason; restrict customer reads to their company and hide internal cost breakdowns.
-- [ ] Handler validation, errors, API wiring and HTTP authorization tests.
+- [x] Confirm 60% total-cost markup, whole-request totals and upward satang rounding.
+- [x] Exact money domain and pricing unit tests, no float arithmetic or VAT.
+- [x] Implement quotation/revision/cost schema and transactional repository with row locks; real DB verification pending.
+- [x] Worker draft/edit/send and request rejection with reason; restrict customer reads to their company and hide internal cost breakdowns.
+- [x] Handler validation, errors, API wiring and unit HTTP checks; real auth/DB flow pending.
 - [ ] Full regression, disposable PostgreSQL integration, migration/Docker checks and API runbook.
 - [ ] Logical buildable commits during work; update plan and verify end-of-phase push to develop only.
-Decision: scope and proposed commit groups are in docs/UC2_PLAN.md. No pricing formula or per-unit/total interpretation is assumed. Do not implement UC3 customer decisions, sixth-rejection cancellation, deposits, PO or job opening. The confirmed 14-day clock starts at acceptance in a later phase, not quotation sending. Phase 5 is not complete and is not pushed yet.
+Decision: minimum price = (material+labor)*1.60 for the entire quantity, rounded upward to a satang. Exact decimal strings/NUMERIC(18,2), no VAT. Scope and commits are in docs/UC2_PLAN.md; API in docs/UC2.md. Build/unit checks pass, but Docker startup fails on its dockerInference socket before the engine is available. Real PostgreSQL/concurrency/migration/S3/Docker checks are pending; see docs/UC2_VERIFICATION.md. Do not reset Docker/delete its data without authorization. Phase 5 is NOT complete and has not been pushed. No UC3 customer decisions, rejection threshold handling, deposits, PO or job opening are implemented; the 14-day clock remains acceptance-based in a later phase.
 ## Phase 6 UC3 verify customer terms — todo
 - [ ] Accept/reject history, revisions, rejection threshold and pricing policy.
 ## Phase 7 UC4 deposit and company PO — todo
@@ -79,4 +79,4 @@ Decision: scope and proposed commit groups are in docs/UC2_PLAN.md. No pricing f
 ## Phase 12 UC9 deliver and settle — todo
 - [ ] Self/third-party delivery, invoices, post-completion payments and returns.
 
-Every future phase: follow the mandatory AGENTS.md commit/push policy and docs/GIT_WORKFLOW.md. Commit focused buildable groups as work progresses, with clear purpose and relevant tests; never one giant phase commit. Update this plan, run full checks, review status/log and push each completed phase to the authorized branch, verifying the remote tip. Record blockers instead of silently leaving a finished phase unpushed. Owner authorized Phase 4 on develop only; UC2-UC9 remain unapproved. Historical push-pending notes in Phases 0-3 were resolved by verified pushes to the new organization repository before Phase 4. Customer joining/access rules are now confirmed and implemented.
+Every future phase: follow the mandatory AGENTS.md commit/push policy and docs/GIT_WORKFLOW.md. Commit focused buildable groups as work progresses, with clear purpose and relevant tests; never one giant phase commit. Update this plan, run full checks, review status/log and push each completed phase to the authorized branch, verifying the remote tip. Record blockers instead of silently leaving a finished phase unpushed. Current authorization is Phase 5 on develop only; UC3-UC9 remain unapproved. Historical push-pending notes in Phases 0-3 were resolved by verified pushes to the new organization repository before Phase 4. Customer joining/access rules are confirmed and implemented.

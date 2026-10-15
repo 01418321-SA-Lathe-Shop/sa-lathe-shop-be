@@ -17,8 +17,9 @@ usage/photos; UC9 delivery/invoice/payment, with payment after completion allowe
 
 Company threshold: <= 10,000 PO/no deposit; > 10,000 PO/50% deposit.
 Individuals pay 50% first, no PO. Deposit/PO deadline is quotation acceptance
-time plus 14 days, confirmed by owner. Profit target 60%, calculation basis
-unresolved. Count rejection events rather than drafts; cancel on the sixth
+time plus 14 days, confirmed by owner. Pricing confirmed for Phase 5: minimum
+(material+labor)*1.60, whole-request totals, two decimals, upward satang rounding.
+Count rejection events rather than drafts; cancel on the sixth
 rejection (more than five), confirmed by owner. Supplier usually settles in one payment.
 Track delivery method self/third-party, not external logistics integration.
 
@@ -43,4 +44,6 @@ rejection, undecided deadline and permanent URL wording.
 Phase 4 implementation and isolated PostgreSQL/S3/Docker verification completed
 2026-10-15. Pushed to the confirmed organization repository's develop branch;
 main remains unchanged. API contracts and deployment limitations: docs/UC1.md.
-UC2-UC9 require separate authorization.
+UC2 was subsequently authorized on develop on 2026-10-15; UC3-UC9 still require
+separate authorization. Phase 5 implementation is in progress with real DB/Docker
+verification blocked by Docker Desktop startup; no Phase 5 push yet.

@@ -9,20 +9,17 @@ Handler -> Service -> Repository, repository interfaces and existing private aut
 Owner selected total-cost markup: `(material_cost + labor_cost) * 1.60`.
 All amounts are totals for the entire requested quantity, not unit prices.
 THB amounts have two decimal places; round the minimum upward to a satang.
-The alternatives below are historical options, not remaining blockers.
+The pricing questions are resolved.
 
-The owner confirmed a 60% profit target, but not its calculation basis. Do not
-select any of these incompatible minimum-price rules without confirmation:
+Material-only markup and selling-price margin were not selected and must not be
+used. JSON amounts are exact decimal strings; the implementation uses satang and
+NUMERIC(18,2). A quoted final price may exceed the calculated minimum, not fall
+below it. No formula choice, unit interpretation or rounding question remains.
 
-- Total-cost markup: `(material_cost + labor_cost) * 1.60`.
-- Material-cost markup: `material_cost * 1.60 + labor_cost`.
-- Selling-price margin: `(material_cost + labor_cost) / 0.40`.
-
-Also confirm whether material_cost/labor_cost/final_price are whole-request
-totals covering qty, or per-unit values. The ER has qty on JOB_REQUEST but does
-not establish the quotation money basis. Precision/rounding was left open in
-the guide: proposed THB values to two decimal places, exact arithmetic, minimum
-price rounded upward to a satang so rounding cannot undercut the minimum.
+Build/unit checks pass and focused implementation commits exist. Real database,
+concurrency and Docker checks await a healthy Docker Desktop engine; its startup
+currently fails on the local dockerInference socket. Phase 5 is in progress and
+not pushed. See UC2_VERIFICATION.md for the exact verification boundary.
 
 ## Planned implementation
 

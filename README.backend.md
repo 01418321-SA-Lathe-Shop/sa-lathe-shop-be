@@ -9,6 +9,8 @@ The existing README.md has been preserved exactly.
 - [Staff auth API and first Admin setup](docs/AUTH.md)
 - [Customer registration, company invitations, requests and files](docs/UC1.md)
 - [Phase 4 verification](docs/UC1_VERIFICATION.md)
+- [UC2 pricing and quotation API (Phase 5 in progress)](docs/UC2.md)
+- [Phase 5 verification status and environment blocker](docs/UC2_VERIFICATION.md)
 - [Architecture and open questions](AGENTS.md)
 - [Phased plan](PLAN.md)
 - [Verification and commands run](docs/VERIFICATION.md)
@@ -25,4 +27,6 @@ PowerShell quick start after configuring private values in a new local .env:
 
 GET /health is liveness. GET /health/ready checks PostgreSQL.
 To run API and worker in Docker: docker compose --profile app up --build -d.
-Staff auth is available; notification dispatch and UC1-UC9 are future phases.
+Staff/customer auth, request uploads and notification dispatch are available.
+Phase 5 quotation code is implemented but still awaits real PostgreSQL/Docker
+verification; do not treat it as a completed phase. UC3-UC9 are future phases.
