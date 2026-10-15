@@ -2,13 +2,13 @@
 
 Made-to-order lathe shop backend. The owner authorized Phase 5 (UC2 estimation and quotations) on develop on 2026-10-15. Stop after Phase 5; UC3-UC9 remain unapproved. Confirmed pricing: minimum = (material + labor) * 1.60 for the entire requested quantity, two decimals, minimum rounded upward to a satang, no VAT.
 
-Phases 3 and 4 are implemented and verified. See docs/AUTH.md and docs/UC1.md. Customers self-register; company users join by one-use invitation and share company requests. PDF, DOC/DOCX, XLS/XLSX, TXT, JPEG/PNG only, maximum 100 MB. LINE alerts target one configured Admin user; inbox notifications are per-account. Never infer company membership from a name or tax ID alone. Phase 5 is in progress; see docs/UC2_PLAN.md. Do not implement customer acceptance/rejection or Deposit/PO handling in this phase.
+Phases 3-5 are implemented and verified. See docs/AUTH.md, docs/UC1.md and docs/UC2.md. Customers self-register; company users join by one-use invitation and share company requests. PDF, DOC/DOCX, XLS/XLSX, TXT, JPEG/PNG only, maximum 100 MB. LINE alerts target one configured Admin user; inbox notifications are per-account. Never infer company membership from a name or tax ID alone. Phase 5 verification includes real PostgreSQL concurrency/rollback and Docker flows; see docs/UC2_VERIFICATION.md. Stop before UC3 customer acceptance/rejection or Deposit/PO handling unless separately authorized.
 
 ## Stack
 
 - Go, net/http, github.com/go-chi/chi/v5.
 - PostgreSQL with pgx/v5 isolated behind repository implementations. Money: NUMERIC, never float. Stock reservations use transactions and row locking.
-- golang-migrate SQL migrations, pinned Go tool. Migrations 000002 (staff) and 000003 (customer/UC1) are implemented. Apply migrations before deploying binaries that use them.
+- golang-migrate SQL migrations, pinned Go tool. Migrations 000002 (staff), 000003 (customer/UC1) and 000004 (quotations/UC2) are implemented. Apply migrations before deploying binaries that use them.
 - S3-compatible private object storage (SeaweedFS locally, pinned official GHCR image digest). Store object keys and metadata only; signed upload/download URLs. Evidence never public. MinIO registries were unavailable during setup, so local provider was replaced without changing the S3 contract.
 - Admin and Worker auth: Argon2id password hashing, opaque Bearer sessions checked in PostgreSQL on every protected request, and role permissions. Suppliers have no accounts. First Admin is provisioned through cmd/api -bootstrap-admin, never a public registration route.
 - PostgreSQL transactional outbox and separate worker. No Redis, broker, or cache.

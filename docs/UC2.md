@@ -1,8 +1,9 @@
-# UC2 — Estimation and quotations (Phase 5 in progress)
+# UC2 — Estimation and quotations (Phase 5 complete)
 
-Implementation is on develop. Unit/build checks pass; real PostgreSQL,
-concurrency, migration and Docker verification remain pending because the local
-Docker Desktop engine cannot start. Do not treat the phase as complete yet.
+Implementation is on develop. Build/vet/unit checks, real PostgreSQL constraints,
+concurrency/rollback, staff/customer/S3 regressions and Docker API/worker flows
+passed on 2026-10-15. Docker's startup blocker was recovered without resetting
+or deleting existing data; see UC2_VERIFICATION.md.
 
 ## Confirmed pricing
 
@@ -96,7 +97,8 @@ Apply migration 000004 before starting the updated API. It adds quotation,
 quotation_cost and request_rejection; it does not mutate previous customer data.
 Empty rollback is supported; rollback refuses once quotations/refusals exist.
 Use backups and planned forward fixes for populated databases, never force a
-dirty migration. No real/user database has been migrated by this implementation.
+dirty migration. Only newly created disposable test databases were migrated;
+no existing user/business database was changed.
 
 ```powershell
 ./tasks.ps1 migrate-up
@@ -112,4 +114,4 @@ Compose resources, isolated test DBs, random process-only credentials and an
 empty env file, never existing databases or real LINE recipients. The new
 PostgreSQL suite uses PHASE5_DATABASE_URL pointing specifically to
 sa_lathe_shop_phase5_test. It also runs staff/UC1 regressions and Docker flow.
-See UC2_VERIFICATION.md for current results and the startup blocker.
+See UC2_VERIFICATION.md for results and the retained runtime-socket backups.

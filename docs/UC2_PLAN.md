@@ -1,4 +1,4 @@
-# Phase 5 — UC2 estimation and quotations (in progress)
+# Phase 5 — UC2 estimation and quotations (complete)
 
 Authorized 2026-10-15 on develop. Sources: docs/01-backend.md, requirements.md,
 existing UC1 code and direct owner decisions. Keep Go/chi, PostgreSQL NUMERIC,
@@ -16,10 +16,10 @@ used. JSON amounts are exact decimal strings; the implementation uses satang and
 NUMERIC(18,2). A quoted final price may exceed the calculated minimum, not fall
 below it. No formula choice, unit interpretation or rounding question remains.
 
-Build/unit checks pass and focused implementation commits exist. Real database,
-concurrency and Docker checks await a healthy Docker Desktop engine; its startup
-currently fails on the local dockerInference socket. Phase 5 is in progress and
-not pushed. See UC2_VERIFICATION.md for the exact verification boundary.
+Build/vet/unit, real PostgreSQL concurrency/rollback, staff/customer/S3 regression
+and Docker flow checks passed. The Docker socket startup issue was recovered
+without resetting/deleting data. See UC2_VERIFICATION.md for results and recovery
+details. Separate implementation commits remain intact; push tracking is in PLAN.md.
 
 ## Planned implementation
 
@@ -49,7 +49,8 @@ not pushed. See UC2_VERIFICATION.md for the exact verification boundary.
 Commit completed logical units as work progresses, normally 3-8 related files,
 with each exact snapshot buildable. Build before each commit; run full checks
 and push separate commits to develop at phase completion. Do not squash into a
-catch-all commit or push main. Phase is currently incomplete; no phase push yet.
+catch-all commit or push main. Implementation and verification are complete;
+the final push acknowledgement is tracked in PLAN.md.
 
 ## Explicit exclusions
 

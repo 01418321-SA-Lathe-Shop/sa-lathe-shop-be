@@ -1,32 +1,49 @@
 # Phase 5 verification — 2026-10-15
 
-Status: **in progress, not complete, not pushed**.
+Status: **implementation and full verification passed**. Push acknowledgement
+is tracked in PLAN.md. UC3 and later phases remain unapproved.
 
-Passed locally: exact satang/pricing tests, quotation service authorization and
-cost redaction tests, HTTP malformed/spoofed-body checks, existing unit suite,
-and builds before each focused implementation commit. No float arithmetic or
-VAT added. Database integration tests compile but are skipped without an
-explicit disposable database connection; this is not an integration pass.
+## Passed checks
 
-Pending: real PostgreSQL constraints/transactions/concurrency, migration up/down,
-all staff/customer/S3 regressions against services and Docker API/worker flow.
-The prepared script is scripts/verify-uc2.ps1; it now checks Docker readiness
-with a bounded probe before creating any test resources.
+- `go build ./...`, `go vet ./...`, unit tests, HTTP parsing/permission checks.
+- Exact whole-request 60% markup and upward satang rounding, string money JSON,
+  minimum/overflow validation, no float arithmetic or VAT.
+- Real PostgreSQL private drafts/cost redaction, company isolation, revision
+  chain fixture, stale edit detection, concurrent sends and draft creation,
+  send-vs-refusal race, minimum-price DB constraints, failed cost insert rollback,
+  forced send/request-update rollback, refusal audit and inactive Worker denial.
+- Staff auth and UC1 company/private-S3/inbox regression suites against separate
+  fresh databases. These were actually executed, not skipped.
+- Migrations 1-4, empty quotation rollback (4 down) and reapply.
+- Nonroot API and worker Docker builds and DB readiness; real Docker HTTP
+  customer registration/request creation, Worker price preview, draft/save/send,
+  customer quote read without internal costs, worker inbox delivery and stop.
 
-Observed environment blocker: Docker Desktop startup fails while initializing
-its Inference manager's local dockerInference socket (file inaccessible / invalid
-listener path). CLI start reported starting but did not produce a healthy engine;
-the installed per-user launcher reproduced the failure. No factory reset,
-Docker file deletion, WSL configuration change or data deletion was attempted.
-Only this task's waiting Docker CLI probes/test calls were cancelled.
+Executed `./scripts/verify-uc2.ps1`: PHASE5_VERIFICATION_PASSED, exit 0.
+Isolated Compose project: `sa-lathe-uc2-0331d81e`. Its newly created containers,
+network and PostgreSQL/S3 volumes were removed afterward. No existing user or
+business database was migrated/deleted. Test secrets were process-only random
+values, not files or commits. Real LINE delivery stayed disabled.
 
-Prepared real tests cover whole-request prices, private drafts, customer cost
-redaction, cross-company denial, stale edits, concurrent sends/draft creation,
-send-vs-refusal races, DB-enforced minimum prices and rollback of both parent and
-cost inserts, forced send/request-update rollback, refusal audit and inactive
-Worker protection. These cases require a healthy engine before being certified.
+## Docker recovery (owner-authorized, non-destructive)
 
-Next: start/repair Docker Desktop without resetting data, rerun the verification
-script, fix any integration failures, finish documentation/checklists, then push
-the separate phase commits to origin/develop and verify the tip. main must remain
-unchanged. UC3 and later phases remain unapproved.
+Docker Desktop 4.86.0 initially failed on inaccessible zero-byte runtime sockets:
+dockerInference, then docker-secrets-engine/engine.sock. This matches the failure
+class in [Docker's issue tracker](https://github.com/docker/desktop-feedback/issues/531).
+The inference-only directory rename exposed the second stale socket. A graceful
+stop timed out; only the failed Desktop/backend processes were closed after
+confirming the engine had not started. Both socket-only parent directories were
+validated and renamed aside, not deleted; the restarted engine responds as
+29.7.2. No settings, WSL configuration, image/volume store or VHDX was reset.
+
+Retained original runtime directories (relative to LOCALAPPDATA):
+
+- Docker/run.stale-20261015-8bbeeb4f (first inference-only attempt).
+- Docker/run.stale-20261015-69cf5889 (paired recovery).
+- docker-secrets-engine.stale-20261015-b68bf411 (paired recovery).
+
+These are retained IPC artifacts, not business-data backups. Do not restore them
+while Docker runs. This recovery proves current engine availability, not a
+permanent fix for the installed Desktop version; report recurrence rather than
+automatically deleting sockets or resetting Docker. No diagnostic bundle was
+uploaded externally.

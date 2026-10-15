@@ -53,17 +53,19 @@ Decision: Argon2id 64 MiB/3 passes/2 lanes; random 256-bit Bearer tokens, SHA-25
 - [x] Create nine logical 3-8-file commits; independently build each exact commit tree.
 - [x] Push completed implementation to develop only; remote 451a0e8 verified on 2026-10-15, main unchanged at 86d5be1.
 Decision: customer self-registration, owner-issued one-use company invitations and company-shared request reads. Input follows ER: selected customer ID verified against membership, description, positive int64 qty, material_spec and optional future requested deadline. Text bounds 10,000/2,000 Unicode characters; no artificial quantity business cap. Final evidence uses distinct private keys and ETag-conditional copy after inspection. Requests/outbox and inbox/acknowledgement are atomic; LINE targets only the configured Admin user and is disabled by default. Real LINE messages were not sent. See docs/UC1.md and docs/UC1_VERIFICATION.md. Original detailed UC/sequence files remain unavailable; reviewed guide, ER and owner decisions cover this phase. Stop before UC2.
-## Phase 5 UC2 estimate and quote — in progress
+## Phase 5 UC2 estimate and quote — done
 - [x] Owner authorized the next phase on develop on 2026-10-15; clean branch and current workflow rules reviewed.
 - [x] Read the backend guide and requirements; identify quotation transaction/status rules and unresolved pricing basis.
 - [x] Confirm 60% total-cost markup, whole-request totals and upward satang rounding.
 - [x] Exact money domain and pricing unit tests, no float arithmetic or VAT.
-- [x] Implement quotation/revision/cost schema and transactional repository with row locks; real DB verification pending.
+- [x] Quotation/revision/cost schema and transactional repository with real DB constraints/rollback/concurrency verification.
 - [x] Worker draft/edit/send and request rejection with reason; restrict customer reads to their company and hide internal cost breakdowns.
-- [x] Handler validation, errors, API wiring and unit HTTP checks; real auth/DB flow pending.
-- [ ] Full regression, disposable PostgreSQL integration, migration/Docker checks and API runbook.
-- [ ] Logical buildable commits during work; update plan and verify end-of-phase push to develop only.
-Decision: minimum price = (material+labor)*1.60 for the entire quantity, rounded upward to a satang. Exact decimal strings/NUMERIC(18,2), no VAT. Scope and commits are in docs/UC2_PLAN.md; API in docs/UC2.md. Build/unit checks pass, but Docker startup fails on its dockerInference socket before the engine is available. Real PostgreSQL/concurrency/migration/S3/Docker checks are pending; see docs/UC2_VERIFICATION.md. Do not reset Docker/delete its data without authorization. Phase 5 is NOT complete and has not been pushed. No UC3 customer decisions, rejection threshold handling, deposits, PO or job opening are implemented; the 14-day clock remains acceptance-based in a later phase.
+- [x] Handler validation/errors, API wiring, HTTP auth and company-scoped cost-redaction checks.
+- [x] Full regression, disposable PostgreSQL/S3 integration, migration down/up, Docker API/worker and quotation flow.
+- [x] Recover Docker non-destructively after owner authorization: preserve stale socket directories, no settings/WSL changes or existing data deletion.
+- [x] Logical buildable commits during work; runbook and verification record updated.
+- [ ] Verify end-of-phase push to develop only.
+Decision: minimum price = (material+labor)*1.60 for the entire quantity, rounded upward to a satang. Exact decimal strings/NUMERIC(18,2), no VAT. Full checks passed on 2026-10-15 in isolated project sa-lathe-uc2-0331d81e; test resources cleaned up. Docker's runtime-socket blocker was recovered by reversible directory preservation; engine 29.7.2 responds. See docs/UC2.md and docs/UC2_VERIFICATION.md. Existing Docker data and settings were not deleted/reset. Quotation send publishes in-system only, with no unconfirmed outbound delivery. No UC3 customer decisions, rejection threshold handling, deposits, PO or job opening are implemented; the 14-day clock remains acceptance-based in a later phase. Push verification is the final pending handoff step; stop before UC3.
 ## Phase 6 UC3 verify customer terms — todo
 - [ ] Accept/reject history, revisions, rejection threshold and pricing policy.
 ## Phase 7 UC4 deposit and company PO — todo

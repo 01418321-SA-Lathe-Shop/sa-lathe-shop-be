@@ -1,7 +1,7 @@
 # SA-Lathe-Shop-BE backend
 
 Go + chi API and separate worker with PostgreSQL and private S3-compatible
-local storage. Scaffolding phases 0-2, Phase 3 staff auth and Phase 4 UC1 are complete.
+local storage. Scaffolding phases 0-2, Phase 3 staff auth, Phase 4 UC1 and Phase 5 UC2 are complete.
 
 The existing README.md has been preserved exactly.
 
@@ -9,8 +9,8 @@ The existing README.md has been preserved exactly.
 - [Staff auth API and first Admin setup](docs/AUTH.md)
 - [Customer registration, company invitations, requests and files](docs/UC1.md)
 - [Phase 4 verification](docs/UC1_VERIFICATION.md)
-- [UC2 pricing and quotation API (Phase 5 in progress)](docs/UC2.md)
-- [Phase 5 verification status and environment blocker](docs/UC2_VERIFICATION.md)
+- [UC2 pricing and quotation API](docs/UC2.md)
+- [Phase 5 verification and Docker recovery](docs/UC2_VERIFICATION.md)
 - [Architecture and open questions](AGENTS.md)
 - [Phased plan](PLAN.md)
 - [Verification and commands run](docs/VERIFICATION.md)
@@ -28,5 +28,5 @@ PowerShell quick start after configuring private values in a new local .env:
 GET /health is liveness. GET /health/ready checks PostgreSQL.
 To run API and worker in Docker: docker compose --profile app up --build -d.
 Staff/customer auth, request uploads and notification dispatch are available.
-Phase 5 quotation code is implemented but still awaits real PostgreSQL/Docker
-verification; do not treat it as a completed phase. UC3-UC9 are future phases.
+Phase 5 quotation code passed real PostgreSQL/S3/regression/Docker verification.
+Apply migration 000004 before using quotations. UC3-UC9 are future phases.
