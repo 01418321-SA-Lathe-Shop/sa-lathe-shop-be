@@ -59,10 +59,39 @@ Cache-Control: no-store. Keep browser tokens in memory; do not persist them in
 localStorage or print them. Use HTTPS in deployment. Frontend session persistence
 and any future cookie/CSRF design remain decisions for frontend integration.
 
-Create Worker fields: username, password, name, employee_no, optional position.
-PATCH accepts any subset of username, password, name, employee_no, position and
-is_active. A null/empty-only patch is rejected. Role cannot be changed and Admin
-accounts cannot be targeted through Worker endpoints. No account deletion exists.
+### Owner-confirmed Worker contact requirement — implementation pending
+
+Admin Worker management must match the confirmed frontend requirement: **name,
+email and phone are all required**. This adds email and phone; it does not remove
+the existing username, password or employee_no requirements. Admin may add/edit,
+deactivate/reactivate and change Worker passwords; no deletion or role promotion.
+
+The required target contract is:
+
+| Operation | Required target behavior |
+| --- | --- |
+| POST /admin/workers | Require username, password, name, employee_no, email and phone; position remains optional |
+| PATCH /admin/workers/{account_id} | Accept a subset of username, password, name, employee_no, email, phone, position and is_active. Omitted contact fields retain their values; supplied name/email/phone must not be blank or removed |
+| Worker list/detail/create/update responses | Include email and phone with the Worker profile so contact edits round-trip through the API |
+
+**Current implementation gap:** the existing Worker DTOs/repository/API do not
+accept, persist or return email/phone yet. They reject these unknown JSON fields.
+This documentation change records the required contract, not completed support.
+Do not send email/phone to the current endpoint or silently discard these
+required contacts in frontend integration. Backend implementation and verification
+are required before the Worker-management form can be integrated in full.
+
+Required contacts must contain non-whitespace values. Exact production email
+validation/normalization, phone format/length and contact uniqueness are **To be
+defined**; required does not imply unique. Existing Workers need an explicit
+migration/backfill policy before enforcing the new invariant. Do not invent
+placeholder contacts, delete accounts or invalidate historical business records.
+
+The existing API currently accepts username, password, name, employee_no and
+optional position on create, and a subset of those fields plus is_active on PATCH.
+A null/empty-only patch is rejected. Role cannot be changed and Admin accounts
+cannot be targeted through Worker endpoints. No account deletion exists. Existing
+password/session-revocation rules below are unchanged by this contact requirement.
 
 Usernames are case-insensitive ASCII, normalized lowercase, 3-64 characters
 using letters, digits, _, . and -. Employee numbers are normalized uppercase,

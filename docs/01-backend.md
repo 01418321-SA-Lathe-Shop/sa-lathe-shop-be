@@ -9,6 +9,13 @@
 > These decisions override conflicting older assumptions below. See UC1.md
 > for implemented auth, storage, folder boundaries and API contracts.
 
+> Frontend/backend alignment: the owner reconfirmed cancellation on the sixth
+> distinct customer quotation rejection. Admin Worker management requires name,
+> email and phone, while retaining existing username/password/employee_no fields
+> and optional position. Admin can add/edit, deactivate/reactivate and change
+> Worker passwords. Email/phone API and persistence support is **required but not
+> implemented yet**; see AUTH.md for the target contract and integration gap.
+
 ## Project summary
 
 The system brings customer requests, quotations, production jobs, purchasing/receiving materials, inventory, delivery, and payments into one workflow. It addresses the current lack of job/payment tracking and reliable stock information. The business is not registered as a company and does not charge VAT, as confirmed by the owner.
@@ -28,8 +35,8 @@ flowchart TD
   UC2 -->|Send quotation| UC3[UC3 Customer reviews and responds]
   UC2 -->|Save draft| UC2
   UC2 -->|Reject request| CANCELED[Request canceled]
-  UC3 -->|Customer rejects fewer than 5 times| UC2
-  UC3 -->|5th rejection| CANCELED
+  UC3 -->|Customer rejections 1 through 5| UC2
+  UC3 -->|6th rejection| CANCELED
   UC3 -->|Accept: determine Deposit/PO| UC4[UC4 Record Deposit and/or PO]
   UC4 -->|Requirements met within the deadline| JOB[Create JOB: queued]
   UC4 -->|Deadline missed after 14 days, temporary assumption| CANCELED
@@ -88,7 +95,7 @@ The values below preserve those found in the ER/Use Cases. Do not infer transiti
 | Entity | Statuses found / proposal | Workflow transitions |
 |---|---|---|
 | `JOB_REQUEST` | `pending`, `ongoing`, `completed`, `canceled` | Created as `pending`; becomes `ongoing` when a quotation is sent; becomes `canceled` if rejected or expired; transition to `completed` is not specified |
-| `QUOTATION` | `draft`, `sent`, `approved`, `rejected`; ER also has `requote`, but no transition uses it | `draft` → `sent` when sent → `approved` when accepted; rejection sets `rejected` and a new revision starts as `draft`; five rejections cancel the request |
+| `QUOTATION` | `draft`, `sent`, `approved`, `rejected`; ER also has `requote`, but no transition uses it | `draft` → `sent` when sent → `approved` when accepted; rejection sets `rejected` and enables a new draft revision after rejections 1–5; the sixth distinct customer rejection cancels the request |
 | `JOB` | `queued`, `in_progress`, `completed`, `cancelled` | Created as `queued`; production starts as `in_progress`; production completion sets `completed`; customer return changes it back to `in_progress` |
 | `MATERIAL_RESERVATION` | `reserved`, `consumed`, `released` | Reservation sets `reserved`; issuing material sets `consumed`; `released` exists in the ER but has no workflow transition |
 | `MATERIAL_ORDER` | `ordered`, `partially_received`, `received`, `cancelled` | Created as `ordered`; partial receipt sets `partially_received`; full receipt sets `received`; Supplier rejection sets `cancelled` |
@@ -107,7 +114,8 @@ Adding `partially_received` to `MATERIAL_ORDER_ITEM` is a proposal to align its 
 |---|---|
 | Login | Customer, Admin, and Worker must log in before using a UC; Supplier is external |
 | Customer type and terms | `individual`: 50% Deposit, no PO; `company` with price ≤ THB 10,000: PO, no Deposit; `company` with price > THB 10,000: PO + 50% Deposit |
-| Rejections | Customer may reject up to 5 times; the request is automatically canceled on the 5th rejection |
+| Rejections | Count distinct Customer rejection events per request across revisions, not draft saves or users; rejections 1–5 permit a revision, and the sixth cancels the request |
+| Admin Worker management | Admin adds/edits, deactivates/reactivates and changes passwords. Name/email/phone are required alongside the existing account fields; email/phone API/persistence support is pending. No deletion or role promotion; see AUTH.md |
 | Customer payments | Installments are allowed; `INVOICE` is `partial` while the balance remains and `paid` when fully allocated/paid |
 | Payment period | 14 days; start date and whether it applies to Deposit/PO, invoice, or both are unconfirmed |
 | Pricing | `final_price` consists of material cost + labor cost + minimum 60% profit; the 60% basis is unknown, so no numeric formula is confirmed |
@@ -137,7 +145,7 @@ The tables/data listed are entity touchpoints from the overview. Endpoints, full
 |---|---|---|---|
 | UC1 Submit request | Customer submits job details and attachments; create `JOB_REQUEST` | `JOB_REQUEST`, file/URL (file stored externally; URL in DB) | Validate details and files; after upload failure, start again. Exact fields/error codes must be defined |
 | UC2 Estimate price | Worker estimates; saves draft, sends quotation, or rejects request; may create revisions | `JOB_REQUEST`, `QUOTATION`, `QUOTATION_COST` | UC2 transaction required; 60% profit basis is unclear; other validation/errors must be defined |
-| UC3 Respond to quotation | Customer reviews and accepts/rejects; rejection returns to UC2; fifth rejection cancels | `QUOTATION`, `JOB_REQUEST` | Make rejection counting and cancellation atomic, including concurrent actions; exact error codes must be defined |
+| UC3 Respond to quotation | Customer reviews and accepts/rejects; rejections 1–5 return to UC2; sixth rejection cancels | `QUOTATION`, `JOB_REQUEST` | Make rejection counting and cancellation atomic, including concurrent actions; exact error codes must be defined |
 | UC4 Record Deposit/PO | Record required evidence/terms; create `JOB: queued` when requirements are met | `DEPOSIT`, `PURCHASE_ORDER`, `QUOTATION`, `JOB_REQUEST`, `JOB` | Apply customer type/amount rules; 14-day expiry is a temporary assumption; start date and missed-deadline behavior need confirmation |
 | UC5 Check/reserve stock | Worker checks availability; if sufficient, proceed to UC8; if insufficient, go to UC6. UC5 says reserve what is available and order only the shortage | `MATERIAL`, `MATERIAL_RESERVATION`; no confirmed planned-material entity per JOB | Shortage formula conflicts with Q6.1; concurrency, over-reservation behavior, and error responses must be defined |
 | UC6 Order materials | Worker is the UC actor; owner separately confirmed Admin can order from Suppliers; select Supplier and order shortage | `MATERIAL_ORDER`, `MATERIAL_ORDER_ITEM`, `MATERIAL`, Supplier | UC6 role is inconsistent; Supplier rejection sets `cancelled`; validations/errors must be defined |

@@ -77,6 +77,19 @@ Decision: minimum price = (material+labor)*1.60 for the entire quantity, rounded
 - [ ] Real PostgreSQL races, boundary amounts, migration/Docker and earlier-phase regression checks.
 - [ ] Update docs, preserve logical buildable commits, push to develop and verify remote tip; never push main without a new explicit request.
 Decision: current source confirms company shared reads, but not who may bind the company by approving/rejecting a quotation. Also confirm whether a half-satang 50% deposit rounds upward. Do not invent either business rule. Other rules are settled: reject count is per request across revisions; cancellation happens on the sixth distinct customer rejection; Deposit/PO deadline starts at quotation acceptance plus 14 days. Phase 6 is started, incomplete and not pushed; see docs/UC3_PLAN.md.
+
+## Frontend integration documentation alignment — completed, implementation pending
+
+- [x] Owner reconfirmed sixth-rejection cancellation; remove stale fifth-rejection wording from docs/01-backend.md flow/status/business-rule/UC3 sections.
+- [x] Record required Worker name/email/phone and confirmed Admin add/edit/deactivate/reactivate/password-change permissions in docs/AUTH.md and docs/requirements.md.
+- [x] Preserve existing username/password/employee_no requirements and optional position; distinguish the target contact contract from the current strict-JSON API that rejects email/phone.
+- [ ] Implement and verify Worker email/phone input, persistence, response and required-field validation before full frontend Worker-management integration.
+- [ ] Confirm production contact format/normalization/uniqueness and a safe legacy-record migration/backfill policy; do not fabricate contacts or delete existing accounts.
+
+This follow-up changes documentation only, not auth/API code, migrations, databases or frontend behavior. Existing UC3 work and its authorization/status above are unchanged. Contact support is not claimed implemented or verified by this documentation correction.
+
+Verification: documentation whitespace/consistency reviewed; go build ./... passed on an isolated archive of the committed source, without relying on in-progress working-tree code. Publication is held because develop also contains unpublished UC3 commits; pushing this follow-up would publish that other work too, so confirm coordination/authorization first.
+
 ## Phase 7 UC4 deposit and company PO — todo
 - [ ] Validate first payment and company PO, open job only when terms fulfilled.
 ## Phase 8 UC5 stock check and reservation — todo
