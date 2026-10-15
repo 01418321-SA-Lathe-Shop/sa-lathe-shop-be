@@ -37,15 +37,17 @@ func loadTerms(ctx context.Context, query decisionQuery, value *q.Decision) erro
 	if err != nil {
 		return err
 	}
-	terms, err := q.AcceptanceTerms(kind, amount, accepted)
+	depositAmount, err := q.ParseAmount(deposit)
 	if err != nil {
 		return err
 	}
-	// Never silently recompute a historical contract if policy later changes.
-	if terms.DepositAmount.String() != deposit || terms.DepositRequired != required || terms.PORequired != po || !terms.DocumentsDueAt.Equal(due) {
-		return errors.New("acceptance snapshot policy mismatch")
+	balance, err := amount.Subtract(depositAmount)
+	if err != nil {
+		return err
 	}
-	value.Terms = &terms
+	// Read the recorded contract, not today's acceptance policy. The balance is
+	// derived from stored amounts, never a claim that a deposit was paid.
+	value.Terms = &q.Terms{CustomerType: kind, FinalPrice: amount, DepositRequired: required, PORequired: po, DepositAmount: depositAmount, BalanceAfterDeposit: balance, AcceptedAt: accepted, DocumentsDueAt: due}
 	return nil
 }
 func (d *Database) DecideQuotation(ctx context.Context, actor, id string, in q.DecisionInput) (q.Decision, error) {

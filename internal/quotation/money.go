@@ -16,6 +16,13 @@ const MaxSatang int64 = 999999999999999999
 
 type Amount struct{ satang int64 }
 
+func (a Amount) Subtract(b Amount) (Amount, error) {
+	if b.satang > a.satang || b.satang < 0 {
+		return Amount{}, ErrInvalidInput
+	}
+	return Amount{satang: a.satang - b.satang}, nil
+}
+
 func ParseAmount(text string) (Amount, error) {
 	if text == "" || len(text) > 19 {
 		return Amount{}, ErrInvalidInput

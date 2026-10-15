@@ -57,3 +57,12 @@ func TestAmountJSON(t *testing.T) {
 		t.Fatal(string(encoded))
 	}
 }
+func TestAmountSubtract(t *testing.T) {
+	result, err := amount(t, "1600.01").Subtract(amount(t, "800.01"))
+	if err != nil || result.String() != "800.00" {
+		t.Fatal(err)
+	}
+	if _, err = amount(t, "0.01").Subtract(amount(t, "0.02")); !errors.Is(err, ErrInvalidInput) {
+		t.Fatal("negative balance accepted")
+	}
+}
