@@ -66,18 +66,17 @@ Decision: customer self-registration, owner-issued one-use company invitations a
 - [x] Logical buildable commits during work; runbook and verification record updated.
 - [x] Verify end-of-phase push to develop only: d2b94ba confirmed on origin/develop, main remains 86d5be1.
 Decision: minimum price = (material+labor)*1.60 for the entire quantity, rounded upward to a satang. Exact decimal strings/NUMERIC(18,2), no VAT. Full checks passed on 2026-10-15 in isolated project sa-lathe-uc2-0331d81e; test resources cleaned up. Docker's runtime-socket blocker was recovered by reversible directory preservation; engine 29.7.2 responds. See docs/UC2.md and docs/UC2_VERIFICATION.md. Existing Docker data and settings were not deleted/reset. Quotation send publishes in-system only, with no unconfirmed outbound delivery. No UC3 customer decisions, rejection threshold handling, deposits, PO or job opening are implemented; the 14-day clock remains acceptance-based in a later phase. Push verification is the final pending handoff step; stop before UC3.
-## Phase 6 UC3 verify customer terms — in progress
+## Phase 6 UC3 verify customer terms — done (push blocked by concurrent publication hold)
 - [x] Owner authorized Phase 6 and reaffirmed develop-first pushes on 2026-10-15; clean develop branch inspected.
 - [x] Read backend guide, UC2 API, current quotation/revision schema and commit workflow.
-- [ ] Confirm company quotation-decision authority and odd-satang 50% deposit rounding.
-- [ ] Decision domain/terms snapshot and focused tests, preserving existing cost redaction.
-- [ ] One-decision-per-quotation audit, request-scoped rejection count, sixth-rejection cancellation and row-lock transactions.
-- [ ] Acceptance time/deadline and required Deposit/PO terms; no payment or job-opening implementation.
-- [ ] Authenticated customer decision/history endpoints, strict validation and replay/concurrency guards.
-- [ ] Real PostgreSQL races, boundary amounts, migration/Docker and earlier-phase regression checks.
+- [x] Confirm company quotation-decision authority and odd-satang 50% deposit rounding.
+- [x] Decision domain/terms snapshot and focused tests, preserving existing cost redaction.
+- [x] One-decision-per-quotation audit, request-scoped rejection count, sixth-rejection cancellation and row-lock transactions.
+- [x] Acceptance time/deadline and required Deposit/PO terms; no payment or job-opening implementation.
+- [x] Authenticated customer decision/history endpoints, strict validation and replay/concurrency guards.
+- [x] Real PostgreSQL races, boundary amounts, migration/Docker and earlier-phase regression checks.
 - [ ] Update docs, preserve logical buildable commits, push to develop and verify remote tip; never push main without a new explicit request.
-Decision: current source confirms company shared reads, but not who may bind the company by approving/rejecting a quotation. Also confirm whether a half-satang 50% deposit rounds upward. Do not invent either business rule. Other rules are settled: reject count is per request across revisions; cancellation happens on the sixth distinct customer rejection; Deposit/PO deadline starts at quotation acceptance plus 14 days. Phase 6 is started, incomplete and not pushed; see docs/UC3_PLAN.md.
-
+Decision: any active company member may accept/reject; round 50% deposits upward to a satang. Count distinct customer rejections per request across revisions; the sixth cancels. Deposit/PO deadline is acceptance plus 336 hours, never reset by replay. Build/vet/unit, real PostgreSQL races/rollback/boundaries, earlier-phase regressions and Docker flow passed in disposable project sa-lathe-uc3-f2ced38b; its test resources were cleaned up. See docs/UC3.md and docs/UC3_VERIFICATION.md. No payment, PO upload, job opening or new LINE event was implemented. Implementation complete. Concurrent commit 7e10423 added separate Worker-contact documentation with an explicit publication hold; pushing develop would also publish it. Ask the owner to confirm the combined push; do not rewrite history or push main. Stop before UC4.
 ## Frontend integration documentation alignment — completed, implementation pending
 
 - [x] Owner reconfirmed sixth-rejection cancellation; remove stale fifth-rejection wording from docs/01-backend.md flow/status/business-rule/UC3 sections.
@@ -103,4 +102,4 @@ Verification: documentation whitespace/consistency reviewed; go build ./... pass
 ## Phase 12 UC9 deliver and settle — todo
 - [ ] Self/third-party delivery, invoices, post-completion payments and returns.
 
-Every future phase: follow the mandatory AGENTS.md commit/push policy and docs/GIT_WORKFLOW.md. Commit focused buildable groups as work progresses, with clear purpose and relevant tests; never one giant phase commit. Update this plan, run full checks, review status/log and push each completed phase to develop first, verifying the remote tip. Main requires a new explicit owner instruction. Record blockers instead of silently leaving a finished phase unpushed. Current implementation authorization is Phase 6 only; UC4-UC9 remain unapproved. Historical push-pending notes in Phases 0-3 were resolved before Phase 4. Company shared reads are implemented; decision authority still needs confirmation.
+Every future phase: follow the mandatory AGENTS.md commit/push policy and docs/GIT_WORKFLOW.md. Commit focused buildable groups as work progresses, with clear purpose and relevant tests; never one giant phase commit. Update this plan, run full checks, review status/log and push each completed phase to develop first, verifying the remote tip. Main requires a new explicit owner instruction. Record blockers instead of silently leaving a finished phase unpushed. Current implementation authorization is Phase 6 only; UC4-UC9 remain unapproved. Historical push-pending notes in Phases 0-3 were resolved before Phase 4. Company decision authority is confirmed for any current active company member.
