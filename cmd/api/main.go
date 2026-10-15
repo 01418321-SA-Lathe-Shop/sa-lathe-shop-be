@@ -11,6 +11,7 @@ import (
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/notification"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/platform/httpserver"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/platform/objectstore"
+	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/quotation"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/repository/postgres"
 	req "github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/request"
 	"github.com/go-chi/chi/v5"
@@ -76,6 +77,7 @@ func main() {
 		req.NewHandler(requestService).Routes(r, authHandler.Authenticate)
 		fileService.Routes(r, authHandler.Authenticate)
 		notification.Routes(r, notification.NewInbox(db), authHandler.Authenticate)
+		quotation.NewHandler(quotation.NewService(db)).Routes(r, authHandler.Authenticate)
 	})
 	if err := httpserver.Run(ctx, logger, cfg.HTTPAddr, cfg.ShutdownTimeout, router); err != nil {
 		logger.Error("api stopped", "error", err)
