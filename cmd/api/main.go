@@ -78,6 +78,7 @@ func main() {
 		fileService.Routes(r, authHandler.Authenticate)
 		notification.Routes(r, notification.NewInbox(db), authHandler.Authenticate)
 		quotation.NewHandler(quotation.NewService(db)).Routes(r, authHandler.Authenticate)
+		quotation.NewDecisionHandler(quotation.NewDecisionService(db)).Routes(r, authHandler.Authenticate)
 	})
 	if err := httpserver.Run(ctx, logger, cfg.HTTPAddr, cfg.ShutdownTimeout, router); err != nil {
 		logger.Error("api stopped", "error", err)
