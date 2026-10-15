@@ -1,8 +1,8 @@
 # SA-Lathe-Shop-BE
 
-Made-to-order lathe shop backend. The owner authorized Phase 4 (UC1 customer login and job request submission) on develop on 2026-10-14. Stop after Phase 4; UC2-UC9 remain unapproved.
+Made-to-order lathe shop backend. The owner authorized Phase 5 (UC2 estimation and quotations) on develop on 2026-10-15. Stop after Phase 5; UC3-UC9 remain unapproved. Resolve the outstanding 60% pricing basis and quotation amount scope before implementing pricing rules.
 
-Phases 3 and 4 are implemented and verified. See docs/AUTH.md and docs/UC1.md. Customers self-register; company users join by one-use invitation and share company requests. PDF, DOC/DOCX, XLS/XLSX, TXT, JPEG/PNG only, maximum 100 MB. LINE alerts target one configured Admin user; inbox notifications are per-account. Never infer company membership from a name or tax ID alone. Stop before UC2 unless separately authorized.
+Phases 3 and 4 are implemented and verified. See docs/AUTH.md and docs/UC1.md. Customers self-register; company users join by one-use invitation and share company requests. PDF, DOC/DOCX, XLS/XLSX, TXT, JPEG/PNG only, maximum 100 MB. LINE alerts target one configured Admin user; inbox notifications are per-account. Never infer company membership from a name or tax ID alone. Phase 5 is in progress; see docs/UC2_PLAN.md. Do not implement customer acceptance/rejection or Deposit/PO handling in this phase.
 
 ## Stack
 

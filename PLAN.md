@@ -53,8 +53,17 @@ Decision: Argon2id 64 MiB/3 passes/2 lanes; random 256-bit Bearer tokens, SHA-25
 - [x] Create nine logical 3-8-file commits; independently build each exact commit tree.
 - [x] Push completed implementation to develop only; remote 451a0e8 verified on 2026-10-15, main unchanged at 86d5be1.
 Decision: customer self-registration, owner-issued one-use company invitations and company-shared request reads. Input follows ER: selected customer ID verified against membership, description, positive int64 qty, material_spec and optional future requested deadline. Text bounds 10,000/2,000 Unicode characters; no artificial quantity business cap. Final evidence uses distinct private keys and ETag-conditional copy after inspection. Requests/outbox and inbox/acknowledgement are atomic; LINE targets only the configured Admin user and is disabled by default. Real LINE messages were not sent. See docs/UC1.md and docs/UC1_VERIFICATION.md. Original detailed UC/sequence files remain unavailable; reviewed guide, ER and owner decisions cover this phase. Stop before UC2.
-## Phase 5 UC2 estimate and quote — todo
-- [ ] Draft/send estimates, queue review and rejection reason.
+## Phase 5 UC2 estimate and quote — in progress
+- [x] Owner authorized the next phase on develop on 2026-10-15; clean branch and current workflow rules reviewed.
+- [x] Read the backend guide and requirements; identify quotation transaction/status rules and unresolved pricing basis.
+- [ ] Confirm 60% profit basis and whether all monetary inputs are per-job totals or unit amounts.
+- [ ] Exact money domain and pricing unit tests, no float arithmetic or VAT.
+- [ ] Quotation/revision/cost schema and repository transactions with row locks and concurrency tests.
+- [ ] Worker draft/edit/send and request rejection with reason; restrict customer reads to their company and hide internal cost breakdowns.
+- [ ] Handler validation, errors, API wiring and HTTP authorization tests.
+- [ ] Full regression, disposable PostgreSQL integration, migration/Docker checks and API runbook.
+- [ ] Logical buildable commits during work; update plan and verify end-of-phase push to develop only.
+Decision: scope and proposed commit groups are in docs/UC2_PLAN.md. No pricing formula or per-unit/total interpretation is assumed. Do not implement UC3 customer decisions, sixth-rejection cancellation, deposits, PO or job opening. The confirmed 14-day clock starts at acceptance in a later phase, not quotation sending. Phase 5 is not complete and is not pushed yet.
 ## Phase 6 UC3 verify customer terms — todo
 - [ ] Accept/reject history, revisions, rejection threshold and pricing policy.
 ## Phase 7 UC4 deposit and company PO — todo
