@@ -20,6 +20,7 @@ const decisionFields = `d.quotation_id::text,d.request_id::text,d.actor_id::text
 func decisionRow(row pgx.Row) (q.Decision, error) {
 	var value q.Decision
 	err := row.Scan(&value.QuotationID, &value.RequestID, &value.ActorID, &value.Outcome, &value.Reason, &value.ExpectedLockVersion, &value.DecidedAt, &value.RejectionCount, &value.RequestStatus)
+	value.DecidedAt = value.DecidedAt.UTC()
 	return value, quoteError(err)
 }
 func loadTerms(ctx context.Context, query decisionQuery, value *q.Decision) error {
@@ -47,7 +48,7 @@ func loadTerms(ctx context.Context, query decisionQuery, value *q.Decision) erro
 	}
 	// Read the recorded contract, not today's acceptance policy. The balance is
 	// derived from stored amounts, never a claim that a deposit was paid.
-	value.Terms = &q.Terms{CustomerType: kind, FinalPrice: amount, DepositRequired: required, PORequired: po, DepositAmount: depositAmount, BalanceAfterDeposit: balance, AcceptedAt: accepted, DocumentsDueAt: due}
+	value.Terms = &q.Terms{CustomerType: kind, FinalPrice: amount, DepositRequired: required, PORequired: po, DepositAmount: depositAmount, BalanceAfterDeposit: balance, AcceptedAt: accepted.UTC(), DocumentsDueAt: due.UTC()}
 	return nil
 }
 func (d *Database) DecideQuotation(ctx context.Context, actor, id string, in q.DecisionInput) (q.Decision, error) {
@@ -103,6 +104,7 @@ func (d *Database) DecideQuotation(ctx context.Context, actor, id string, in q.D
 	if err = tx.QueryRow(ctx, `SELECT clock_timestamp()`).Scan(&now); err != nil {
 		return q.Decision{}, err
 	}
+	now = now.UTC()
 	result := q.Decision{QuotationID: id, RequestID: requestID, ActorID: actor, Outcome: in.Outcome, Reason: in.Reason, ExpectedLockVersion: in.ExpectedLockVersion, DecidedAt: now, RejectionCount: count, RequestStatus: nextStatus}
 	if in.Outcome == "accept" {
 		terms, err := q.AcceptanceTerms(kind, value.FinalPrice, now)
