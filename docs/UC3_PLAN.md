@@ -1,4 +1,4 @@
-# Phase 6 — UC3 customer quotation decisions (in progress)
+# Phase 6 — UC3 customer quotation decisions (implemented and verified)
 
 Authorized 2026-10-15, develop. Standing push destination is origin/develop for
 all phases and follow-ups until an explicit instruction authorizes main.
@@ -16,14 +16,12 @@ Keep Go/chi, PostgreSQL and Handler -> Service -> Repository; no stack change.
 - Acceptance time plus 14 days determines the Deposit/PO deadline. Sending and
   replaying a request must not start/reset that clock.
 
-## Questions to confirm before implementing policy
+## Owner confirmations
 
-1. Company users can read shared requests, but who can accept/reject: only the
-   company owner, any company member, or only the request creator? Shared reads
-   alone are not permission to bind the company to a price.
-2. For a price of 1600.01, exact 50% is 800.005. May the required deposit round
-   upward to 800.01, with the later remaining balance 800.00? Prior approval of
-   upward rounding was for minimum quotation price, not deposits.
+1. Any active company member may accept/reject the company's quotation. The
+   decision actor need not own the company or have created the request.
+2. Round 50% deposits upward to one satang: 1600.01 requires 800.01, leaving
+   800.00 after that deposit. These are required terms, not payment receipts.
 
 ## Planned groups and verification
 
@@ -47,3 +45,10 @@ create jobs in Phase 6. Do not add an expiry-cancellation worker or repurpose UC
 LINE alerts without a defined event contract. Shared decision reads must retain
 company isolation. Existing unavailable source documents are not replaced with
 assumptions; use the reviewed guide/ER and direct owner clarifications.
+
+## Result
+
+All planned implementation and verification groups passed. See UC3.md for the
+API contract and UC3_VERIFICATION.md for real database, race and Docker checks.
+The disposable verification project was sa-lathe-uc3-f2ced38b; its test resources
+were removed. Phase completion push is recorded in PLAN.md. Stop before UC4.

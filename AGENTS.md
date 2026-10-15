@@ -1,14 +1,14 @@
 # SA-Lathe-Shop-BE
 
-Made-to-order lathe shop backend. The owner authorized Phase 6 (UC3 customer quotation decisions) on develop on 2026-10-15. Stop after Phase 6; UC4-UC9 remain unapproved. Confirmed pricing: minimum = (material + labor) * 1.60 for the entire requested quantity, two decimals, minimum rounded upward to a satang, no VAT. Phase 6 must confirm company decision authority and half-satang deposit rounding before implementing those rules.
+Made-to-order lathe shop backend. The owner authorized Phase 6 (UC3 customer quotation decisions) on develop on 2026-10-15. Stop after Phase 6; UC4-UC9 remain unapproved. Confirmed pricing: minimum = (material + labor) * 1.60 for the entire requested quantity, two decimals, minimum rounded upward to a satang, no VAT. Any active company member may accept/reject company quotations. Round a 50% deposit upward to a satang.
 
-Phases 3-5 are implemented and verified. See docs/AUTH.md, docs/UC1.md and docs/UC2.md. Customers self-register; company users join by one-use invitation and share company request reads. Shared reads do not automatically authorize binding quotation decisions; confirm that policy for Phase 6. PDF, DOC/DOCX, XLS/XLSX, TXT, JPEG/PNG only, maximum 100 MB. LINE alerts target one configured Admin user; inbox notifications are per-account. Never infer company membership from a name or tax ID alone. Phase 6 is in progress; see docs/UC3_PLAN.md. Do not implement payment evidence, PO upload/verification or job opening in this phase.
+Phases 3-6 are implemented and verified. See docs/AUTH.md, docs/UC1.md, docs/UC2.md and docs/UC3.md. Customers self-register; company users join by one-use invitation and share company request reads and quotation decisions. Current active membership, not ownership, authorizes company decisions. PDF, DOC/DOCX, XLS/XLSX, TXT, JPEG/PNG only, maximum 100 MB. LINE alerts target one configured Admin user; inbox notifications are per-account. Never infer company membership from a name or tax ID alone. Phase 6 records immutable acceptance terms and decision history; exact retries never recount rejection or reset deadlines. Do not implement payment evidence, PO upload/verification or job opening in this phase.
 
 ## Stack
 
 - Go, net/http, github.com/go-chi/chi/v5.
 - PostgreSQL with pgx/v5 isolated behind repository implementations. Money: NUMERIC, never float. Stock reservations use transactions and row locking.
-- golang-migrate SQL migrations, pinned Go tool. Migrations 000002 (staff), 000003 (customer/UC1) and 000004 (quotations/UC2) are implemented. Apply migrations before deploying binaries that use them.
+- golang-migrate SQL migrations, pinned Go tool. Migrations 000002 (staff), 000003 (customer/UC1), 000004 (quotations/UC2) and 000005 (decisions/UC3) are implemented. Apply migrations before deploying binaries that use them.
 - S3-compatible private object storage (SeaweedFS locally, pinned official GHCR image digest). Store object keys and metadata only; signed upload/download URLs. Evidence never public. MinIO registries were unavailable during setup, so local provider was replaced without changing the S3 contract.
 - Admin and Worker auth: Argon2id password hashing, opaque Bearer sessions checked in PostgreSQL on every protected request, and role permissions. Suppliers have no accounts. First Admin is provisioned through cmd/api -bootstrap-admin, never a public registration route.
 - PostgreSQL transactional outbox and separate worker. No Redis, broker, or cache.

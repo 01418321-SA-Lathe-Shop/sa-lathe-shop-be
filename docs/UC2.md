@@ -71,8 +71,9 @@ quotation can exist per request. Sending sets quotation sent, records sent_at an
 updates request ongoing in the same transaction. Sent prices cannot be edited.
 Revision version and edit lock_version are distinct. A new revision is permitted
 only after the preceding quotation is rejected; it links to that predecessor,
-increments commercial version and preserves history. UC3 will provide the actual
-customer-decision endpoint in a later authorized phase; none exists now.
+increments commercial version and preserves history. Phase 6 now provides the
+customer-decision endpoints and sixth-rejection rule; see UC3.md. UC2 Worker
+refusal remains a different operation from customer quotation rejection.
 
 A Worker can refuse only a pending request; a sent/ongoing request cannot be
 canceled by this UC2 action. Refusal reason/actor/time and canceled request state
