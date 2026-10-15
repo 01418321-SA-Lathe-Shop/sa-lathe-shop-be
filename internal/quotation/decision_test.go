@@ -15,6 +15,24 @@ type decisionFake struct {
 	err   error
 }
 
+func TestDecisionEffect(t *testing.T) {
+	for prior := 0; prior < 6; prior++ {
+		quote, status, count, err := DecisionEffect("reject", prior)
+		wanted := "ongoing"
+		if prior == 5 {
+			wanted = "canceled"
+		}
+		if err != nil || quote != "rejected" || status != wanted || count != prior+1 {
+			t.Fatal("invalid rejection threshold")
+		}
+	}
+	if _, _, _, err := DecisionEffect("accept", 6); !errors.Is(err, ErrConflict) {
+		t.Fatal("accepted after sixth rejection")
+	}
+	if status, _, count, err := DecisionEffect("accept", 5); err != nil || status != "approved" || count != 5 {
+		t.Fatal("accept after fifth rejected")
+	}
+}
 func (f *decisionFake) DecideQuotation(_ context.Context, _, _ string, in DecisionInput) (Decision, error) {
 	f.calls++
 	f.in = in

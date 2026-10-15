@@ -32,6 +32,25 @@ type DecisionRepository interface {
 }
 type DecisionService struct{ repo DecisionRepository }
 
+// DecisionEffect is the domain policy; the repository supplies the locked audit
+// count and persists this result atomically with the quotation and request.
+func DecisionEffect(outcome string, previous int) (string, string, int, error) {
+	if previous < 0 || previous >= 6 {
+		return "", "", 0, ErrConflict
+	}
+	if outcome == "accept" {
+		return "approved", "ongoing", previous, nil
+	}
+	if outcome != "reject" {
+		return "", "", 0, ErrInvalidInput
+	}
+	count := previous + 1
+	requestStatus := "ongoing"
+	if count == 6 {
+		requestStatus = "canceled"
+	}
+	return "rejected", requestStatus, count, nil
+}
 func NewDecisionService(repo DecisionRepository) *DecisionService {
 	return &DecisionService{repo: repo}
 }
