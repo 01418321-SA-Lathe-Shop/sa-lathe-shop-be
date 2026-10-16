@@ -31,6 +31,7 @@ remained disabled; credentials were random, process-local and not committed.
 
 This validates terms, not payment settlement, PO verification or job creation.
 No new outbound quotation event or deadline-expiry behavior is assumed. Worker
-email/phone integration remains a separately documented gap, not part of UC3.
+email/phone integration was subsequently implemented and verified as a separate
+auth follow-up; see WORKER_CONTACTS_VERIFICATION.md, not part of UC3 scope.
 Develop-first commits and push verification are tracked in PLAN.md; main is not
 an authorized push destination. Production hosting/load targets remain undecided.

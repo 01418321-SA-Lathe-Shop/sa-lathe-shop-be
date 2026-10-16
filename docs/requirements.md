@@ -29,10 +29,13 @@ must require name, email and phone, in addition to the existing account fields
 username/password/employee_no (position optional). Admin can add/edit,
 deactivate/reactivate and change Worker passwords; no permanent deletion or
 unconfirmed job reassignment. Worker reads/writes must support the required
-contacts. Email/phone DTO, persistence, response and validation support is still
-an implementation gap; the current API rejects those fields. See docs/AUTH.md
-for the target contract and explicit current-implementation boundary. Contact
-format/normalization/uniqueness and legacy-record backfill remain to be defined.
+contacts. Email/phone DTO, persistence, response and validation are implemented
+with migration 000006. Owner confirmed Admin creates Workers with both contacts,
+email syntax validation, international phone support and non-unique contacts.
+Trim email, normalize phone formatting to optional + and 7-15 digits; no ownership
+verification is claimed. Preserve legacy NULL contacts without fake backfills;
+Admin fills them through PATCH. Reject attempts to clear populated contacts.
+See docs/AUTH.md for the exact contract and migration/rollback boundaries.
 
 Plan requirement quantities separately from quantities reserved and consumed.
 Partial stock must not hide shortages. Stock and stock movements change in one

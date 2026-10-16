@@ -59,39 +59,57 @@ Cache-Control: no-store. Keep browser tokens in memory; do not persist them in
 localStorage or print them. Use HTTPS in deployment. Frontend session persistence
 and any future cookie/CSRF design remain decisions for frontend integration.
 
-### Owner-confirmed Worker contact requirement — implementation pending
+### Required Worker contacts — implemented
 
 Admin Worker management must match the confirmed frontend requirement: **name,
 email and phone are all required**. This adds email and phone; it does not remove
 the existing username, password or employee_no requirements. Admin may add/edit,
 deactivate/reactivate and change Worker passwords; no deletion or role promotion.
 
-The required target contract is:
+The implemented contract is:
 
-| Operation | Required target behavior |
+| Operation | Behavior |
 | --- | --- |
 | POST /admin/workers | Require username, password, name, employee_no, email and phone; position remains optional |
 | PATCH /admin/workers/{account_id} | Accept a subset of username, password, name, employee_no, email, phone, position and is_active. Omitted contact fields retain their values; supplied name/email/phone must not be blank or removed |
 | Worker list/detail/create/update responses | Include email and phone with the Worker profile so contact edits round-trip through the API |
 
-**Current implementation gap:** the existing Worker DTOs/repository/API do not
-accept, persist or return email/phone yet. They reject these unknown JSON fields.
-This documentation change records the required contract, not completed support.
-Do not send email/phone to the current endpoint or silently discard these
-required contacts in frontend integration. Backend implementation and verification
-are required before the Worker-management form can be integrated in full.
+Admin-created Workers require both email and phone. Missing, blank or malformed
+contacts return 400. PATCH preserves omitted contacts but rejects explicit null
+or blank contact fields, including when another valid field is supplied. Unknown
+JSON fields remain rejected. Roles and existing session-revocation rules are
+unchanged; Worker/Customer accounts cannot manage staff.
 
-Required contacts must contain non-whitespace values. Exact production email
-validation/normalization, phone format/length and contact uniqueness are **To be
-defined**; required does not imply unique. Existing Workers need an explicit
-migration/backfill policy before enforcing the new invariant. Do not invent
-placeholder contacts, delete accounts or invalidate historical business records.
+Email: trim outer whitespace, validate a single bare address with Go net/mail,
+maximum 254 bytes; no display names, lists or CR/LF. Preserve address case.
+Phone: allow local and international numbers, optional leading +, 7-15 ASCII
+digits; accept spaces, hyphens, parentheses and dots as display separators and
+remove them on save. Maximum raw length 64 bytes; extensions are not supported.
+This is syntax validation, not email/phone ownership or deliverability verification.
+Neither email nor phone is unique or used as a login identifier.
 
-The existing API currently accepts username, password, name, employee_no and
-optional position on create, and a subset of those fields plus is_active on PATCH.
-A null/empty-only patch is rejected. Role cannot be changed and Admin accounts
-cannot be targeted through Worker endpoints. No account deletion exists. Existing
-password/session-revocation rules below are unchanged by this contact requirement.
+Create example (replace the demo password):
+
+```json
+{"username":"worker.one","password":"replace-with-private-password","name":"Worker","employee_no":"EMP-1","email":"worker@example.com","phone":"+66 81 234 5678"}
+```
+
+Worker list/detail/create/PATCH responses include email and phone. Phone in the
+example is returned as +66812345678. Login/auth-me account DTOs are unchanged.
+Apply migration 000006 before deployment. It reuses person.email/phone and removes
+their obsolete unique indexes, without adding duplicate contact columns.
+
+Legacy Workers are preserved, including their sessions and nullable contacts;
+responses expose missing contacts as null. Admin can fill them using PATCH.
+New Worker inserts require contacts in the database, and populated Worker
+contacts cannot be cleared. Nullable NOT VALID format constraints avoid scanning
+or inventing old data and check new/updated rows; pre-existing malformed contacts
+must be corrected when that person is next written. Existing Workers are not
+silently disabled or forced to use fabricated contact details.
+
+Migration 6 down restores old uniqueness only if there are no shared contacts;
+otherwise it refuses before changing the schema. Back up first and prefer a
+planned forward fix. Never discard duplicates to make rollback succeed.
 
 Usernames are case-insensitive ASCII, normalized lowercase, 3-64 characters
 using letters, digits, _, . and -. Employee numbers are normalized uppercase,
@@ -154,3 +172,6 @@ Tests cover one-time/concurrent bootstrap, real HTTP permissions, malformed inpu
 generic credential failures, logout, expiry, deactivation/reactivation, credential
 reset races, duplicate-record rollback and absence of raw credentials in storage.
 Tests do not truncate or overwrite an existing DB.
+
+Full disposable contact and UC1-UC3 regression: `./scripts/verify-uc3.ps1`.
+See WORKER_CONTACTS_VERIFICATION.md for results and deployment boundaries.

@@ -9,6 +9,7 @@ Phases 3-6 are implemented and verified. See docs/AUTH.md, docs/UC1.md, docs/UC2
 - Go, net/http, github.com/go-chi/chi/v5.
 - PostgreSQL with pgx/v5 isolated behind repository implementations. Money: NUMERIC, never float. Stock reservations use transactions and row locking.
 - golang-migrate SQL migrations, pinned Go tool. Migrations 000002 (staff), 000003 (customer/UC1), 000004 (quotations/UC2) and 000005 (decisions/UC3) are implemented. Apply migrations before deploying binaries that use them.
+- Migration 000006 implements required Worker contacts. Admin-created Workers need valid email and phone; contacts are non-unique and not login identifiers. Reuse person.email/phone; never fake legacy backfills or disable existing accounts. See docs/AUTH.md for exact syntax, nullable legacy responses and rollback limits.
 - S3-compatible private object storage (SeaweedFS locally, pinned official GHCR image digest). Store object keys and metadata only; signed upload/download URLs. Evidence never public. MinIO registries were unavailable during setup, so local provider was replaced without changing the S3 contract.
 - Admin and Worker auth: Argon2id password hashing, opaque Bearer sessions checked in PostgreSQL on every protected request, and role permissions. Suppliers have no accounts. First Admin is provisioned through cmd/api -bootstrap-admin, never a public registration route.
 - PostgreSQL transactional outbox and separate worker. No Redis, broker, or cache.

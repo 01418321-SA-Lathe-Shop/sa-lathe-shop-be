@@ -13,8 +13,8 @@
 > distinct customer quotation rejection. Admin Worker management requires name,
 > email and phone, while retaining existing username/password/employee_no fields
 > and optional position. Admin can add/edit, deactivate/reactivate and change
-> Worker passwords. Email/phone API and persistence support is **required but not
-> implemented yet**; see AUTH.md for the target contract and integration gap.
+> Worker passwords. Required email/phone API, validation and persistence are
+> implemented in migration 000006; see AUTH.md for syntax and legacy handling.
 
 ## Project summary
 
@@ -115,7 +115,7 @@ Adding `partially_received` to `MATERIAL_ORDER_ITEM` is a proposal to align its 
 | Login | Customer, Admin, and Worker must log in before using a UC; Supplier is external |
 | Customer type and terms | `individual`: 50% Deposit, no PO; `company` with price ≤ THB 10,000: PO, no Deposit; `company` with price > THB 10,000: PO + 50% Deposit |
 | Rejections | Count distinct Customer rejection events per request across revisions, not draft saves or users; rejections 1–5 permit a revision, and the sixth cancels the request |
-| Admin Worker management | Admin adds/edits, deactivates/reactivates and changes passwords. Name/email/phone are required alongside the existing account fields; email/phone API/persistence support is pending. No deletion or role promotion; see AUTH.md |
+| Admin Worker management | Admin adds/edits, deactivates/reactivates and changes passwords. Name/email/phone are required on create; email format is checked, international phones are allowed, and contacts are non-unique. Existing nullable contacts are preserved for Admin backfill. No deletion or role promotion; see AUTH.md |
 | Customer payments | Installments are allowed; `INVOICE` is `partial` while the balance remains and `paid` when fully allocated/paid |
 | Payment period | 14 days; start date and whether it applies to Deposit/PO, invoice, or both are unconfirmed |
 | Pricing | `final_price` consists of material cost + labor cost + minimum 60% profit; the 60% basis is unknown, so no numeric formula is confirmed |

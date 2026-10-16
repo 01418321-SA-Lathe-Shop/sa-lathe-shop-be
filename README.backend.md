@@ -32,3 +32,8 @@ To run API and worker in Docker: docker compose --profile app up --build -d.
 Staff/customer auth, request uploads and notification dispatch are available.
 Quotation and customer-decision code passed real PostgreSQL/S3/regression/Docker verification.
 Apply migrations through 000005 before using customer decisions. UC4-UC9 remain unapproved.
+
+Worker management now requires email and phone on create, validates email syntax,
+supports international phone formatting and returns contacts on Worker reads.
+Apply migration 000006 first; existing accounts remain intact. See
+[Worker contact verification](docs/WORKER_CONTACTS_VERIFICATION.md).

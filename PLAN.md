@@ -66,7 +66,7 @@ Decision: customer self-registration, owner-issued one-use company invitations a
 - [x] Logical buildable commits during work; runbook and verification record updated.
 - [x] Verify end-of-phase push to develop only: d2b94ba confirmed on origin/develop, main remains 86d5be1.
 Decision: minimum price = (material+labor)*1.60 for the entire quantity, rounded upward to a satang. Exact decimal strings/NUMERIC(18,2), no VAT. Full checks passed on 2026-10-15 in isolated project sa-lathe-uc2-0331d81e; test resources cleaned up. Docker's runtime-socket blocker was recovered by reversible directory preservation; engine 29.7.2 responds. See docs/UC2.md and docs/UC2_VERIFICATION.md. Existing Docker data and settings were not deleted/reset. Quotation send publishes in-system only, with no unconfirmed outbound delivery. No UC3 customer decisions, rejection threshold handling, deposits, PO or job opening are implemented; the 14-day clock remains acceptance-based in a later phase. Push verification is the final pending handoff step; stop before UC3.
-## Phase 6 UC3 verify customer terms — done (push blocked by concurrent publication hold)
+## Phase 6 UC3 verify customer terms — done
 - [x] Owner authorized Phase 6 and reaffirmed develop-first pushes on 2026-10-15; clean develop branch inspected.
 - [x] Read backend guide, UC2 API, current quotation/revision schema and commit workflow.
 - [x] Confirm company quotation-decision authority and odd-satang 50% deposit rounding.
@@ -75,19 +75,23 @@ Decision: minimum price = (material+labor)*1.60 for the entire quantity, rounded
 - [x] Acceptance time/deadline and required Deposit/PO terms; no payment or job-opening implementation.
 - [x] Authenticated customer decision/history endpoints, strict validation and replay/concurrency guards.
 - [x] Real PostgreSQL races, boundary amounts, migration/Docker and earlier-phase regression checks.
-- [ ] Update docs, preserve logical buildable commits, push to develop and verify remote tip; never push main without a new explicit request.
-Decision: any active company member may accept/reject; round 50% deposits upward to a satang. Count distinct customer rejections per request across revisions; the sixth cancels. Deposit/PO deadline is acceptance plus 336 hours, never reset by replay. Build/vet/unit, real PostgreSQL races/rollback/boundaries, earlier-phase regressions and Docker flow passed in disposable project sa-lathe-uc3-f2ced38b; its test resources were cleaned up. See docs/UC3.md and docs/UC3_VERIFICATION.md. No payment, PO upload, job opening or new LINE event was implemented. Implementation complete. Concurrent commit 7e10423 added separate Worker-contact documentation with an explicit publication hold; pushing develop would also publish it. Ask the owner to confirm the combined push; do not rewrite history or push main. Stop before UC4.
-## Frontend integration documentation alignment — completed, implementation pending
+- [x] Update docs, preserve logical buildable commits, push to develop and verify remote tip; never push main without a new explicit request.
+Decision: any active company member may accept/reject; round 50% deposits upward to a satang. Count distinct customer rejections per request across revisions; the sixth cancels. Deposit/PO deadline is acceptance plus 336 hours, never reset by replay. Build/vet/unit, real PostgreSQL races/rollback/boundaries, earlier-phase regressions and Docker flow passed in disposable project sa-lathe-uc3-f2ced38b; its test resources were cleaned up. See docs/UC3.md and docs/UC3_VERIFICATION.md. No payment, PO upload, job opening or new LINE event was implemented. The previous publication hold is resolved: origin/develop was independently observed at 7e10423, containing the UC3 implementation plus Worker-contact requirement documentation; main remained 86d5be1. Stop before UC4.
+## Frontend Worker contact follow-up — implemented and verified (push pending)
 
 - [x] Owner reconfirmed sixth-rejection cancellation; remove stale fifth-rejection wording from docs/01-backend.md flow/status/business-rule/UC3 sections.
 - [x] Record required Worker name/email/phone and confirmed Admin add/edit/deactivate/reactivate/password-change permissions in docs/AUTH.md and docs/requirements.md.
-- [x] Preserve existing username/password/employee_no requirements and optional position; distinguish the target contact contract from the current strict-JSON API that rejects email/phone.
-- [ ] Implement and verify Worker email/phone input, persistence, response and required-field validation before full frontend Worker-management integration.
-- [ ] Confirm production contact format/normalization/uniqueness and a safe legacy-record migration/backfill policy; do not fabricate contacts or delete existing accounts.
+- [x] Preserve existing username/password/employee_no requirements and optional position; implement the required contact contract without widening staff permissions.
+- [x] Implement and verify Worker email/phone input, persistence, response and required-field validation before full frontend Worker-management integration.
+- [x] Owner confirmed Admin-created Workers require both fields, email syntax validation, international phone support and non-unique contacts.
+- [x] Preserve legacy nullable contacts/accounts without fake data; Admin may backfill through PATCH. Reject null/blank contact removal; retain omitted fields.
+- [x] Reuse person contacts; migration 000006 removes obsolete unique indexes and checks new Worker inserts. Guard rollback when shared contacts exist.
+- [x] Build/vet/unit/HTTP, real PostgreSQL constraints/rollback, legacy migration up/down/up and Docker UC1-UC3 regression all passed.
+- [ ] Push separate buildable contact commits to develop and verify remote tip; main remains unauthorized.
 
-This follow-up changes documentation only, not auth/API code, migrations, databases or frontend behavior. Existing UC3 work and its authorization/status above are unchanged. Contact support is not claimed implemented or verified by this documentation correction.
+The earlier documentation-only gap is now implemented as an owner-authorized auth follow-up, not UC4. Phone formatting is normalized to optional + and 7-15 digits; email uses net/mail, maximum 254 bytes. Neither is unique or ownership-verified. Contact changes do not alter existing password/session rules. See docs/AUTH.md.
 
-Verification: documentation whitespace/consistency reviewed; go build ./... passed on an isolated archive of the committed source, without relying on in-progress working-tree code. Publication is held because develop also contains unpublished UC3 commits; pushing this follow-up would publish that other work too, so confirm coordination/authorization first.
+Verification: full isolated project sa-lathe-uc3-4a16ab7c passed with PHASE6_VERIFICATION_PASSED and WORKER_CONTACTS_VERIFICATION_PASSED; resources cleaned up, real LINE disabled, no existing database touched. Publication hold was resolved by observing 7e10423 already on origin/develop; final follow-up push is pending. See docs/WORKER_CONTACTS_VERIFICATION.md.
 
 ## Phase 7 UC4 deposit and company PO — todo
 - [ ] Validate first payment and company PO, open job only when terms fulfilled.
