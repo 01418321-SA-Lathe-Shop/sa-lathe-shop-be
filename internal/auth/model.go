@@ -32,8 +32,10 @@ type Account struct {
 }
 type Worker struct {
 	Account
-	EmployeeNo string `json:"employee_no"`
-	Position   string `json:"position"`
+	Email      *string `json:"email"`
+	Phone      *string `json:"phone"`
+	EmployeeNo string  `json:"employee_no"`
+	Position   string  `json:"position"`
 }
 type Session struct {
 	ID        string
@@ -52,8 +54,11 @@ type LoginResult struct {
 type NewStaff struct {
 	Account              Account
 	EmployeeNo, Position string
+	Email, Phone         string
 }
 type WorkerInput struct {
+	Email      string `json:"email"`
+	Phone      string `json:"phone"`
 	Username   string `json:"username"`
 	Password   string `json:"password"`
 	Name       string `json:"name"`
@@ -61,6 +66,8 @@ type WorkerInput struct {
 	Position   string `json:"position"`
 }
 type WorkerUpdate struct {
+	Email      *string `json:"email,omitempty"`
+	Phone      *string `json:"phone,omitempty"`
 	Username   *string `json:"username,omitempty"`
 	Password   *string `json:"password,omitempty"`
 	Name       *string `json:"name,omitempty"`
@@ -71,6 +78,7 @@ type WorkerUpdate struct {
 
 // WorkerChanges is validated service input, not an HTTP DTO.
 type WorkerChanges struct {
+	Email, Phone                                       *string
 	Username, Name, EmployeeNo, Position, PasswordHash *string
 	Active                                             *bool
 }

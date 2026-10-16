@@ -3,6 +3,7 @@ package auth
 import (
 	"fmt"
 	"github.com/google/uuid"
+	"net/mail"
 	"regexp"
 	"strings"
 	"unicode/utf8"
@@ -10,6 +11,38 @@ import (
 
 var usernamePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_.-]{2,63}$`)
 var employeePattern = regexp.MustCompile(`^[A-Z0-9][A-Z0-9_.-]{0,29}$`)
+
+func normalizeEmail(s string) (string, error) {
+	s = strings.TrimSpace(s)
+	a, err := mail.ParseAddress(s)
+	if err != nil || len(s) > 254 || a.Address != s || strings.ContainsAny(s, "\r\n\x00") {
+		return "", fmt.Errorf("%w: email must be a valid single address of at most 254 bytes", ErrInvalidInput)
+	}
+	// Preserve local-part case; email is contact information, not a login key.
+	return s, nil
+}
+
+func normalizePhone(s string) (string, error) {
+	s = strings.TrimSpace(s)
+	var out strings.Builder
+	digits := 0
+	for i, r := range s {
+		switch {
+		case r >= '0' && r <= '9':
+			out.WriteRune(r)
+			digits++
+		case r == '+' && i == 0:
+			out.WriteRune(r)
+		case r == ' ' || r == '-' || r == '(' || r == ')' || r == '.':
+		default:
+			return "", fmt.Errorf("%w: phone accepts digits, a leading + and formatting separators", ErrInvalidInput)
+		}
+	}
+	if digits < 7 || digits > 15 || len(s) > 64 {
+		return "", fmt.Errorf("%w: phone must contain 7-15 digits", ErrInvalidInput)
+	}
+	return out.String(), nil
+}
 
 func normalizeUsername(s string) (string, error) {
 	s = strings.ToLower(strings.TrimSpace(s))

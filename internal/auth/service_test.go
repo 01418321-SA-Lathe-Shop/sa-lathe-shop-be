@@ -75,7 +75,7 @@ func (f *fakeRepo) CreateWorker(_ context.Context, input NewStaff) (Worker, erro
 			return Worker{}, ErrConflict
 		}
 	}
-	w := Worker{Account: input.Account, EmployeeNo: input.EmployeeNo, Position: input.Position}
+	w := Worker{Account: input.Account, EmployeeNo: input.EmployeeNo, Position: input.Position, Email: &input.Email, Phone: &input.Phone}
 	f.accounts[w.Username] = w.Account
 	f.workers[w.ID] = w
 	return w, nil
@@ -107,6 +107,12 @@ func (f *fakeRepo) UpdateWorker(ctx context.Context, id string, c WorkerChanges)
 		return Worker{}, err
 	}
 	old := w.Username
+	if c.Email != nil {
+		w.Email = c.Email
+	}
+	if c.Phone != nil {
+		w.Phone = c.Phone
+	}
 	if c.Username != nil {
 		w.Username = *c.Username
 	}
@@ -230,7 +236,7 @@ func TestLoginHonorsConcurrentAccountChange(t *testing.T) {
 func TestWorkerPermissionsAndValidation(t *testing.T) {
 	s, _, admin := setupService(t)
 	ctx := context.Background()
-	input := WorkerInput{Username: "Worker.One", Name: "Technician", EmployeeNo: "emp-001", Position: "Lathe", Password: "Worker-password-1234"}
+	input := WorkerInput{Username: "Worker.One", Name: "Technician", EmployeeNo: "emp-001", Position: "Lathe", Password: "Worker-password-1234", Email: "worker@example.com", Phone: "+66812345678"}
 	actor := Account{Role: RoleWorker, Active: true}
 	if _, err := s.CreateWorker(ctx, actor, input); !errors.Is(err, ErrForbidden) {
 		t.Fatal("worker created staff")
@@ -267,7 +273,7 @@ func TestWorkerPermissionsAndValidation(t *testing.T) {
 func TestWorkerDeactivationAndPasswordReset(t *testing.T) {
 	s, _, admin := setupService(t)
 	ctx := context.Background()
-	w, err := s.CreateWorker(ctx, admin, WorkerInput{Username: "worker.one", Name: "Worker", EmployeeNo: "EMP-1", Password: "Worker-password-1234"})
+	w, err := s.CreateWorker(ctx, admin, WorkerInput{Username: "worker.one", Name: "Worker", EmployeeNo: "EMP-1", Password: "Worker-password-1234", Email: "worker@example.com", Phone: "+66812345678"})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -41,7 +41,16 @@ func TestHTTPAuthAndRoles(t *testing.T) {
 		t.Fatal("token response cacheable")
 	}
 	request("POST", "/admin/workers", `{"username":"worker.one","password":"Worker-password-1234","name":"Worker","employee_no":"EMP-1","role":"admin"}`, adminLogin.AccessToken, 400)
-	request("POST", "/admin/workers", `{"username":"worker.one","password":"Worker-password-1234","name":"Worker","employee_no":"EMP-1"}`, adminLogin.AccessToken, 201)
+	request("POST", "/admin/workers", `{"username":"worker.one","password":"Worker-password-1234","name":"Worker","employee_no":"EMP-1"}`, adminLogin.AccessToken, 400)
+	w = request("POST", "/admin/workers", `{"username":"worker.one","password":"Worker-password-1234","name":"Worker","employee_no":"EMP-1","email":"worker@example.com","phone":"+66 81 234 5678"}`, adminLogin.AccessToken, 201)
+	var created Worker
+	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil || created.Phone == nil || *created.Phone != "+66812345678" {
+		t.Fatal("contact response missing or not normalized")
+	}
+	for _, body := range []string{`{"email":null}`, `{"phone":null,"position":"Lathe"}`, `{"email":" "}`, `{"phone":"abc"}`, `{"email":"bad"}`, `{"email":"worker@example.com","role":"admin"}`} {
+		request("PATCH", "/admin/workers/"+created.ID, body, adminLogin.AccessToken, 400)
+	}
+	request("PATCH", "/admin/workers/"+created.ID, `{"phone":"+1 (202) 555-0123"}`, adminLogin.AccessToken, 200)
 	w = request("POST", "/auth/login", `{"username":"worker.one","password":"Worker-password-1234"}`, "", 200)
 	var workerLogin LoginResult
 	_ = json.Unmarshal(w.Body.Bytes(), &workerLogin)

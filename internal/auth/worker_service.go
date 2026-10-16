@@ -35,11 +35,19 @@ func (s *Service) CreateWorker(ctx context.Context, actor Account, input WorkerI
 	if err = validatePassword(input.Password); err != nil {
 		return Worker{}, err
 	}
+	email, err := normalizeEmail(input.Email)
+	if err != nil {
+		return Worker{}, err
+	}
+	phone, err := normalizePhone(input.Phone)
+	if err != nil {
+		return Worker{}, err
+	}
 	hash, err := s.hasher.Hash(ctx, input.Password)
 	if err != nil {
 		return Worker{}, err
 	}
-	return s.repo.CreateWorker(ctx, NewStaff{Account: Account{ID: uuid.NewString(), PersonID: uuid.NewString(), Username: username, Name: name, PasswordHash: hash, Role: RoleWorker, Active: true}, EmployeeNo: employee, Position: input.Position})
+	return s.repo.CreateWorker(ctx, NewStaff{Account: Account{ID: uuid.NewString(), PersonID: uuid.NewString(), Username: username, Name: name, PasswordHash: hash, Role: RoleWorker, Active: true}, EmployeeNo: employee, Position: input.Position, Email: email, Phone: phone})
 }
 func (s *Service) ListWorkers(ctx context.Context, actor Account, limit, offset int) ([]Worker, error) {
 	if err := requireAdmin(actor); err != nil {
@@ -67,6 +75,20 @@ func (s *Service) UpdateWorker(ctx context.Context, actor Account, id string, in
 		return Worker{}, err
 	}
 	changes := WorkerChanges{Active: input.Active}
+	if input.Email != nil {
+		v, err := normalizeEmail(*input.Email)
+		if err != nil {
+			return Worker{}, err
+		}
+		changes.Email = &v
+	}
+	if input.Phone != nil {
+		v, err := normalizePhone(*input.Phone)
+		if err != nil {
+			return Worker{}, err
+		}
+		changes.Phone = &v
+	}
 	if input.Username != nil {
 		v, err := normalizeUsername(*input.Username)
 		if err != nil {
@@ -104,7 +126,7 @@ func (s *Service) UpdateWorker(ctx context.Context, actor Account, id string, in
 		}
 		changes.PasswordHash = &v
 	}
-	if changes.Active == nil && changes.Username == nil && changes.Name == nil && changes.EmployeeNo == nil && changes.Position == nil && changes.PasswordHash == nil {
+	if changes.Email == nil && changes.Phone == nil && changes.Active == nil && changes.Username == nil && changes.Name == nil && changes.EmployeeNo == nil && changes.Position == nil && changes.PasswordHash == nil {
 		return Worker{}, fmt.Errorf("%w: at least one field required", ErrInvalidInput)
 	}
 	return s.repo.UpdateWorker(ctx, id, changes)
