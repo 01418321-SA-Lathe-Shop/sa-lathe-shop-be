@@ -53,7 +53,7 @@ func TestQuotationIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w, err := authentication.CreateWorker(ctx, admin, auth.WorkerInput{Username: "quote_worker", Password: password, Name: "Worker", EmployeeNo: "QUOTE-W"})
+	w, err := authentication.CreateWorker(ctx, admin, auth.WorkerInput{Username: "quote_worker", Password: password, Name: "Worker", EmployeeNo: "QUOTE-W", Email: "worker@example.com", Phone: "+66812345678"})
 	if err != nil {
 		t.Fatal(err)
 	}

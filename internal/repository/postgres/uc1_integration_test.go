@@ -65,7 +65,7 @@ func TestUC1Integration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = authentication.CreateWorker(ctx, adminLogin.Account, auth.WorkerInput{Username: "uc1_worker", Password: password, Name: "Worker", EmployeeNo: "UC1-W"})
+	_, err = authentication.CreateWorker(ctx, adminLogin.Account, auth.WorkerInput{Username: "uc1_worker", Password: password, Name: "Worker", EmployeeNo: "UC1-W", Email: "worker@example.com", Phone: "+66812345678"})
 	if err != nil {
 		t.Fatal(err)
 	}

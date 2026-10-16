@@ -35,12 +35,30 @@ try {
  $s3Address=(docker compose @composeArgs port s3 8333).Trim()
  $env:PHASE4_DATABASE_URL='postgres://sa_lathe_shop:'+$env:DB_PASSWORD+'@'+$dbAddress+'/sa_lathe_shop_phase4_test?sslmode=disable'
  $env:TEST_S3_ENDPOINT='http://'+$s3Address
+ go run -tags postgres github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.0 -path migrations -database $env:PHASE4_DATABASE_URL up 5
+ if($LASTEXITCODE -ne 0){throw 'Pre-contact migrations failed'}
+ # Seed only a legacy profile in this newly-created test DB, never a real account.
+ docker compose @composeArgs exec -T postgres psql -v ON_ERROR_STOP=1 -U sa_lathe_shop -d sa_lathe_shop_phase4_test -c "INSERT INTO person(id,name) VALUES('00000000-0000-0000-0000-000000000006','Legacy fixture'); INSERT INTO worker(person_id,employee_no) VALUES('00000000-0000-0000-0000-000000000006','LEGACY-6');"
+ if($LASTEXITCODE -ne 0){throw 'Legacy fixture failed'}
  go run -tags postgres github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.0 -path migrations -database $env:PHASE4_DATABASE_URL up
  if($LASTEXITCODE -ne 0){throw 'Phase 4 migrations failed'}
  go run -tags postgres github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.0 -path migrations -database $env:PHASE4_DATABASE_URL down 1
  if($LASTEXITCODE -ne 0){throw 'Empty migration rollback failed'}
  go run -tags postgres github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.0 -path migrations -database $env:PHASE4_DATABASE_URL up
  if($LASTEXITCODE -ne 0){throw 'Migration reapply failed'}
+ $legacyProbe=@'
+DO $$ BEGIN
+ IF NOT EXISTS(SELECT 1 FROM person JOIN worker ON worker.person_id=person.id WHERE person.id='00000000-0000-0000-0000-000000000006' AND email IS NULL AND phone IS NULL) THEN
+  RAISE EXCEPTION 'Legacy contacts were changed or deleted';
+ END IF;
+END $$;
+UPDATE worker SET position='Legacy retained' WHERE person_id='00000000-0000-0000-0000-000000000006';
+UPDATE person SET email='legacy@example.com',phone='+66812345678' WHERE id='00000000-0000-0000-0000-000000000006';
+DELETE FROM worker WHERE person_id='00000000-0000-0000-0000-000000000006';
+DELETE FROM person WHERE id='00000000-0000-0000-0000-000000000006';
+'@
+ $legacyProbe | docker compose @composeArgs exec -T postgres psql -v ON_ERROR_STOP=1 -U sa_lathe_shop -d sa_lathe_shop_phase4_test
+ if($LASTEXITCODE -ne 0){throw 'Legacy Worker preservation/backfill probe failed'}
  docker compose @composeArgs exec -T postgres psql -U sa_lathe_shop -d sa_lathe_shop_phase4_test -c 'CREATE DATABASE sa_lathe_shop_phase3_test;'
  if($LASTEXITCODE -ne 0){throw 'Staff regression DB creation failed'}
  $env:TEST_DATABASE_URL='postgres://sa_lathe_shop:'+$env:DB_PASSWORD+'@'+$dbAddress+'/sa_lathe_shop_phase3_test?sslmode=disable'
@@ -83,6 +101,16 @@ try {
   $workerLoginBody=@{username='uc1_worker';password=$env:TEST_ADMIN_PASSWORD}|ConvertTo-Json
   $workerLogin=Invoke-RestMethod -Method Post -Uri ($apiAddress+'/auth/login') -ContentType 'application/json' -Body $workerLoginBody
   $workerHeaders=@{Authorization='Bearer '+$workerLogin.access_token}
+  # Existing auth regression creates this Admin and Worker in the disposable DB.
+  $adminBody=@{username='uc1_admin';password=$env:TEST_ADMIN_PASSWORD}|ConvertTo-Json
+  $adminLogin=Invoke-RestMethod -Method Post -Uri ($apiAddress+'/auth/login') -ContentType 'application/json' -Body $adminBody
+  $adminHeaders=@{Authorization='Bearer '+$adminLogin.access_token}
+  $workers=Invoke-RestMethod -Uri ($apiAddress+'/admin/workers') -Headers $adminHeaders
+  $contactWorker=$workers.items|Where-Object username -eq 'uc1_worker'|Select-Object -First 1
+  if($contactWorker.email -ne 'worker@example.com' -or $contactWorker.phone -ne '+66812345678'){throw 'Docker Worker contact read failed'}
+  $contactBody=@{email='updated.worker@example.com';phone='+1 (202) 555-0123'}|ConvertTo-Json
+  $updatedWorker=Invoke-RestMethod -Method Patch -Uri ($apiAddress+'/admin/workers/'+$contactWorker.id) -Headers $adminHeaders -ContentType 'application/json' -Body $contactBody
+  if($updatedWorker.email -ne 'updated.worker@example.com' -or $updatedWorker.phone -ne '+12025550123'){throw 'Docker Worker contact update failed'}
   $estimateBody=@{material_cost='0.01';labor_cost='0.01'}|ConvertTo-Json
   $estimate=Invoke-RestMethod -Method Post -Uri ($apiAddress+'/quotations/estimate') -Headers $workerHeaders -ContentType 'application/json' -Body $estimateBody
   if($estimate.minimum_price -ne '0.04'){throw 'Docker minimum price rounding failed'}
@@ -109,6 +137,7 @@ try {
  docker compose @composeArgs stop api worker
  if($LASTEXITCODE -ne 0){throw 'Graceful container shutdown failed'}
  Write-Output 'PHASE6_VERIFICATION_PASSED'
+ Write-Output 'WORKER_CONTACTS_VERIFICATION_PASSED'
 } finally {
  # This unique Compose project and its fresh test volumes are the exact targets.
  docker compose @composeArgs down -v

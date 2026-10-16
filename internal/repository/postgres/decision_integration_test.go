@@ -52,7 +52,7 @@ func TestDecisionIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	worker, err := authentication.CreateWorker(ctx, admin, auth.WorkerInput{Username: "decision_worker", Password: password, Name: "Worker", EmployeeNo: "DECISION-W"})
+	worker, err := authentication.CreateWorker(ctx, admin, auth.WorkerInput{Username: "decision_worker", Password: password, Name: "Worker", EmployeeNo: "DECISION-W", Email: "worker@example.com", Phone: "+66812345678"})
 	if err != nil {
 		t.Fatal(err)
 	}

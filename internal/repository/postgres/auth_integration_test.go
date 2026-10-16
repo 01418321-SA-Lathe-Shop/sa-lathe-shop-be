@@ -134,7 +134,64 @@ func TestStaffAuthIntegration(t *testing.T) {
 	call("GET", "/auth/me", nil, "", 401, nil)
 	call("POST", "/auth/login", map[string]string{"username": "phase3_admin", "password": "invalid-test-password"}, "", 401, nil)
 	var worker auth.Worker
-	call("POST", "/admin/workers", auth.WorkerInput{Username: "phase3_worker", Name: "Worker", EmployeeNo: "P3-001", Position: "Lathe", Password: workerPassword}, adminLogin.AccessToken, 201, &worker)
+	input := auth.WorkerInput{Username: "phase3_worker", Name: "Worker", EmployeeNo: "P3-001", Position: "Lathe", Password: workerPassword, Email: "worker@example.com", Phone: "+66 81 234 5678"}
+	missing := input
+	missing.Email = ""
+	call("POST", "/admin/workers", missing, adminLogin.AccessToken, 400, nil)
+	missing = input
+	missing.Phone = ""
+	call("POST", "/admin/workers", missing, adminLogin.AccessToken, 400, nil)
+	call("POST", "/admin/workers", input, adminLogin.AccessToken, 201, &worker)
+	if worker.Email == nil || *worker.Email != input.Email || worker.Phone == nil || *worker.Phone != "+66812345678" {
+		t.Fatal("contacts did not round-trip")
+	}
+	var details auth.Worker
+	call("GET", "/admin/workers/"+worker.ID, nil, adminLogin.AccessToken, 200, &details)
+	if details.Email == nil || *details.Email != input.Email {
+		t.Fatal("detail contacts missing")
+	}
+	var workers struct {
+		Items []auth.Worker `json:"items"`
+	}
+	call("GET", "/admin/workers", nil, adminLogin.AccessToken, 200, &workers)
+	if len(workers.Items) != 1 || workers.Items[0].Phone == nil || *workers.Items[0].Phone != "+66812345678" {
+		t.Fatal("list contacts missing")
+	}
+	for _, patch := range []map[string]any{{"email": nil}, {"phone": nil, "name": "Worker"}, {"email": " "}, {"phone": "abc"}, {"email": "invalid"}} {
+		call("PATCH", "/admin/workers/"+worker.ID, patch, adminLogin.AccessToken, 400, nil)
+	}
+	call("PATCH", "/admin/workers/"+worker.ID, map[string]string{"phone": "+1 (202) 555-0123"}, adminLogin.AccessToken, 200, &details)
+	if details.Email == nil || *details.Email != input.Email || details.Phone == nil || *details.Phone != "+12025550123" {
+		t.Fatal("partial contact update failed")
+	}
+	shared := input
+	shared.Username, shared.EmployeeNo, shared.Phone = "shared_contacts", "P3-002", "+12025550123"
+	call("POST", "/admin/workers", shared, adminLogin.AccessToken, 201, nil)
+	t.Run("database_contact_constraints", func(t *testing.T) {
+		for _, sql := range []string{`UPDATE person SET email=NULL WHERE id=$1`, `UPDATE person SET phone=NULL WHERE id=$1`, `UPDATE person SET email='bad' WHERE id=$1`, `UPDATE person SET phone='abc' WHERE id=$1`} {
+			if _, e := db.pool.Exec(ctx, sql, worker.PersonID); e == nil {
+				t.Fatal("DB allowed removal/invalid contact")
+			}
+		}
+		_, e := db.CreateWorker(ctx, auth.NewStaff{Account: auth.Account{ID: uuid.NewString(), PersonID: uuid.NewString(), Username: "no_contacts", Name: "No contacts", PasswordHash: admin.PasswordHash}})
+		if !errors.Is(e, auth.ErrInvalidInput) {
+			t.Fatal("repository bypass accepted missing contacts", e)
+		}
+	})
+	t.Run("rollback_refuses_shared_contacts", func(t *testing.T) {
+		migration, e := os.ReadFile("../../../migrations/000006_worker_contacts.down.sql")
+		if e != nil {
+			t.Fatal(e)
+		}
+		tx, e := db.pool.Begin(ctx)
+		if e != nil {
+			t.Fatal(e)
+		}
+		defer tx.Rollback(ctx)
+		if _, e = tx.Exec(ctx, string(migration)); e == nil {
+			t.Fatal("rollback allowed removal of shared-contact policy")
+		}
+	})
 	workerLogin := login("phase3_worker", workerPassword)
 	call("GET", "/auth/me", nil, workerLogin.AccessToken, 200, nil)
 	call("GET", "/admin/workers", nil, workerLogin.AccessToken, 403, nil)
@@ -145,7 +202,7 @@ func TestStaffAuthIntegration(t *testing.T) {
 	t.Run("transaction_rollback", func(t *testing.T) {
 		var before, after int
 		_ = db.pool.QueryRow(ctx, `SELECT count(*) FROM person`).Scan(&before)
-		_, e := service.CreateWorker(ctx, admin, auth.WorkerInput{Username: "duplicate_employee", Name: "Not persisted", EmployeeNo: "P3-001", Password: workerPassword})
+		_, e := service.CreateWorker(ctx, admin, auth.WorkerInput{Username: "duplicate_employee", Name: "Not persisted", EmployeeNo: "P3-001", Password: workerPassword, Email: "worker@example.com", Phone: "+66812345678"})
 		if !errors.Is(e, auth.ErrConflict) {
 			t.Fatal("duplicate employee accepted")
 		}
