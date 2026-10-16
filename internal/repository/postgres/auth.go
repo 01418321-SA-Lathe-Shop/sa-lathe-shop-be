@@ -22,7 +22,7 @@ func accountRow(row pgx.Row) (auth.Account, error) {
 }
 func workerRow(row pgx.Row) (auth.Worker, error) {
 	var w auth.Worker
-	targets := append(accountTargets(&w.Account), &w.EmployeeNo, &w.Position)
+	targets := append(accountTargets(&w.Account), &w.EmployeeNo, &w.Position, &w.Email, &w.Phone)
 	err := row.Scan(targets...)
 	return w, authError(err)
 }
@@ -91,6 +91,10 @@ func insertStaff(ctx context.Context, tx pgx.Tx, input auth.NewStaff) (auth.Acco
 	if a.Role == auth.RoleAdmin {
 		_, err = tx.Exec(ctx, `INSERT INTO admin(person_id) VALUES($1)`, a.PersonID)
 	} else {
+		_, err = tx.Exec(ctx, `UPDATE person SET email=$2,phone=$3 WHERE id=$1`, a.PersonID, input.Email, input.Phone)
+		if err != nil {
+			return auth.Account{}, authError(err)
+		}
 		_, err = tx.Exec(ctx, `INSERT INTO worker(person_id,employee_no,position) VALUES($1,$2,$3)`, a.PersonID, input.EmployeeNo, input.Position)
 	}
 	return a, authError(err)
@@ -130,11 +134,11 @@ func (d *Database) CreateWorker(ctx context.Context, input auth.NewStaff) (auth.
 	if err != nil {
 		return auth.Worker{}, err
 	}
-	w := auth.Worker{Account: a, EmployeeNo: input.EmployeeNo, Position: input.Position}
+	w := auth.Worker{Account: a, EmployeeNo: input.EmployeeNo, Position: input.Position, Email: &input.Email, Phone: &input.Phone}
 	return w, tx.Commit(ctx)
 }
 func (d *Database) ListWorkers(ctx context.Context, limit, offset int) ([]auth.Worker, error) {
-	rows, err := d.pool.Query(ctx, `SELECT `+accountFields+`,w.employee_no,w.position FROM account a JOIN person p ON p.id=a.person_id JOIN worker w ON w.person_id=p.id WHERE a.role='worker' ORDER BY a.created_at,a.id LIMIT $1 OFFSET $2`, limit, offset)
+	rows, err := d.pool.Query(ctx, `SELECT `+accountFields+`,w.employee_no,w.position,p.email,p.phone FROM account a JOIN person p ON p.id=a.person_id JOIN worker w ON w.person_id=p.id WHERE a.role='worker' ORDER BY a.created_at,a.id LIMIT $1 OFFSET $2`, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +154,7 @@ func (d *Database) ListWorkers(ctx context.Context, limit, offset int) ([]auth.W
 	return result, rows.Err()
 }
 func (d *Database) GetWorker(ctx context.Context, id string) (auth.Worker, error) {
-	return workerRow(d.pool.QueryRow(ctx, `SELECT `+accountFields+`,w.employee_no,w.position FROM account a JOIN person p ON p.id=a.person_id JOIN worker w ON w.person_id=p.id WHERE a.id=$1 AND a.role='worker'`, id))
+	return workerRow(d.pool.QueryRow(ctx, `SELECT `+accountFields+`,w.employee_no,w.position,p.email,p.phone FROM account a JOIN person p ON p.id=a.person_id JOIN worker w ON w.person_id=p.id WHERE a.id=$1 AND a.role='worker'`, id))
 }
 func (d *Database) UpdateWorker(ctx context.Context, id string, c auth.WorkerChanges) (auth.Worker, error) {
 	tx, err := d.pool.Begin(ctx)
@@ -158,7 +162,7 @@ func (d *Database) UpdateWorker(ctx context.Context, id string, c auth.WorkerCha
 		return auth.Worker{}, err
 	}
 	defer tx.Rollback(ctx)
-	w, err := workerRow(tx.QueryRow(ctx, `SELECT `+accountFields+`,w.employee_no,w.position FROM account a JOIN person p ON p.id=a.person_id JOIN worker w ON w.person_id=p.id WHERE a.id=$1 AND a.role='worker' FOR UPDATE OF a`, id))
+	w, err := workerRow(tx.QueryRow(ctx, `SELECT `+accountFields+`,w.employee_no,w.position,p.email,p.phone FROM account a JOIN person p ON p.id=a.person_id JOIN worker w ON w.person_id=p.id WHERE a.id=$1 AND a.role='worker' FOR UPDATE OF a,p`, id))
 	if err != nil {
 		return auth.Worker{}, err
 	}
@@ -167,6 +171,12 @@ func (d *Database) UpdateWorker(ctx context.Context, id string, c auth.WorkerCha
 	}
 	if c.Name != nil {
 		w.Name = *c.Name
+	}
+	if c.Email != nil {
+		w.Email = c.Email
+	}
+	if c.Phone != nil {
+		w.Phone = c.Phone
 	}
 	if c.EmployeeNo != nil {
 		w.EmployeeNo = *c.EmployeeNo
@@ -184,7 +194,7 @@ func (d *Database) UpdateWorker(ctx context.Context, id string, c auth.WorkerCha
 	if err != nil {
 		return auth.Worker{}, authError(err)
 	}
-	_, err = tx.Exec(ctx, `UPDATE person SET name=$2,edited_at=now() WHERE id=$1`, w.PersonID, w.Name)
+	_, err = tx.Exec(ctx, `UPDATE person SET name=$2,email=$3,phone=$4,edited_at=now() WHERE id=$1`, w.PersonID, w.Name, w.Email, w.Phone)
 	if err != nil {
 		return auth.Worker{}, authError(err)
 	}
