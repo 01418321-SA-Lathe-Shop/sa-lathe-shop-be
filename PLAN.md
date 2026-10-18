@@ -93,8 +93,17 @@ The earlier documentation-only gap is now implemented as an owner-authorized aut
 
 Verification: full isolated project sa-lathe-uc3-4a16ab7c passed with PHASE6_VERIFICATION_PASSED and WORKER_CONTACTS_VERIFICATION_PASSED; resources cleaned up, real LINE disabled, no existing database touched. Publication hold was resolved by observing 7e10423 already on origin/develop. Focused follow-up commits 34fb391 through ce5a889 were pushed to origin/develop, with ce5a889 verified remotely; main remained 86d5be1. This acknowledgement is a documentation-only follow-up pushed to the same branch. See docs/WORKER_CONTACTS_VERIFICATION.md.
 
-## Phase 7 UC4 deposit and company PO — todo
-- [ ] Validate first payment and company PO, open job only when terms fulfilled.
+## Phase 7 UC4 deposit and company PO — in progress
+- [x] Owner authorized the next phase on 2026-10-18; inspect clean develop at bdf3f75 and read repository rules.
+- [x] Review backend guide, original ER, acceptance terms, private upload infrastructure and API/worker composition roots.
+- [ ] Confirm verification roles, permitted deposit amounts, deadline behavior and job cardinality; do not invent financial rules.
+- [ ] Add exact deposit/PO evidence domain, validation, audit and private signed upload/download handling.
+- [ ] Add PostgreSQL migration and transactional repository; lock request/terms/evidence and prevent duplicate job opening under retries/races.
+- [ ] Add authenticated scoped submission/review/read routes and queued job creation when all confirmed requirements are fulfilled.
+- [ ] Add any confirmed deadline handling; do not cancel pending valid evidence or add unconfirmed LINE events.
+- [ ] Verify service/HTTP rules, PostgreSQL races/rollback, S3 evidence privacy, migrations and full earlier-phase/Docker regression.
+- [ ] Update documentation, commit focused buildable groups, push to develop only and verify remote tip.
+Decision: reuse persisted UC3 terms rather than recalculating current pricing/customer policy. Files remain private object keys plus metadata; no public evidence, SQL outside repositories or floating-point money. Source ER permits several jobs per quotation, whereas the workflow only describes opening a job; ask before constraining cardinality. The original detailed Word/sequence sources are still unavailable. See docs/UC4_PLAN.md for the proposed sequence and questions. No UC4 application code is implemented yet; stop before UC5.
 ## Phase 8 UC5 stock check and reservation — todo
 - [ ] Required materials, partial reservations, shortages and row locking.
 ## Phase 9 UC6 order materials — todo
@@ -106,4 +115,4 @@ Verification: full isolated project sa-lathe-uc3-4a16ab7c passed with PHASE6_VER
 ## Phase 12 UC9 deliver and settle — todo
 - [ ] Self/third-party delivery, invoices, post-completion payments and returns.
 
-Every future phase: follow the mandatory AGENTS.md commit/push policy and docs/GIT_WORKFLOW.md. Commit focused buildable groups as work progresses, with clear purpose and relevant tests; never one giant phase commit. Update this plan, run full checks, review status/log and push each completed phase to develop first, verifying the remote tip. Main requires a new explicit owner instruction. Record blockers instead of silently leaving a finished phase unpushed. Current implementation authorization is Phase 6 only; UC4-UC9 remain unapproved. Historical push-pending notes in Phases 0-3 were resolved before Phase 4. Company decision authority is confirmed for any current active company member.
+Every future phase: follow the mandatory AGENTS.md commit/push policy and docs/GIT_WORKFLOW.md. Commit focused buildable groups as work progresses, with clear purpose and relevant tests; never one giant phase commit. Update this plan, run full checks, review status/log and push each completed phase to develop first, verifying the remote tip. Main requires a new explicit owner instruction. Record blockers instead of silently leaving a finished phase unpushed. Current implementation authorization is Phase 7 only; UC5-UC9 remain unapproved. Historical push-pending notes in Phases 0-3 were resolved before Phase 4. Company decision authority is confirmed for any current active company member.
