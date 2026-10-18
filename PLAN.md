@@ -115,8 +115,17 @@ Decision: owner confirmed both Admin/Worker review, one deposit between the roun
 - [x] Verify competing jobs, partial stock, retries, plan reductions/releases, rollback, permission isolation and earlier-phase/Docker regression.
 - [x] Update API/verification docs; focused buildable commits, develop-only push and verified remote tip.
 Decision: owner confirmed all four inventory policies. Requirements, active reservations and actual consumption remain separate. Worker plans partially allocate free stock and expose shortages without consuming on-hand quantity; reductions/releases and explicit top-ups are queued-only. Admin additions require quantity/unit cost and recompute average cost; absolute count corrections preserve cost and may not undercut reservations. Migration 000008 uses NUMERIC(18,6), database aggregate/ledger guards and immutable audits. Canonical same-key retries replay original snapshots; GET reads current state. No unit conversion, supplier order/receipt, production consumption or new LINE event was added. Both isolated runs passed; final project sa-lathe-uc5-1b78985e returned PHASE8_VERIFICATION_PASSED, then its fresh containers/volumes/network were removed. See docs/UC5_VERIFICATION.md. Focused implementation commits e9fb13a through 6e81e63 were pushed to origin/develop and 6e81e63 was verified remotely; main remained 86d5be1. This acknowledgement is a separate documentation-only develop follow-up. Stop before UC6.
-## Phase 9 UC6 order materials — todo
-- [ ] Supplier orders/items and supplier rejection flow.
+## Phase 9 UC6 order materials — in progress
+- [x] Owner authorized UC6 on 2026-10-18; inspect clean develop at 61984c3 and current repository rules.
+- [x] Review UC6 guide/role contradiction, original supplier/order ER and UC5 live shortage/reservation contract.
+- [ ] Confirm ordering roles, supplier-master ownership, job linkage, outstanding-order coverage/edit guards, supplier responses and price rounding.
+- [ ] Exact order totals/quantity validation and role/domain/mock tests; retain base units and no VAT.
+- [ ] Supplier/order/item/audit migration and transactional repository with idempotency and concurrent duplicate-order prevention.
+- [ ] Authorized supplier search/management, order creation/read/history and supplier acceptance/rejection recording; no Supplier login.
+- [ ] Integrate any confirmed UC5 plan/shortage protection without silently canceling orders or changing physical stock.
+- [ ] Verify PostgreSQL races, rejection/cancel/reorder, stale roles/versions, rollback, migrations and earlier-phase/Docker regression.
+- [ ] API/verification documentation, focused buildable commits, develop-only push and verified remote tip.
+Decision: Supplier remains external and has no account. UC6 order placement cannot add physical stock, change average cost or record payment; these are UC7. Do not conflate supplier material orders with UC4 customer PO evidence. The guide explicitly contradicts Admin-vs-Worker ordering roles and lacks job/order allocation and duplicate-incoming rules. Confirm those policies before procurement writes. No UC6 application code is implemented yet; see docs/UC6_PLAN.md. Stop before UC7.
 ## Phase 10 UC7 receive and stock — todo
 - [ ] Partial receipts, damage claims, moving average and supplier settlement.
 ## Phase 11 UC8 execute job — todo
@@ -124,4 +133,4 @@ Decision: owner confirmed all four inventory policies. Requirements, active rese
 ## Phase 12 UC9 deliver and settle — todo
 - [ ] Self/third-party delivery, invoices, post-completion payments and returns.
 
-Every future phase: follow the mandatory AGENTS.md commit/push policy and docs/GIT_WORKFLOW.md. Commit focused buildable groups as work progresses, with clear purpose and relevant tests; never one giant phase commit. Update this plan, run full checks, review status/log and push each completed phase to develop first, verifying the remote tip. Main requires a new explicit owner instruction. Record blockers instead of silently leaving a finished phase unpushed. Current implementation authorization is Phase 8 only; UC6-UC9 remain unapproved. Historical push-pending notes in Phases 0-3 were resolved before Phase 4. Company decision authority is confirmed for any current active company member.
+Every future phase: follow the mandatory AGENTS.md commit/push policy and docs/GIT_WORKFLOW.md. Commit focused buildable groups as work progresses, with clear purpose and relevant tests; never one giant phase commit. Update this plan, run full checks, review status/log and push each completed phase to develop first, verifying the remote tip. Main requires a new explicit owner instruction. Record blockers instead of silently leaving a finished phase unpushed. Current implementation authorization is Phase 9 only; UC7-UC9 remain unapproved. Historical push-pending notes in Phases 0-3 were resolved before Phase 4. Company decision authority is confirmed for any current active company member.
