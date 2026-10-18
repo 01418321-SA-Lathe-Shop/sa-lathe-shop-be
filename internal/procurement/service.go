@@ -8,6 +8,7 @@ import (
 	"net/mail"
 	"sort"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
@@ -128,7 +129,7 @@ func (s *Service) Place(ctx context.Context, a auth.Account, in OrderInput) (Ord
 		return Order{}, err
 	}
 	if in.ExpectedAt != nil {
-		v := in.ExpectedAt.UTC()
+		v := in.ExpectedAt.UTC().Truncate(time.Microsecond)
 		if v.Year() < 2000 || v.Year() > 9999 {
 			return Order{}, req.ErrInvalidInput
 		}

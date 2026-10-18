@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestHTTPGuardBeforeParsing(t *testing.T) {
@@ -37,6 +38,8 @@ func TestFlexiblePlacementCanonicalization(t *testing.T) {
 	a := auth.Account{ID: uuid.NewString(), Role: auth.RoleAdmin, Active: true}
 	first, second := uuid.NewString(), uuid.NewString()
 	in := OrderInput{IdempotencyKey: uuid.NewString(), SupplierID: uuid.NewString(), JobIDs: []string{second, first}, Lines: []LineInput{{MaterialID: uuid.NewString(), Quantity: decimal("9999"), UnitCost: decimal("1")}}}
+	expected := time.Date(2026, 11, 1, 9, 0, 0, 123456789, time.FixedZone("Bangkok", 7*60*60))
+	in.ExpectedAt = &expected
 	if _, err := s.Place(context.Background(), a, in); err != nil {
 		t.Fatal(err)
 	}
@@ -45,6 +48,9 @@ func TestFlexiblePlacementCanonicalization(t *testing.T) {
 	}
 	if in.JobIDs[0] != second {
 		t.Fatal("mutated caller slice")
+	}
+	if spy.input.ExpectedAt.Location() != time.UTC || spy.input.ExpectedAt.Nanosecond() != 123456000 || in.ExpectedAt.Nanosecond() != 123456789 {
+		t.Fatal("expected_at precision/caller mutation")
 	}
 	in.JobIDs = nil
 	if _, err := s.Place(context.Background(), a, in); err != nil {

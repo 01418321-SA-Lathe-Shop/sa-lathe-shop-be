@@ -159,7 +159,7 @@ func (d *Database) ListOrders(ctx context.Context, actor, jobID string, limit, o
 	if err = inventoryActor(ctx, tx, actor, "admin"); err != nil {
 		return nil, err
 	}
-	rows, err := tx.Query(ctx, `SELECT `+orderDocument+` FROM material_order o WHERE ($1='' OR EXISTS(SELECT 1 FROM material_order_job j WHERE j.order_id=o.id AND j.job_id::text=$1)) ORDER BY o.created_at DESC,o.id DESC LIMIT $2 OFFSET $3`, jobID, limit, offset)
+	rows, err := tx.Query(ctx, `SELECT `+orderDocument+` FROM material_order o WHERE ($1='' OR EXISTS(SELECT 1 FROM material_order_job j WHERE j.order_id=o.id AND j.job_id=NULLIF($1,'')::uuid)) ORDER BY o.created_at DESC,o.id DESC LIMIT $2 OFFSET $3`, jobID, limit, offset)
 	if err != nil {
 		return nil, err
 	}

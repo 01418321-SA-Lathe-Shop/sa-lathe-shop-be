@@ -31,6 +31,9 @@ func TestExactTotals(t *testing.T) {
 	if _, _, err = Totals([]LineInput{{Quantity: decimal("999999999999"), UnitCost: decimal("999999999999")}}); err == nil {
 		t.Fatal("overflow accepted")
 	}
+	if _, _, err = Totals([]LineInput{{Quantity: decimal("999999999999"), UnitCost: decimal("9999")}, {Quantity: decimal("999999999999"), UnitCost: decimal("9999")}}); err == nil {
+		t.Fatal("sum overflow accepted")
+	}
 	if _, _, err = Totals([]LineInput{{Quantity: decimal("0"), UnitCost: decimal("1")}}); err == nil {
 		t.Fatal("zero quantity accepted")
 	}

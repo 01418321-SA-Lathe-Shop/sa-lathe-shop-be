@@ -2,9 +2,9 @@
 
 The original README.md is preserved. This document is the backend runbook.
 
-Phase 4 UC1 customer registration, requests, private uploads and notifications
-are implemented; see UC1.md and UC1_VERIFICATION.md. UC2-UC9 remain future phases.
-Apply all migrations (including 000003) before running the new API and worker.
+Staff auth and UC1-UC6 are implemented; see AUTH.md and UC1.md through UC6.md.
+UC7-UC9 remain unapproved. Apply all migrations through 000009 before running
+the current API and worker. Supplier orders are Admin-only and do not receive stock.
 Requires Go 1.25+, Git, PowerShell 7+, Docker Desktop with Linux containers.
 
 Dependencies: chi/v5 and chi/cors; pgx/v5; golang-migrate v4. Standard library config,
@@ -28,12 +28,14 @@ failures return {"error":{"code":"...","message":"...","request_id":"..."}}.
 
 Tasks read .env as data (never execute it); explicit process variables win.
 Direct go run uses process variables only. Use ./tasks.ps1 worker in a separate
-terminal for the idle worker skeleton. It checks DB and waits for shutdown;
-outbox schema and notification dispatch are future features.
+terminal for PostgreSQL outbox/inbox notification dispatch and UC4 expiry scans.
+Real LINE delivery is disabled by default; configure it only with approval for
+the specific Admin recipient. There is no new outbound UC6 event.
 
 PostgreSQL listens on localhost:55432; SeaweedFS S3 on localhost:19000.
 The local S3 provider creates the configured private bucket with supplied
-credentials. Signed upload/download implementations are future feature phases.
+credentials. UC1/UC4 evidence uses authorized private signed upload/download URLs;
+the database contains object keys/metadata, never file bytes or permanent links.
 MinIO registry images were unavailable; the official SeaweedFS GHCR image is
 pinned by digest. Docker Go/Alpine images use the public ECR official-image
 mirror because Docker Hub blob downloads timed out on this machine.
@@ -45,7 +47,9 @@ Migrations: ./tasks.ps1 migrate-up; ./tasks.ps1 migrate-version;
 ./tasks.ps1 migrate-down (one migration only; avoid production rollback).
 The pinned golang-migrate CLI v4.19.0 runs with the postgres build tag; the first
 run fetches the tool. Migration 000001 is intentionally empty; migration 000002
-adds staff identity and revocable sessions. No shop UC tables exist yet.
+adds staff identity and revocable sessions. Migrations 000003-000009 add UC1-UC6.
+Never run down against populated business data without a planned recovery path;
+procurement down refuses to discard suppliers, commitments or audit history.
 
 /health is liveness; /health/ready checks PostgreSQL with a bounded timeout and
 returns HTTP 503 if unavailable. API can start while DB is unavailable. Worker
@@ -54,3 +58,21 @@ Shutdown uses SIGTERM in containers or Ctrl+C locally.
 
 Hosting is undecided. DB SSL disable is for local development only; supply your
 environment's connection/TLS settings when a hosting target is selected.
+
+## Disposable full verification
+
+```powershell
+go build ./...
+go vet ./...
+./tasks.ps1 lint
+./scripts/verify-uc6.ps1
+```
+
+verify-uc6.ps1 uses a unique Compose project, random process-only credentials,
+an empty temporary Compose environment and seven fresh dedicated test databases.
+It does not read local .env or migrate existing data. It verifies migrations,
+real PostgreSQL/S3 tests, earlier auth/UC regressions, Docker API/worker and UC6
+HTTP behavior, then removes only that project's new containers/volumes/network.
+LINE is disabled for the Docker flow; previous process values are restored.
+See UC6_VERIFICATION.md. Ordinary go test ./... skips database integration when
+the named dedicated test environment variables are absent.
