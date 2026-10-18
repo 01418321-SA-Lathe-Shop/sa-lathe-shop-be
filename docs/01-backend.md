@@ -31,6 +31,15 @@
 
 ## Project summary
 
+> UC7 owner confirmations (2026-10-19) override older receiving/payment assumptions:
+> Admin and Worker receive/manage replacement-only claims. Supplier prices, stock
+> costs, credit/payment details and payment evidence are Admin-only. Accepted orders,
+> partial receipts/no excess. Damaged quantities stay outstanding until replaced by
+> good units. Admin-entered credit days start at full good receipt; one full bank/
+> cash settlement afterwards. Bank evidence required; cash photo/proof optional.
+> No default credit days, refund/write-off, auto-reservation or supplier notification.
+> Implementation is in progress; see UC7.md and UC7_VERIFICATION.md for actual status.
+
 > UC6 owner confirmations (2026-10-18): only Admin manages suppliers and supplier
 > orders, including reads, responses and cancellation. Option A: zero/many flexible
 > job references, no fixed allocation or shortage cap; over-ordering is allowed.

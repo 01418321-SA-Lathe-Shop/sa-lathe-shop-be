@@ -15,6 +15,14 @@ UC5 required materials, stock check and reservation; UC6 supplier orders;
 UC7 partial receipts, damage and stock/cost updates; UC8 production/material
 usage/photos; UC9 delivery/invoice/payment, with payment after completion allowed.
 
+UC7 confirmed 2026-10-19: Admin/Worker receive and manage claims; financial details
+and evidence stay Admin-only. Receive accepted orders partially, no excess. Damaged
+units remain outstanding until good replacements; no refund/write-off. Admin enters
+credit days per order, counted from full good receipt, with no default. One full
+cash/bank settlement only after full receipt. Bank evidence required, cash receipt/
+photo optional. Only good stock affects weighted average; no automatic reservation.
+See UC7.md. Phase 10 is in progress, not yet integration-verified; UC8/UC9 unapproved.
+
 UC6 confirmed 2026-10-18: Admin only manages suppliers/orders, responses and reads.
 One supplier per order; multiple materials and flexible zero/many job references
 (owner selected A). Allow consolidated orders exceeding shortages and general

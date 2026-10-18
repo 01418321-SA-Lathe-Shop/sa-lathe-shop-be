@@ -1,5 +1,11 @@
 # UC6 — Supplier material orders
 
+> UC7 is being implemented separately; see UC7.md and UC7_VERIFICATION.md for
+> its pending integration status. Worker receiving/claim access uses limited
+> /receiving/orders views, not the Admin-only full procurement routes below.
+> UC7 extends receipt statuses/ledger and cancellation protection while preserving
+> these placed-order snapshots, prices and flexible references.
+
 Apply migration **000009** before deploying this API. Handler -> Service ->
 Repository remains unchanged; only the PostgreSQL repository runs SQL. No new
 dependency, cache, queue, Supplier login or public file access was added.

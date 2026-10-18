@@ -37,7 +37,12 @@ GET /health is liveness. GET /health/ready checks PostgreSQL.
 To run API and worker in Docker: docker compose --profile app up --build -d.
 Staff/customer auth, request uploads and notification dispatch are available.
 Quotation and customer-decision code passed real PostgreSQL/S3/regression/Docker verification.
-Apply migrations through 000009 before deploying the current API/worker. UC7-UC9 remain unapproved.
+UC1-UC6 baseline uses migrations through 000009; the UC7 code below needs 000010.
+UC7 is now authorized and implementation is in progress: receiving/claims for
+Admin/Worker, financial details/settlement/evidence for Admin only. Its code needs
+migration 000010 and pending real PostgreSQL/S3/Docker verification before phase
+completion. See [UC7 contract](docs/UC7.md), [plan](docs/UC7_PLAN.md) and
+[verification status](docs/UC7_VERIFICATION.md). UC8-UC9 remain unapproved.
 
 Worker management now requires email and phone on create, validates email syntax,
 supports international phone formatting and returns contacts on Worker reads.

@@ -1,5 +1,11 @@
 # UC5 — Material requirements, stock and reservations
 
+> UC7 permission clarification (2026-10-19): Worker HTTP inventory search now
+> omits avg_cost; Worker movement reads omit costs, private payload and free-form
+> stock-adjustment reasons. Quantities/plans remain accessible. Admin retains
+> financial fields. This prevents the existing endpoints bypassing Admin-only
+> supplier finance. No reservation/business calculation changes; see UC7.md.
+
 Apply migration 000008 before deploying the API. Existing UC4 jobs receive
 material_plan_version=0; no stock or historical material usage is fabricated.
 Keep the separate worker running for the existing UC4/notification functions.
