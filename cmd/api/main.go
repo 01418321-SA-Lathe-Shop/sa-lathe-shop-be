@@ -13,6 +13,7 @@ import (
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/payment"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/platform/httpserver"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/platform/objectstore"
+	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/procurement"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/quotation"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/repository/postgres"
 	req "github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/request"
@@ -83,6 +84,7 @@ func main() {
 		quotation.NewDecisionHandler(quotation.NewDecisionService(db)).Routes(r, authHandler.Authenticate)
 		payment.NewHandler(payment.NewService(db)).Routes(r, authHandler.Authenticate)
 		material.NewHandler(material.NewService(db)).Routes(r, authHandler.Authenticate)
+		procurement.NewHandler(procurement.NewService(db)).Routes(r, authHandler.Authenticate)
 	})
 	if err := httpserver.Run(ctx, logger, cfg.HTTPAddr, cfg.ShutdownTimeout, router); err != nil {
 		logger.Error("api stopped", "error", err)
