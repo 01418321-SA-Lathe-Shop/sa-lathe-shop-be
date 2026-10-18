@@ -1,7 +1,7 @@
 # SA-Lathe-Shop-BE backend
 
 Go + chi API and separate worker with PostgreSQL and private S3-compatible
-local storage. Scaffolding phases 0-2, staff auth and UC1-UC5 (Phases 3-8) are complete.
+local storage. Scaffolding phases 0-2, staff auth and UC1-UC6 (Phases 3-9) are complete.
 
 The existing README.md has been preserved exactly.
 
@@ -17,6 +17,8 @@ The existing README.md has been preserved exactly.
 - [Phase 7 verification](docs/UC4_VERIFICATION.md)
 - [UC5 catalog, stock and material reservations](docs/UC5.md)
 - [Phase 8 verification](docs/UC5_VERIFICATION.md)
+- [UC6 Admin supplier orders and flexible job references](docs/UC6.md)
+- [Phase 9 verification](docs/UC6_VERIFICATION.md)
 - [Architecture and open questions](AGENTS.md)
 - [Phased plan](PLAN.md)
 - [Verification and commands run](docs/VERIFICATION.md)
@@ -35,7 +37,7 @@ GET /health is liveness. GET /health/ready checks PostgreSQL.
 To run API and worker in Docker: docker compose --profile app up --build -d.
 Staff/customer auth, request uploads and notification dispatch are available.
 Quotation and customer-decision code passed real PostgreSQL/S3/regression/Docker verification.
-Apply migrations through 000008 before deploying the current API/worker. UC6-UC9 remain unapproved.
+Apply migrations through 000009 before deploying the current API/worker. UC7-UC9 remain unapproved.
 
 Worker management now requires email and phone on create, validates email syntax,
 supports international phone formatting and returns contacts on Worker reads.

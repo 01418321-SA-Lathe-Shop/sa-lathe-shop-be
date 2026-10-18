@@ -15,6 +15,19 @@ UC5 required materials, stock check and reservation; UC6 supplier orders;
 UC7 partial receipts, damage and stock/cost updates; UC8 production/material
 usage/photos; UC9 delivery/invoice/payment, with payment after completion allowed.
 
+UC6 confirmed 2026-10-18: Admin only manages suppliers/orders, responses and reads.
+One supplier per order; multiple materials and flexible zero/many job references
+(owner selected A). Allow consolidated orders exceeding shortages and general
+replenishment. Do not add fixed allocations, incoming coverage or UC5 plan locks.
+Placed quantities/prices/references are immutable; cancel/recreate unreceived
+orders to change. Admin records supplier acceptance/rejection outside any Supplier
+login. Rejection cancels the unreceived order with a mandatory reason/audit.
+Round each exact line half-up to two decimals, then sum; THB/no VAT. No stock,
+reservation or average-cost effect until UC7 receiving. See UC6.md. Migration
+000009 preserves supplier/material/unit snapshots and immutable retry results.
+No supplier receiving/payment implementation or new supplier notification channel
+is authorized here; UC7-UC9 still require phase authorization.
+
 Company threshold: <= 10,000 PO/no deposit; > 10,000 PO/50% deposit.
 Individuals pay 50% first, no PO. Deposit/PO deadline is quotation acceptance
 time plus 14 days, confirmed by owner. Pricing confirmed for Phase 5: minimum

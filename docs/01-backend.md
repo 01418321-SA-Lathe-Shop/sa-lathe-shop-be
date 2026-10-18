@@ -31,13 +31,22 @@
 
 ## Project summary
 
+> UC6 owner confirmations (2026-10-18): only Admin manages suppliers and supplier
+> orders, including reads, responses and cancellation. Option A: zero/many flexible
+> job references, no fixed allocation or shortage cap; over-ordering is allowed.
+> Worker plan edits remain independent. Immutable placed quantities/prices;
+> cancel/recreate unreceived commitments. Supplier rejection cancels with reason.
+> Round each line half-up to two decimals, then sum. No stock/average-cost changes
+> until UC7 receiving. This overrides the Worker/single-job/shortage-only assumptions
+> below; see UC6.md for implemented API, states and retry/audit semantics.
+
 The system brings customer requests, quotations, production jobs, purchasing/receiving materials, inventory, delivery, and payments into one workflow. It addresses the current lack of job/payment tracking and reliable stock information. The business is not registered as a company and does not charge VAT, as confirmed by the owner.
 
 | Actor / role | Responsibilities in the workflow | Use cases |
 |---|---|---|
 | Customer (`individual` or `company`) | Submit requests and files, accept/reject quotations, submit Deposit or PO evidence, inspect delivered work, and pay | UC1, UC3, UC4, UC9 |
-| Worker (technician) | Estimate prices, check/reserve stock, order materials, receive goods/record Supplier payment, produce and issue materials, deliver/record payment | UC2, UC5–UC9 |
-| Admin | Manage Workers and order from Suppliers, as confirmed by the owner | No separate UC; UC6 names Worker as its actor |
+| Worker (technician) | Estimate prices, check/reserve stock, produce work; later receiving/delivery permissions require their phase's confirmation | UC2, UC5; UC7–UC9 pending |
+| Admin | Manage Workers, suppliers and supplier orders; procurement is Admin-only | UC6 |
 | Supplier | Accept/reject orders, deliver materials, and receive payment; an external actor | UC6, UC7 |
 
 ### UC1–UC9 workflow
@@ -161,7 +170,7 @@ The tables/data listed are entity touchpoints from the overview. Endpoints, full
 | UC3 Respond to quotation | Customer reviews and accepts/rejects; rejections 1–5 return to UC2; sixth rejection cancels | `QUOTATION`, `JOB_REQUEST` | Make rejection counting and cancellation atomic, including concurrent actions; exact error codes must be defined |
 | UC4 Record Deposit/PO | Customer submits private evidence; Admin/Worker approve/reject; open exactly one queued job after all approvals | Implemented: `term_evidence`, accepted terms, `job`, `uc4_cancellation`, private attachment references | One deposit 50-100%; acceptance plus 336h submission deadline, pending complete timely evidence protected, missing/rejected evidence expires; see UC4.md |
 | UC5 Check/reserve stock | Worker saves queued-job plans, partially reserves availability and sees remaining shortages; no automatic production/order creation | Implemented: `unit`, `material`, `job_material_requirement`, `material_reservation`, immutable catalog/stock/command audits | Request/job/material row locking, stable key order, optimistic versions and same-key retries prevent double allocation. Required minus own reserved defines shortage; see UC5.md |
-| UC6 Order materials | Worker is the UC actor; owner separately confirmed Admin can order from Suppliers; select Supplier and order shortage | `MATERIAL_ORDER`, `MATERIAL_ORDER_ITEM`, `MATERIAL`, Supplier | UC6 role is inconsistent; Supplier rejection sets `cancelled`; validations/errors must be defined |
+| UC6 Order materials | Admin only; one supplier, multiple lines and flexible many-job references; over-ordering/general replenishment allowed | supplier/audit, material_order/item/job/event, material | Confirmed option A; immutable placed lines/references; reasoned rejection/cancel, exact half-up line totals; see UC6.md |
 | UC7 Receive goods and pay Supplier | Worker receives good/defective goods, updates stock/cost, records Supplier payment | `MATERIAL_ORDER`, `MATERIAL_ORDER_ITEM`, `MATERIAL`, `STOCK_MOVEMENT`, `MATERIAL_DEFECT_LOG`, payment status | Must be atomic; actual payment methods and settlement of outstanding credit are undefined; return to UC5 is a proposal |
 | UC8 Produce | Worker starts/continues production, issues materials, records images and actual cost/time; customer return from UC9 resumes work | `JOB`, `MATERIAL_RESERVATION`, `MATERIAL`, `STOCK_MOVEMENT`, `JOB_MATERIAL_USAGE` (actual usage), files/URLs | UC8 transaction required; planned material data is unclear; validation/error codes must be defined |
 | UC9 Deliver/receive payment | Worker delivers or arranges pickup and issues invoice; Customer inspects and may pay in installments; returned work goes back to UC8 | `DELIVERY`, `INVOICE`, `PAYMENT`, `PAYMENT_ALLOCATION`, `JOB` | Applicability of 14-day terms is unclear; invoice balance/allocation and evidence validation details/error codes must be defined |
@@ -174,7 +183,7 @@ The tables/data listed are entity touchpoints from the overview. Endpoints, full
 | 14 days | Payment period is 14 days | Temporary assumption: applies to submitting Deposit/PO after quotation approval to support UC4 expiry; confirm start date and whether invoices are included |
 | Planned materials | UC5 accepts `requiredMaterials`; ER has `JOB_MATERIAL_USAGE` for actual use but no planned list per JOB | Confirm whether Worker enters required quantities each time or a planned-material table should be added per JOB |
 | Reservation/shortage | UC5: reserve available quantity and order shortage; Q6.1 calculates shortage from total reservations compared with `qty_on_hand` | Temporary proposal: calculate shortage per JOB/material and store planned quantity; review Q6.1 formula |
-| Who can order | Owner says Admin orders from Supplier; UC6 says Worker | Temporary assumption: both Admin and Worker can use UC6 until confirmed |
+| Who can order | Owner resolved UC6 role on 2026-10-18 | Admin only, including supplier masters, procurement reads and recorded responses; Worker retains UC5 |
 | `JOB_REQUEST.completed` | Exists in ER; no UC updates it; JOB is completed before delivery | Confirm whether the request becomes complete at delivery or after the invoice is fully paid |
 | Authentication | Customer/Admin/Worker must log in; ER has no account/credential details | Define provider, account table, password/session, reset flow, and linkage to `PERSON` |
 | Master data | Admin manages Workers/orders; `MATERIAL`, `UNIT`, `SUPPLIER` have no complete CRUD UC | Confirm whether Admin manages these master records |
