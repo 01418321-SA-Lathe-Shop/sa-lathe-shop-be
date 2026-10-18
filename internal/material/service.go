@@ -142,6 +142,9 @@ func (s *Service) Save(ctx context.Context, a auth.Account, id string, in PlanIn
 	if !validID(id) || !validID(in.IdempotencyKey) || in.ExpectedVersion < 0 || in.Lines == nil || len(in.Lines) > 500 {
 		return Plan{}, req.ErrInvalidInput
 	}
+	lines := make([]Requirement, len(in.Lines))
+	copy(lines, in.Lines)
+	in.Lines = lines
 	seen := map[string]bool{}
 	for i, line := range in.Lines {
 		key := strings.ToLower(line.MaterialID)

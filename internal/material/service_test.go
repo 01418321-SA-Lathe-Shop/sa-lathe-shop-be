@@ -49,3 +49,38 @@ func TestStrictInventoryJSON(t *testing.T) {
 		}
 	}
 }
+
+type planSpy struct {
+	Repository
+	Input       PlanInput
+	ReserveOnly bool
+}
+
+func (s *planSpy) ApplyPlan(_ context.Context, _ string, id string, in PlanInput, reserve bool) (Plan, error) {
+	s.Input = in
+	s.ReserveOnly = reserve
+	return Plan{JobID: id, Version: in.ExpectedVersion + 1}, nil
+}
+func TestServiceCanonicalPlanAndRecheck(t *testing.T) {
+	spy := &planSpy{}
+	service := NewService(spy)
+	worker := auth.Account{ID: uuid.NewString(), Role: auth.RoleWorker, Active: true}
+	quantity := decimal(t, "1.25")
+	jobID := uuid.NewString()
+	in := PlanInput{IdempotencyKey: uuid.NewString(), Lines: []Requirement{{MaterialID: "ffffffff-ffff-ffff-ffff-ffffffffffff", Quantity: &quantity}, {MaterialID: "00000000-0000-0000-0000-000000000001", Quantity: &quantity}}}
+	if _, err := service.Save(context.Background(), worker, jobID, in); err != nil {
+		t.Fatal(err)
+	}
+	if spy.ReserveOnly || spy.Input.Lines[0].MaterialID != "00000000-0000-0000-0000-000000000001" {
+		t.Fatal("plan was not canonicalized")
+	}
+	if in.Lines[0].MaterialID != "ffffffff-ffff-ffff-ffff-ffffffffffff" {
+		t.Fatal("service mutated the caller's plan slice")
+	}
+	if _, err := service.Reserve(context.Background(), worker, jobID, ReserveInput{IdempotencyKey: uuid.NewString(), ExpectedVersion: 1}); err != nil {
+		t.Fatal(err)
+	}
+	if !spy.ReserveOnly || spy.Input.Lines != nil {
+		t.Fatal("recheck trusted client requirements")
+	}
+}
