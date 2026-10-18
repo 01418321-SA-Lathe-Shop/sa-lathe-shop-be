@@ -22,6 +22,13 @@
 > opens after all required approvals. These override the old ER's one-to-many
 > job relationship. See UC4.md for implemented API, retry and deadline semantics.
 
+> UC5 owner confirmations (2026-10-18): Workers save/edit queued-job material plans
+> and reserve available stock with explicit shortages. Admin manages catalog and
+> audited stock additions/corrections. Reductions release excess; production locks
+> plan edits. Additions recalculate weighted-average cost; count corrections retain
+> cost and cannot reduce stock below reservations. NUMERIC(18,6), base units only.
+> See UC5.md; this resolves the older planning/master-data questions below.
+
 ## Project summary
 
 The system brings customer requests, quotations, production jobs, purchasing/receiving materials, inventory, delivery, and payments into one workflow. It addresses the current lack of job/payment tracking and reliable stock information. The business is not registered as a company and does not charge VAT, as confirmed by the owner.
@@ -153,7 +160,7 @@ The tables/data listed are entity touchpoints from the overview. Endpoints, full
 | UC2 Estimate price | Worker estimates; saves draft, sends quotation, or rejects request; may create revisions | `JOB_REQUEST`, `QUOTATION`, `QUOTATION_COST` | UC2 transaction required; 60% profit basis is unclear; other validation/errors must be defined |
 | UC3 Respond to quotation | Customer reviews and accepts/rejects; rejections 1–5 return to UC2; sixth rejection cancels | `QUOTATION`, `JOB_REQUEST` | Make rejection counting and cancellation atomic, including concurrent actions; exact error codes must be defined |
 | UC4 Record Deposit/PO | Customer submits private evidence; Admin/Worker approve/reject; open exactly one queued job after all approvals | Implemented: `term_evidence`, accepted terms, `job`, `uc4_cancellation`, private attachment references | One deposit 50-100%; acceptance plus 336h submission deadline, pending complete timely evidence protected, missing/rejected evidence expires; see UC4.md |
-| UC5 Check/reserve stock | Worker checks availability; if sufficient, proceed to UC8; if insufficient, go to UC6. UC5 says reserve what is available and order only the shortage | `MATERIAL`, `MATERIAL_RESERVATION`; no confirmed planned-material entity per JOB | Shortage formula conflicts with Q6.1; concurrency, over-reservation behavior, and error responses must be defined |
+| UC5 Check/reserve stock | Worker saves queued-job plans, partially reserves availability and sees remaining shortages; no automatic production/order creation | Implemented: `unit`, `material`, `job_material_requirement`, `material_reservation`, immutable catalog/stock/command audits | Request/job/material row locking, stable key order, optimistic versions and same-key retries prevent double allocation. Required minus own reserved defines shortage; see UC5.md |
 | UC6 Order materials | Worker is the UC actor; owner separately confirmed Admin can order from Suppliers; select Supplier and order shortage | `MATERIAL_ORDER`, `MATERIAL_ORDER_ITEM`, `MATERIAL`, Supplier | UC6 role is inconsistent; Supplier rejection sets `cancelled`; validations/errors must be defined |
 | UC7 Receive goods and pay Supplier | Worker receives good/defective goods, updates stock/cost, records Supplier payment | `MATERIAL_ORDER`, `MATERIAL_ORDER_ITEM`, `MATERIAL`, `STOCK_MOVEMENT`, `MATERIAL_DEFECT_LOG`, payment status | Must be atomic; actual payment methods and settlement of outstanding credit are undefined; return to UC5 is a proposal |
 | UC8 Produce | Worker starts/continues production, issues materials, records images and actual cost/time; customer return from UC9 resumes work | `JOB`, `MATERIAL_RESERVATION`, `MATERIAL`, `STOCK_MOVEMENT`, `JOB_MATERIAL_USAGE` (actual usage), files/URLs | UC8 transaction required; planned material data is unclear; validation/error codes must be defined |

@@ -1,7 +1,7 @@
 # Phase 8 — UC5 stock checks and reservations
 
 Owner authorized 2026-10-18. Clean develop and origin/develop at 0381004; main
-86d5be1. Started, not completed. UC6-UC9 remain unapproved. Keep Go/chi and the
+86d5be1. Implemented and verified; publication is tracked in PLAN.md. UC6-UC9 remain unapproved. Keep Go/chi and the
 Handler -> Service -> Repository boundary; PostgreSQL row locks, no cache/Redis.
 
 ## Source review
@@ -24,25 +24,29 @@ unavailable; do not invent missing business rules from unrelated documents.
 - Do not start production or implement consumption, supplier receiving, defects,
   settlement, moving-average receiving or job completion in this phase.
 
-## Decisions to confirm
+## Owner-confirmed decisions
 
 1. Persist an editable material requirement list per queued job, entered by a
-   Worker, rather than ephemeral stock-check input? Proposed yes; allocate as
+   Worker, rather than ephemeral stock-check input. Owner confirmed; allocate as
    much as available, and show shortage = max(required - this job's reserved,0).
    Rechecks preserve prior reservations rather than counting them twice.
-2. Who maintains materials/units and initial/manual stock balances? Proposed
-   Admin manages these, with a mandatory reason and immutable adjustment audit;
+2. Admin maintains materials/units and initial/manual stock balances,
+   with a mandatory reason and immutable adjustment audit;
    Workers search/read stock and manage job requirements/reservations only.
    Physical stock corrections may not go below active reservations. Supplier
    receiving and purchasing remain UC6/UC7, not hidden manual receiving here.
-3. May Workers edit/release reservations while a job is queued? Proposed yes:
+3. Workers may edit/release reservations while a job is queued:
    decreasing/removing a requirement releases the excess, increasing it reserves
    only available stock and reports shortage. No edits after production begins;
    actual usage/reconciliation is UC8. No silent job-status transition to production.
 
-These proposals are not confirmed yet. Admin's current ability to manage Worker
-accounts does not imply unlimited inventory-write permissions. Any required
-valuation/opening-cost policy must be explicit before implementing stock writes.
+4. Owner also confirmed: stock additions require quantity/unit cost and recalculate
+   weighted-average cost; count corrections retain the current average cost.
+
+The owner replied yes to all four policies. Exact quantities and unit costs use
+NUMERIC(18,6); quantities are never rounded silently. Weighted averages round
+half-up to six decimal places. The Admin inventory permissions above are explicit,
+not inferred from Worker-account management. Base-unit conversion is not in scope.
 
 ## Implementation groups after confirmation
 
@@ -60,3 +64,11 @@ valuation/opening-cost policy must be explicit before implementing stock writes.
    plus staff/Worker-contact/UC1-UC4 regression. No real LINE sends.
 6. API guide, verification record, PLAN completion and separate buildable commits;
    push completed phase to develop, verify remote, stop before UC6. No main push.
+
+## Result
+
+Initial full verification passed in sa-lathe-uc5-cf5d13cb. Expanded final run
+sa-lathe-uc5-1b78985e passed with PHASE8_VERIFICATION_PASSED, including identical
+same-job retry races and non-mutating service canonicalization. Both projects'
+fresh containers, volumes and networks were removed; no existing database or
+real LINE recipient was touched. See UC5.md and UC5_VERIFICATION.md.

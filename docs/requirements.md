@@ -73,3 +73,14 @@ private attachment references, immutable submissions/review audit, actual approv
 deposit/balance and deadline-cancellation audit. No public files, positive-payment
 claims for zero totals, final invoice or new LINE event is inferred. See UC4.md,
 UC4_VERIFICATION.md and PLAN.md. UC5-UC9 remain unapproved.
+
+Phase 8 UC5 authorized 2026-10-18. Owner confirmed: Worker-editable material
+requirements per queued job, partial reservations with visible shortages; Admin
+manages units/materials and audited stock additions/corrections; queued reductions
+release excess, increases reserve available stock, production locks edits; additions
+recalculate weighted-average cost from quantity/unit cost, count corrections
+retain existing cost. Corrections cannot undercut reservations. Quantities and
+per-unit costs use NUMERIC(18,6); entered quantities never round silently.
+Migration 000008 separates plans/reservations from actual consumption. Physical
+stock is unchanged by reserving/releasing. No unit conversion or UC6-UC9 feature
+is inferred. API/verification: UC5.md and UC5_VERIFICATION.md; completion in PLAN.md.

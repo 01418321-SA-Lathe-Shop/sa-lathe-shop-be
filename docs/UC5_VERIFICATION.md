@@ -28,7 +28,7 @@ Real LINE delivery is disabled. Additional service/mocking tests also passed.
 - Admin catalog creation, case-insensitive unit uniqueness and literal substring
   material search work; unknown unit-change JSON fields are rejected.
 - Concurrent identical stock additions create one movement and one balance change.
-  Changed-key payload retries conflict; count corrections preserve average cost.
+  Changed payloads with the same key conflict; count corrections preserve average cost.
 - Two competing queued jobs requesting 15 each against 20 stock reserve only 20
   in total, without changing physical on-hand quantity.
 - Reducing one plan releases excess; another job's explicit recheck can top up.
