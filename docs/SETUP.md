@@ -61,6 +61,11 @@ environment's connection/TLS settings when a hosting target is selected.
 
 ## Disposable full verification
 
+UC7 implementation is in progress. It adds migration 000010 and
+./scripts/verify-uc7.ps1 (eight fresh test databases). See UC7_VERIFICATION.md for
+the current Docker recovery/verification status before deploying its API. Worker
+inventory endpoints now redact costs; Admin retains them. UC8-UC9 remain unapproved.
+
 ```powershell
 go build ./...
 go vet ./...

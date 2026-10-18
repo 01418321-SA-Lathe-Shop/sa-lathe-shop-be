@@ -190,6 +190,10 @@ BEGIN
 END $$;
 CREATE FUNCTION check_material_receipt() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
+ IF NOT EXISTS(SELECT 1 FROM material_order_event e JOIN material_order o ON o.id=e.order_id WHERE e.id=NEW.id AND e.order_id=NEW.order_id AND e.action='receive' AND e.version=o.version) THEN
+  RAISE EXCEPTION 'Receipt requires its current order event' USING ERRCODE='23514'; END IF;
+ IF EXISTS(SELECT 1 FROM material_claim c JOIN material_receipt_line src ON src.id=c.source_line_id WHERE src.order_id=NEW.order_id AND c.replaced<>(SELECT COALESCE(sum(l.good),0) FROM material_receipt_line l WHERE l.replacement_claim_id=c.id)) THEN
+  RAISE EXCEPTION 'Claim totals must reconcile with good replacements' USING ERRCODE='23514'; END IF;
  IF NOT EXISTS(SELECT 1 FROM material_receipt_line WHERE receipt_id=NEW.id) OR EXISTS(
   SELECT 1 FROM material_receipt_line l WHERE l.receipt_id=NEW.id AND
   ((l.good>0 AND NOT EXISTS(SELECT 1 FROM stock_movement s WHERE s.receipt_line_id=l.id))
