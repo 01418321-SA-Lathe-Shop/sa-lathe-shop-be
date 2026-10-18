@@ -104,8 +104,17 @@ Verification: full isolated project sa-lathe-uc3-4a16ab7c passed with PHASE6_VER
 - [x] Verify service/HTTP rules, PostgreSQL races/rollback, S3 evidence privacy, migrations and full earlier-phase/Docker regression.
 - [x] Update documentation, commit focused buildable groups, push to develop only and verify remote tip.
 Decision: owner confirmed both Admin/Worker review, one deposit between the rounded 50% minimum and 100%, later review of timely complete evidence, automatic cancellation for missing evidence, and exactly one queued job per approved quotation/request. This overrides the old ER's one-to-many job relationship. Reuse persisted UC3 terms and private ready attachments; technical upload completion is not payment verification. Migration 000007 adds term_evidence, job and uc4_cancellation with constraints and immutable review audit. Request row locks serialize retries, opposite reviews, expiry and job opening. Actual approved deposit determines the job balance, not the minimum deposit. Both isolated runs passed; expanded final project sa-lathe-uc4-92badc31 returned PHASE7_VERIFICATION_PASSED, and its test containers/volumes/network were removed. See docs/UC4_VERIFICATION.md. No real LINE messages or existing database changes. Focused commits 57f3555 through 754210b were pushed to origin/develop and 754210b was verified remotely; main remained 86d5be1. This acknowledgement is a separate documentation-only develop follow-up. Stop before UC5. Original detailed Word/sequence sources remain unavailable.
-## Phase 8 UC5 stock check and reservation — todo
-- [ ] Required materials, partial reservations, shortages and row locking.
+## Phase 8 UC5 stock check and reservation — in progress
+- [x] Owner authorized the next phase on 2026-10-18; inspect clean develop and verified remote tip 0381004.
+- [x] Read repository rules, UC5 guide/open questions, original stock ER and current queued-job schema.
+- [ ] Confirm persisted editable job requirements, master-data/stock-adjustment permissions and queued reservation edit/release policy.
+- [ ] Exact quantity domain, shortage/allocation policy and mock tests; no floats or speculative unit conversion.
+- [ ] Material/unit/requirement/reservation and audit migration, with non-negative available stock and FK/uniqueness guards.
+- [ ] Transactional repository: lock jobs and material rows in deterministic order; prevent over-reservation and duplicate retries.
+- [ ] Authorized material search, job material-plan/stock-check/reservation endpoints and any approved master/stock commands.
+- [ ] Verify competing jobs, partial stock, retries, plan reductions/releases, rollback, permission isolation and earlier-phase/Docker regression.
+- [ ] Update API/verification docs; focused buildable commits, develop-only push and verified remote tip.
+Decision: requirements, active reservations and actual consumption are different facts. UC5 reserves available stock and exposes the remaining shortage; it must not decrement physical on-hand stock as if production happened. Master-data ownership and editable requirement/release rules remain explicitly open in the guide, so ask before assigning privileges or adding stock adjustments. No UC5 application code is implemented yet. See docs/UC5_PLAN.md. Stop before UC6.
 ## Phase 9 UC6 order materials — todo
 - [ ] Supplier orders/items and supplier rejection flow.
 ## Phase 10 UC7 receive and stock — todo
@@ -115,4 +124,4 @@ Decision: owner confirmed both Admin/Worker review, one deposit between the roun
 ## Phase 12 UC9 deliver and settle — todo
 - [ ] Self/third-party delivery, invoices, post-completion payments and returns.
 
-Every future phase: follow the mandatory AGENTS.md commit/push policy and docs/GIT_WORKFLOW.md. Commit focused buildable groups as work progresses, with clear purpose and relevant tests; never one giant phase commit. Update this plan, run full checks, review status/log and push each completed phase to develop first, verifying the remote tip. Main requires a new explicit owner instruction. Record blockers instead of silently leaving a finished phase unpushed. Current implementation authorization is Phase 7 only; UC5-UC9 remain unapproved. Historical push-pending notes in Phases 0-3 were resolved before Phase 4. Company decision authority is confirmed for any current active company member.
+Every future phase: follow the mandatory AGENTS.md commit/push policy and docs/GIT_WORKFLOW.md. Commit focused buildable groups as work progresses, with clear purpose and relevant tests; never one giant phase commit. Update this plan, run full checks, review status/log and push each completed phase to develop first, verifying the remote tip. Main requires a new explicit owner instruction. Record blockers instead of silently leaving a finished phase unpushed. Current implementation authorization is Phase 8 only; UC6-UC9 remain unapproved. Historical push-pending notes in Phases 0-3 were resolved before Phase 4. Company decision authority is confirmed for any current active company member.
