@@ -1,7 +1,8 @@
 # Phase 7 — UC4 deposit/company PO and job opening
 
 Authorized by owner on 2026-10-18. Branch: develop; no main push. Phase 7 is
-started, not completed. No disputed financial/authorization rule is implemented.
+implemented and verified. The owner subsequently answered yes to all four policy
+questions; the rules below are confirmed, not implementation assumptions.
 
 ## Reviewed sources
 
@@ -22,29 +23,24 @@ Company issues its own PO. Customer accounts upload evidence; files must remain
 private in S3, with only object keys/metadata in PostgreSQL and authorized signed
 links. No VAT, public evidence links, DB file blobs or floating-point money.
 
-## Business decisions needed before affected implementation
+## Owner-confirmed policies
 
-1. Who may verify/reject deposit and PO evidence: Worker, Admin, or both? Evidence
-   submission is not confirmation that money reached the shop. Proposed: both
-   active Admin and Worker, with reviewer/time/reason audit; owner must approve.
-2. Does a required deposit have to equal the rounded 50%, or may one payment be
-   any amount from that minimum through the total? Are several partial deposit
-   payments supported in UC4, or only later invoice installments in UC9? Proposed
-   first version: one payment >= required deposit and <= quoted total; no guessed
-   cumulative partial-deposit behavior.
-3. Does completed evidence submission before documents_due_at satisfy the
-   deadline even if staff review happens later? Should missing evidence cause
-   automatic cancellation after the deadline? Proposed: timely complete submission
-   may be reviewed later; never cancel solely because staff review is pending.
-   Rejected/late resubmission and exceptions must follow the owner's chosen policy.
-4. Original ER says quotation-to-job is one-to-many; the UC4 flow describes opening
-   a queued job without splitting. Proposed first version: exactly one job per
-   approved quotation and idempotent automatic opening after all required evidence
-   is verified. Confirm before adding a uniqueness constraint.
+1. Both active Admin and Worker may approve/reject deposit and PO evidence. Record
+   reviewer, time and mandatory rejection reason. An upload is not verified money.
+2. One deposit payment may range from the rounded 50% minimum to the quoted total.
+   Do not accumulate several smaller payments in UC4. Record the actual approved
+   deposit for the future invoice balance, without mutating UC3 minimum terms.
+3. A complete set of evidence submitted within the 14-day acceptance deadline may
+   be reviewed later. Automatically cancel if required evidence is missing.
+   Rejected evidence is not a valid pending/approved set: replacement must be
+   submitted before the same original deadline. No silent extensions or overrides.
+4. Exactly one queued job per approved quotation/request opens atomically after
+   all required evidence is approved. This newer explicit confirmation overrides
+   the original ER's one-to-many quotation/job relationship.
 
-Proposals above are not confirmed requirements. Do not silently turn them into
-defaults. Zero-total quotations already exist in UC2; resolve their evidence
-handling when confirming the deposit policy rather than pretending money was paid.
+Existing zero-total individual quotations retain their stored required-deposit
+flag and accept a zero-amount evidence confirmation for staff review. This is
+not a claim of a positive cash receipt or a new minimum quotation fee.
 
 ## Planned commit groups after confirmation
 
@@ -64,7 +60,9 @@ handling when confirming the deposit policy rather than pretending money was pai
 7. API/runbook/verification docs, PLAN completion, focused buildable commits and
    verified push to origin/develop. Stop before UC5 stock/reservation work.
 
-The initial inspection found a clean develop at bdf3f75. A sandboxed remote
-read failed inside Git's MSYS SSH runtime; retry with approved repository command
-permissions before classifying any eventual push as blocked. Never force push,
-change SSH credentials, rewrite history or claim a remote update without evidence.
+The initial inspection found a clean develop at bdf3f75. The planning checkpoint
+9d159e2 was pushed and verified on develop. Implementation proceeded in separate
+domain, transactional repository and API/worker commits. Full expanded PostgreSQL,
+S3, race/rollback and Docker verification passed in sa-lathe-uc4-92badc31; resources
+were cleaned up. See UC4_VERIFICATION.md and PLAN.md for the completion push.
+Never force push, rewrite history or push main without explicit authorization.

@@ -93,17 +93,17 @@ The earlier documentation-only gap is now implemented as an owner-authorized aut
 
 Verification: full isolated project sa-lathe-uc3-4a16ab7c passed with PHASE6_VERIFICATION_PASSED and WORKER_CONTACTS_VERIFICATION_PASSED; resources cleaned up, real LINE disabled, no existing database touched. Publication hold was resolved by observing 7e10423 already on origin/develop. Focused follow-up commits 34fb391 through ce5a889 were pushed to origin/develop, with ce5a889 verified remotely; main remained 86d5be1. This acknowledgement is a documentation-only follow-up pushed to the same branch. See docs/WORKER_CONTACTS_VERIFICATION.md.
 
-## Phase 7 UC4 deposit and company PO — in progress
+## Phase 7 UC4 deposit and company PO — implemented and verified (push pending)
 - [x] Owner authorized the next phase on 2026-10-18; inspect clean develop at bdf3f75 and read repository rules.
 - [x] Review backend guide, original ER, acceptance terms, private upload infrastructure and API/worker composition roots.
-- [ ] Confirm verification roles, permitted deposit amounts, deadline behavior and job cardinality; do not invent financial rules.
-- [ ] Add exact deposit/PO evidence domain, validation, audit and private signed upload/download handling.
-- [ ] Add PostgreSQL migration and transactional repository; lock request/terms/evidence and prevent duplicate job opening under retries/races.
-- [ ] Add authenticated scoped submission/review/read routes and queued job creation when all confirmed requirements are fulfilled.
-- [ ] Add any confirmed deadline handling; do not cancel pending valid evidence or add unconfirmed LINE events.
-- [ ] Verify service/HTTP rules, PostgreSQL races/rollback, S3 evidence privacy, migrations and full earlier-phase/Docker regression.
+- [x] Confirm verification roles, permitted deposit amounts, deadline behavior and job cardinality; do not invent financial rules.
+- [x] Add exact deposit/PO evidence domain, validation, audit and private signed upload/download handling.
+- [x] Add PostgreSQL migration and transactional repository; lock request/terms/evidence and prevent duplicate job opening under retries/races.
+- [x] Add authenticated scoped submission/review/read routes and queued job creation when all confirmed requirements are fulfilled.
+- [x] Add confirmed deadline handling; do not cancel timely complete pending evidence or add unconfirmed LINE events.
+- [x] Verify service/HTTP rules, PostgreSQL races/rollback, S3 evidence privacy, migrations and full earlier-phase/Docker regression.
 - [ ] Update documentation, commit focused buildable groups, push to develop only and verify remote tip.
-Decision: reuse persisted UC3 terms rather than recalculating current pricing/customer policy. Files remain private object keys plus metadata; no public evidence, SQL outside repositories or floating-point money. Source ER permits several jobs per quotation, whereas the workflow only describes opening a job; ask before constraining cardinality. The original detailed Word/sequence sources are still unavailable. See docs/UC4_PLAN.md for the proposed sequence and questions. No UC4 application code is implemented yet; stop before UC5.
+Decision: owner confirmed both Admin/Worker review, one deposit between the rounded 50% minimum and 100%, later review of timely complete evidence, automatic cancellation for missing evidence, and exactly one queued job per approved quotation/request. This overrides the old ER's one-to-many job relationship. Reuse persisted UC3 terms and private ready attachments; technical upload completion is not payment verification. Migration 000007 adds term_evidence, job and uc4_cancellation with constraints and immutable review audit. Request row locks serialize retries, opposite reviews, expiry and job opening. Actual approved deposit determines the job balance, not the minimum deposit. Full initial isolated verification passed in sa-lathe-uc4-5316ed1f; expanded final verification is recorded in docs/UC4_VERIFICATION.md. No real LINE messages or existing database changes. Documentation/push verification is pending; stop before UC5. Original detailed Word/sequence sources remain unavailable.
 ## Phase 8 UC5 stock check and reservation — todo
 - [ ] Required materials, partial reservations, shortages and row locking.
 ## Phase 9 UC6 order materials — todo

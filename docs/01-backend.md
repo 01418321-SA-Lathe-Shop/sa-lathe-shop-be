@@ -16,6 +16,12 @@
 > Worker passwords. Required email/phone API, validation and persistence are
 > implemented in migration 000006; see AUTH.md for syntax and legacy handling.
 
+> UC4 owner confirmations (2026-10-18): both Admin/Worker review private evidence;
+> one deposit may cover the rounded 50% minimum through 100%; timely complete
+> submissions may be reviewed later; missing evidence expires; exactly one job
+> opens after all required approvals. These override the old ER's one-to-many
+> job relationship. See UC4.md for implemented API, retry and deadline semantics.
+
 ## Project summary
 
 The system brings customer requests, quotations, production jobs, purchasing/receiving materials, inventory, delivery, and payments into one workflow. It addresses the current lack of job/payment tracking and reliable stock information. The business is not registered as a company and does not charge VAT, as confirmed by the owner.
@@ -39,7 +45,7 @@ flowchart TD
   UC3 -->|6th rejection| CANCELED
   UC3 -->|Accept: determine Deposit/PO| UC4[UC4 Record Deposit and/or PO]
   UC4 -->|Requirements met within the deadline| JOB[Create JOB: queued]
-  UC4 -->|Deadline missed after 14 days, temporary assumption| CANCELED
+  UC4 -->|Required evidence missing after acceptance plus 14 days| CANCELED
   JOB --> UC5[UC5 Check and reserve materials]
   UC5 -->|Materials available| UC8[UC8 Produce and record actual usage]
   UC5 -->|Materials insufficient| UC6[UC6 Order materials from Supplier]
@@ -146,7 +152,7 @@ The tables/data listed are entity touchpoints from the overview. Endpoints, full
 | UC1 Submit request | Customer submits job details and attachments; create `JOB_REQUEST` | `JOB_REQUEST`, file/URL (file stored externally; URL in DB) | Validate details and files; after upload failure, start again. Exact fields/error codes must be defined |
 | UC2 Estimate price | Worker estimates; saves draft, sends quotation, or rejects request; may create revisions | `JOB_REQUEST`, `QUOTATION`, `QUOTATION_COST` | UC2 transaction required; 60% profit basis is unclear; other validation/errors must be defined |
 | UC3 Respond to quotation | Customer reviews and accepts/rejects; rejections 1–5 return to UC2; sixth rejection cancels | `QUOTATION`, `JOB_REQUEST` | Make rejection counting and cancellation atomic, including concurrent actions; exact error codes must be defined |
-| UC4 Record Deposit/PO | Record required evidence/terms; create `JOB: queued` when requirements are met | `DEPOSIT`, `PURCHASE_ORDER`, `QUOTATION`, `JOB_REQUEST`, `JOB` | Apply customer type/amount rules; 14-day expiry is a temporary assumption; start date and missed-deadline behavior need confirmation |
+| UC4 Record Deposit/PO | Customer submits private evidence; Admin/Worker approve/reject; open exactly one queued job after all approvals | Implemented: `term_evidence`, accepted terms, `job`, `uc4_cancellation`, private attachment references | One deposit 50-100%; acceptance plus 336h submission deadline, pending complete timely evidence protected, missing/rejected evidence expires; see UC4.md |
 | UC5 Check/reserve stock | Worker checks availability; if sufficient, proceed to UC8; if insufficient, go to UC6. UC5 says reserve what is available and order only the shortage | `MATERIAL`, `MATERIAL_RESERVATION`; no confirmed planned-material entity per JOB | Shortage formula conflicts with Q6.1; concurrency, over-reservation behavior, and error responses must be defined |
 | UC6 Order materials | Worker is the UC actor; owner separately confirmed Admin can order from Suppliers; select Supplier and order shortage | `MATERIAL_ORDER`, `MATERIAL_ORDER_ITEM`, `MATERIAL`, Supplier | UC6 role is inconsistent; Supplier rejection sets `cancelled`; validations/errors must be defined |
 | UC7 Receive goods and pay Supplier | Worker receives good/defective goods, updates stock/cost, records Supplier payment | `MATERIAL_ORDER`, `MATERIAL_ORDER_ITEM`, `MATERIAL`, `STOCK_MOVEMENT`, `MATERIAL_DEFECT_LOG`, payment status | Must be atomic; actual payment methods and settlement of outstanding credit are undefined; return to UC5 is a proposal |

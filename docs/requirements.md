@@ -63,3 +63,13 @@ separate authorization. Phase 5 implementation and full PostgreSQL/S3/concurrenc
 Docker verification passed on 2026-10-15 after a reversible runtime-socket Docker
 recovery. Phase 5 implementation was pushed and verified on origin/develop at
 d2b94ba; main remained 86d5be1. Completion acknowledgement is tracked in PLAN.md.
+
+Phase 7 UC4 authorized 2026-10-18. Owner confirmed both active Admin/Worker may
+approve/reject evidence; one deposit can be the rounded 50% minimum through total;
+timely complete evidence may be reviewed later; missing required evidence expires
+automatically; exactly one queued job opens after all required approvals. New
+confirmation overrides original ER job cardinality. Migration 000007 stores
+private attachment references, immutable submissions/review audit, actual approved
+deposit/balance and deadline-cancellation audit. No public files, positive-payment
+claims for zero totals, final invoice or new LINE event is inferred. See UC4.md,
+UC4_VERIFICATION.md and PLAN.md. UC5-UC9 remain unapproved.
