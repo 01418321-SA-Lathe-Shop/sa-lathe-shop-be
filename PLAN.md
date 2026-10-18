@@ -129,14 +129,14 @@ Decision: owner confirmed Admin-only procurement, many-job/excess orders, record
 ## Phase 10 UC7 receive and stock — in progress
 - [x] Owner authorized the next phase on 2026-10-19; inspect clean develop at ab0c224 and read repository rules.
 - [x] Review UC7 guide, original ER, immutable UC6 orders, UC5 stock-ledger guards and request-scoped private upload infrastructure.
-- [ ] Confirm receipt/claim/payment roles, eligible orders and excess quantities, damaged-item settlement, payment methods/timing and evidence requirements.
-- [ ] Exact receipt/claim/payment domain and service tests; retain base-unit quantities, immutable order pricing, THB/no VAT and six-place weighted-average costing.
-- [ ] Add migration/repositories for audited partial receipts, good-stock movements, separate defects and approved supplier settlement rules.
-- [ ] Transactional order/material locking, idempotency, optimistic versions and receipt-aware cancellation protection; preserve independent UC5 plans.
-- [ ] Authorized receiving/history/claim/payment endpoints and order-scoped private evidence where required; no Supplier account.
+- [x] Confirm receipt/claim/payment roles, eligible orders and excess quantities, damaged-item settlement, payment methods/timing and evidence requirements.
+- [x] Exact receipt/claim/payment domain and service tests; retain base-unit quantities, immutable order pricing, THB/no VAT and six-place weighted-average costing.
+- [x] Add migration/repositories for audited partial receipts, good-stock movements, separate defects and approved supplier settlement rules.
+- [x] Transactional order/material locking, idempotency, optimistic versions and receipt-aware cancellation protection; preserve independent UC5 plans.
+- [x] Authorized receiving/history/claim/payment endpoints and order-scoped private evidence; Worker-safe inventory views, no Supplier account.
 - [ ] Real PostgreSQL races/rollback, stock/cost reconciliation, private S3, migration and earlier-phase/Docker regressions.
 - [ ] Update API/verification docs, commit focused buildable groups, push develop only and verify remote tip.
-Decision: UC7 is authorized, not implemented. The guide confirms good-only stock/cost additions and atomic receipt/ledger/defect/order updates, but does not settle claim resolution or supplier payment rules. The original ER's Worker receiving actor conflicts with the later Admin-only procurement boundary; ask rather than broaden access silently. Existing attachment uploads are customer/request-scoped and cannot be repurposed to expose supplier evidence to customers or arbitrarily bind general-stock orders to a job. See docs/UC7_PLAN.md. No receipt/payment feature code, migration or existing database change in this planning checkpoint. Stop before UC8.
+Decision: owner confirmed Admin/Worker receiving and claims, Admin-only supplier prices/credit/payment/evidence, accepted partial deliveries/no excess, replacement-only damage, full good receipt before payment, explicit per-order credit days counted from full receipt and one full cash/bank settlement. Bank evidence required; cash photo/proof optional. Implemented domain, migration 000010, transaction repositories, private order evidence and API groups; no UC5 auto-reservation or UC8/UC9. Build/vet/unit/lint pass. Real PostgreSQL/S3/Docker verification is not yet run: the availability probe stopped before resources were created, and starting Docker exposed the known stale IPC socket crash. Recovery approval was requested before renaming the specific socket-only folders; no data/settings reset. Original Word/sequence source availability is unchanged. See docs/UC7_PLAN.md, docs/UC7.md and docs/UC7_VERIFICATION.md. Do not mark this phase complete until actual integration succeeds. Stop before UC8.
 ## Phase 11 UC8 execute job — todo
 - [ ] Stock issue, unused reservation reconciliation, photos and actual cost/time.
 ## Phase 12 UC9 deliver and settle — todo

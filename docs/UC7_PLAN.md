@@ -33,7 +33,18 @@ recorded. Do not infer missing policy from unrelated project files.
   scoped; add an order-scoped boundary if UC7 evidence is required. Do not expose
   supplier files through linked customer jobs.
 
-## Questions requiring owner confirmation before affected code
+## Owner confirmations received 2026-10-19
+
+The six questions below are historical context; the owner answered them and the
+follow-up clarifications. Admin/Worker receive and manage replacement claims.
+Financial details and evidence are Admin-only. Accepted orders, partial delivery,
+no excess; damaged units remain outstanding until good replacements. Replacement
+only, no refund/write-off. Explicit Admin-entered credit days per order from full
+good receipt; one full cash/bank settlement after full receipt. Bank proof required,
+cash proof/photo optional. See UC7.md for implemented contracts and UC7_VERIFICATION.md
+for actual checks; Docker integration is pending runtime recovery approval.
+
+### Historical questions (resolved by the confirmations above)
 
 1. Permissions: keep receiving, claims, supplier settlement and reads Admin-only,
    or allow Workers to receive/manage claims? If Workers are allowed, separately
@@ -55,10 +66,9 @@ recorded. Do not infer missing policy from unrelated project files.
 6. Evidence: require a completed private payment slip for bank transfer, while cash
    proof is optional? Preserve the existing document/image allowlist and 100 MB cap.
 
-These are questions/proposals, not confirmed rules. No refund/write-off workflow,
-credit period, changed access role or automatic supplier notification is authorized
-by this document. Existing configured Admin LINE recipient/channel is unchanged;
-do not invent new outbound UC7 events without a requirement.
+The confirmations above supersede the old proposals. There is no guessed default
+credit period, refund/write-off or automatic supplier notification. Existing Admin
+LINE recipient/channel is unchanged; no new outbound UC7 event is introduced.
 
 ## Planned implementation groups after confirmation
 
