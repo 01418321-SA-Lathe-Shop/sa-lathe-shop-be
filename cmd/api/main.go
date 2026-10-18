@@ -9,6 +9,7 @@ import (
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/file"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/health"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/notification"
+	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/payment"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/platform/httpserver"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/platform/objectstore"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/quotation"
@@ -79,6 +80,7 @@ func main() {
 		notification.Routes(r, notification.NewInbox(db), authHandler.Authenticate)
 		quotation.NewHandler(quotation.NewService(db)).Routes(r, authHandler.Authenticate)
 		quotation.NewDecisionHandler(quotation.NewDecisionService(db)).Routes(r, authHandler.Authenticate)
+		payment.NewHandler(payment.NewService(db)).Routes(r, authHandler.Authenticate)
 	})
 	if err := httpserver.Run(ctx, logger, cfg.HTTPAddr, cfg.ShutdownTimeout, router); err != nil {
 		logger.Error("api stopped", "error", err)

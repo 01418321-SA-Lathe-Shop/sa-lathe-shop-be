@@ -7,6 +7,7 @@ import (
 	req "github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/request"
 	"github.com/google/uuid"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
@@ -55,6 +56,11 @@ func (s *Service) Submit(ctx context.Context, a auth.Account, id string, in Subm
 	if err := ctx.Err(); err != nil {
 		return Evidence{}, err
 	}
+	if in.PaidAt != nil {
+		value := in.PaidAt.UTC().Truncate(time.Microsecond)
+		in.PaidAt = &value
+	}
+	in.AttachmentID = strings.ToLower(in.AttachmentID)
 	// The repository loads immutable terms under the request lock and calls the
 	// same domain validation before persisting. No SQL/DB driver enters services.
 	return s.repo.SubmitEvidence(ctx, a.ID, id, in)

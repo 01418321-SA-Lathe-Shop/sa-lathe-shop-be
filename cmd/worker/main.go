@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/config"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/notification"
+	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/payment"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/repository/postgres"
 	"log/slog"
 	"os"
@@ -41,8 +42,16 @@ func main() {
 	}
 	line := notification.NewLINE(integrations.LINEEnabled, integrations.LINEToken, integrations.LINEAdminUserID)
 	logger.Info("notification worker started", "line_enabled", integrations.LINEEnabled)
-	if err = notification.NewDispatcher(db, line, logger).Run(ctx); err != nil {
-		logger.Error("notification worker failed")
+	workCtx, cancelWork := context.WithCancel(ctx)
+	defer cancelWork()
+	results := make(chan error, 2)
+	go func() { results <- notification.NewDispatcher(db, line, logger).Run(workCtx) }()
+	go func() { results <- payment.RunExpiry(workCtx, db, logger) }()
+	first := <-results
+	cancelWork()
+	second := <-results
+	if first != nil || second != nil {
+		logger.Error("background worker failed")
 		os.Exit(1)
 	}
 	logger.Info("worker stopped")
