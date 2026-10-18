@@ -68,7 +68,7 @@ func (h *Handler) Routes(r chi.Router, authenticate func(http.Handler) http.Hand
 				return
 			}
 			v, err := h.service.Search(r.Context(), actor(r), r.URL.Query().Get("search"), limit, offset)
-			respond(w, r, map[string]any{"items": v}, err)
+			respond(w, r, map[string]any{"items": MaterialViews(actor(r), v)}, err)
 		})
 		r.Post("/materials/{material_id}/stock", func(w http.ResponseWriter, r *http.Request) {
 			var in StockInput
@@ -86,7 +86,7 @@ func (h *Handler) Routes(r chi.Router, authenticate func(http.Handler) http.Hand
 				return
 			}
 			v, err := h.service.Movements(r.Context(), actor(r), chi.URLParam(r, "material_id"), limit, offset)
-			respond(w, r, map[string]any{"items": v}, err)
+			respond(w, r, map[string]any{"items": MovementViews(actor(r), v)}, err)
 		})
 		r.Put("/jobs/{job_id}/materials", func(w http.ResponseWriter, r *http.Request) {
 			var in PlanInput

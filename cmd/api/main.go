@@ -15,6 +15,7 @@ import (
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/platform/objectstore"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/procurement"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/quotation"
+	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/receiving"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/repository/postgres"
 	req "github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/request"
 	"github.com/go-chi/chi/v5"
@@ -85,6 +86,7 @@ func main() {
 		payment.NewHandler(payment.NewService(db)).Routes(r, authHandler.Authenticate)
 		material.NewHandler(material.NewService(db)).Routes(r, authHandler.Authenticate)
 		procurement.NewHandler(procurement.NewService(db)).Routes(r, authHandler.Authenticate)
+		receiving.NewHandler(receiving.NewService(db), receiving.NewEvidenceService(db, store)).Routes(r, authHandler.Authenticate)
 	})
 	if err := httpserver.Run(ctx, logger, cfg.HTTPAddr, cfg.ShutdownTimeout, router); err != nil {
 		logger.Error("api stopped", "error", err)
