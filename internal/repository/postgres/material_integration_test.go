@@ -11,6 +11,7 @@ import (
 	m "github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/material"
 	p "github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/payment"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/platform/objectstore"
+	production "github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/production"
 	q "github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/quotation"
 	req "github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/request"
 	"github.com/go-chi/chi/v5"
@@ -355,8 +356,23 @@ func TestMaterialIntegration(t *testing.T) {
 	if failed == nil || current(steel.ID).OnHand != material.OnHand || current(steel.ID).AverageCost != material.AverageCost {
 		t.Fatal("stock/ledger rollback failed")
 	}
-	// Freeze edits after a test-only transition to production; UC8 is not exposed.
-	if _, err = db.pool.Exec(ctx, `UPDATE job SET status='in_progress' WHERE id=$1`, job3); err != nil {
+	// UC8 now guards status writes. Reduce this fixture to its reserved rubber,
+	// then start through the real fully-reserved production command, not raw SQL.
+	beforeStart, err := inventory.Get(ctx, worker.Account, job3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var reservedRubber m.Decimal
+	for _, line := range beforeStart.Lines {
+		if line.MaterialID == rubber.ID {
+			reservedRubber = line.Reserved
+		}
+	}
+	readyPlan, err := inventory.Save(ctx, worker.Account, job3, planInput(beforeStart.Version, m.Requirement{MaterialID: rubber.ID, Quantity: &reservedRubber}))
+	if err != nil || !readyPlan.Ready {
+		t.Fatal("ready production fixture", err)
+	}
+	if _, err = production.NewService(db).Start(ctx, worker.Account, job3, production.StartInput{Command: production.Command{IdempotencyKey: uuid.NewString(), ExpectedVersion: 0}, ExpectedPlanVersion: &readyPlan.Version}); err != nil {
 		t.Fatal(err)
 	}
 	currentPlan, _ := inventory.Get(ctx, worker.Account, job3)

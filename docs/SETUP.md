@@ -61,6 +61,13 @@ environment's connection/TLS settings when a hosting target is selected.
 
 ## Disposable full verification
 
+UC8 is implemented as an unverified checkpoint. The current API requires migrations
+through 000011. ./scripts/verify-uc8.ps1 prepares nine fresh databases and regression
+through UC8, including empty migration 11/10 rollback and real private photo tests.
+Its Docker availability probe failed before resource creation; no deployment-ready
+claim. UC7 verification and runtime recovery approval remain pending. See UC8.md
+and UC8_VERIFICATION.md. Do not use skipped go tests as proof of SQL/S3 readiness.
+
 UC7 implementation is in progress. It adds migration 000010 and
 ./scripts/verify-uc7.ps1 (eight fresh test databases). See UC7_VERIFICATION.md for
 the current Docker recovery/verification status before deploying its API. Worker
