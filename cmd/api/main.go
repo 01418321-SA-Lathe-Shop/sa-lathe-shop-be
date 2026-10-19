@@ -14,6 +14,7 @@ import (
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/platform/httpserver"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/platform/objectstore"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/procurement"
+	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/production"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/quotation"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/receiving"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/repository/postgres"
@@ -87,6 +88,7 @@ func main() {
 		material.NewHandler(material.NewService(db)).Routes(r, authHandler.Authenticate)
 		procurement.NewHandler(procurement.NewService(db)).Routes(r, authHandler.Authenticate)
 		receiving.NewHandler(receiving.NewService(db), receiving.NewEvidenceService(db, store)).Routes(r, authHandler.Authenticate)
+		production.NewHandler(production.NewService(db), production.NewPhotoService(db, store)).Routes(r, authHandler.Authenticate)
 	})
 	if err := httpserver.Run(ctx, logger, cfg.HTTPAddr, cfg.ShutdownTimeout, router); err != nil {
 		logger.Error("api stopped", "error", err)
