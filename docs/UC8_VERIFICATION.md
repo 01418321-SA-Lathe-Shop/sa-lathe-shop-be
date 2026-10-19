@@ -10,8 +10,8 @@ Build, vet, unit/domain/HTTP-guard/photo/privacy tests and ./tasks.ps1 lint pass
 The full verifier explicitly set dedicated database/S3 environment variables and
 ran go test ./... -count=1; the real UC7 and UC8 integration suites ran, not skips.
 
-Earlier attempt: ./scripts/verify-uc8.ps1 on 2026-10-19 had a bounded Docker
-availability probe failed: engine unavailable or stuck. It stopped before test
+Earlier attempt: the bounded Docker availability probe in ./scripts/verify-uc8.ps1
+failed on 2026-10-19: engine unavailable or stuck. It stopped before test
 services/databases/volumes were created. No existing database was migrated, no
 Docker runtime folder was renamed/deleted, and no socket recovery was inferred
 from the five production-policy confirmations. UC7's recovery approval/verification
