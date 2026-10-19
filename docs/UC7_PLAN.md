@@ -1,8 +1,9 @@
 # Phase 10 — UC7 receiving, defects and supplier settlement
 
-Authorized 2026-10-19. Clean develop at ab0c224, UC6 complete. This is a planning
-checkpoint, not a completed phase or implemented receipt/payment contract.
-UC8-UC9 remain unapproved. Preserve Go/chi, PostgreSQL, private S3 and the existing
+Authorized 2026-10-19, initially planned on clean develop at ab0c224. UC7 is now
+implemented and verified by the combined UC7/UC8 Docker run on 2026-10-19;
+see UC7_VERIFICATION.md. UC8 was separately authorized; UC9 remains unapproved.
+Preserve Go/chi, PostgreSQL, private S3 and the existing
 Handler -> Service -> Repository boundaries. Push develop only, never main.
 
 ## Sources reviewed
@@ -42,7 +43,7 @@ no excess; damaged units remain outstanding until good replacements. Replacement
 only, no refund/write-off. Explicit Admin-entered credit days per order from full
 good receipt; one full cash/bank settlement after full receipt. Bank proof required,
 cash proof/photo optional. See UC7.md for implemented contracts and UC7_VERIFICATION.md
-for actual checks; Docker integration is pending runtime recovery approval.
+for actual checks. Docker integration now passes; no runtime repair was needed.
 
 ### Historical questions (resolved by the confirmations above)
 
@@ -86,4 +87,5 @@ LINE recipient/channel is unchanged; no new outbound UC7 event is introduced.
    payment races, permissions, private S3 and complete earlier-phase/Docker regression.
 6. Update API/runbook/verification documentation and PLAN. Commit buildable logical
    groups as work progresses, push the completed phase to develop, verify remote and
-   stop before UC8. No unmeasured performance claims or production-data migration.
+   stop at the authorized scope (UC8 was subsequently authorized, UC9 is not).
+   No unmeasured performance claims or production-data migration.

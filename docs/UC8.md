@@ -1,9 +1,9 @@
 # UC8 — Production, actual use, time and completion
 
-Implementation checkpoint; not yet PostgreSQL/S3/Docker verified. Apply migration
-000011 only through the normal migration workflow after validation. UC7's runtime
-gate also remains open. Do not deploy this as a completed phase. See
-UC8_VERIFICATION.md. UC9 delivery, invoicing and returned-work reopening are not
+Implemented and PostgreSQL/S3/Docker verified on 2026-10-19, including the UC7
+verification dependency. Apply migrations through 000011 using the normal
+migration workflow before running this API; no existing database was migrated
+by verification. See UC8_VERIFICATION.md. UC9 delivery, invoicing and returned-work reopening are not
 implemented here. The existing Go/chi layered architecture is retained.
 
 ## Confirmed rules

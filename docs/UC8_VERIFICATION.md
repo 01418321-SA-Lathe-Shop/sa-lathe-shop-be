@@ -1,34 +1,46 @@
-# Phase 11 UC8 verification — IN PROGRESS
+# Phase 11 UC8 verification — PASSED
+
+Verified on 2026-10-19 in disposable project sa-lathe-uc8-a664942c using
+./scripts/verify-uc8.ps1. Exit 0; PHASE11_VERIFICATION_PASSED and
+WORKER_CONTACTS_VERIFICATION_PASSED were observed, followed by successful cleanup
+of all four containers, both fresh volumes and the network. No existing data or
+runtime directories were changed, and no real LINE message was sent.
 
 Build, vet, unit/domain/HTTP-guard/photo/privacy tests and ./tasks.ps1 lint pass.
-Ordinary go test ./... passes; database integration is skipped without dedicated
-environment variables, so this is NOT evidence of real SQL/S3/Docker success.
+The full verifier explicitly set dedicated database/S3 environment variables and
+ran go test ./... -count=1; the real UC7 and UC8 integration suites ran, not skips.
 
-Attempted ./scripts/verify-uc8.ps1 on 2026-10-19. Its bounded 15-second Docker
+Earlier attempt: ./scripts/verify-uc8.ps1 on 2026-10-19 had a bounded Docker
 availability probe failed: engine unavailable or stuck. It stopped before test
 services/databases/volumes were created. No existing database was migrated, no
 Docker runtime folder was renamed/deleted, and no socket recovery was inferred
 from the five production-policy confirmations. UC7's recovery approval/verification
-gate remains open. Do not deploy or mark either phase complete.
+gate was open at that checkpoint. The later successful retry supersedes that gate;
+no Docker runtime recovery/rename was needed or performed during this retry.
+
+Retry history: sa-lathe-uc8-7406e12b reached the database and found a migration
+000010 receipt-status CASE syntax error. Its fresh resources were cleaned up.
+Parenthesizing that PL/pgSQL expression fixed it, then the complete fresh run
+sa-lathe-uc8-a664942c passed migrations 1-11, empty 11/10 down/up, legacy Worker
+preservation, all earlier regressions and the Docker API/worker workflow.
 
 ## Commands
 
 ```powershell
 go build ./...
 go vet ./...
-go test ./...
 ./tasks.ps1 lint
-./scripts/verify-uc8.ps1
+./scripts/verify-uc8.ps1 # includes go test ./... -count=1 against real PostgreSQL/S3
 ```
 
-The full verifier is prepared for nine fresh dedicated databases with migrations
+The full verifier ran against nine fresh dedicated databases with migrations
 1–11, empty migration 11 and 10 down/up, legacy Worker contacts, all earlier real
 PostgreSQL/S3 regressions, API/worker Docker builds and customer-to-production HTTP
 flow. It uses a random sa-lathe-uc8-* project, empty temporary Compose environment,
 random process-only credentials, disabled real LINE and scoped cleanup/restore.
 Existing volumes, .env, settings and data are not targets.
 
-## Added integration checks — NOT YET EXECUTED
+## Passed integration checks
 
 - Real UC1–UC4/private S3 flows create valid production jobs.
 - Empty/partial plans cannot start; a full current plan starts without stock use.
@@ -50,6 +62,6 @@ Existing volumes, .env, settings and data are not targets.
 - Docker UC7 mixed receipt/replacement/full settlement followed by UC8 reserve,
   start, incremental use, time, release/completion and Admin actual-cost entry.
 
-Do not claim PHASE11_VERIFICATION_PASSED or resolve UC7's gate until the complete
-real verifier runs and scoped cleanup is observed. No new runtime repair authority
-or UC9 implementation is granted by these test descriptions.
+UC7 and UC8 implementation verification is complete. No production database was
+migrated or deployment performed. UC9 remains unapproved. Performance/load targets
+are still unspecified; these functional/concurrency checks are not a latency SLA.

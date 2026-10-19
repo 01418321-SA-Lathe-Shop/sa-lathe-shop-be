@@ -1,8 +1,15 @@
-# Phase 10 UC7 verification — IN PROGRESS
+# Phase 10 UC7 verification — PASSED
 
-Build, vet, unit/service/privacy tests and ./tasks.ps1 lint pass. Ordinary
-go test ./... passes, but dedicated PostgreSQL/S3 integration is skipped unless
-its environment is configured. Do not treat those skips as integration success.
+Verified on 2026-10-19 by the combined ./scripts/verify-uc8.ps1 run in isolated
+project sa-lathe-uc8-a664942c. It exited 0 with PHASE11_VERIFICATION_PASSED and
+WORKER_CONTACTS_VERIFICATION_PASSED. That verifier sets PHASE10_DATABASE_URL and
+PHASE11_DATABASE_URL and runs all uncached PostgreSQL/S3 tests, including UC7,
+then the UC7 receipt/claim/settlement Docker HTTP workflow and UC8 production.
+The standalone UC7 script was not rerun; no PHASE10 marker is claimed.
+
+Build, vet and ./tasks.ps1 lint also pass. All four test containers, both fresh
+volumes and the network were removed by the verifier. No existing database was
+migrated, local .env read, Docker runtime folder repaired or real LINE message sent.
 
 The first ./scripts/verify-uc7.ps1 attempt stopped at its Docker availability
 probe before any test resource/data creation. The per-user Docker Desktop was
@@ -12,24 +19,26 @@ point; the paired docker-secrets-engine/engine.sock is the same artifact type.
 No factory reset, socket deletion, settings/WSL/volume/image/VHDX change was made.
 Owner approval was requested before repeating the earlier directory-rename recovery.
 
-## Verification command
+The first retry reached migration 000010 and exposed a PL/pgSQL syntax error in
+the receipt-status CASE comparison. Parenthesizing that expression fixed it;
+the fresh complete rerun applied migrations 1-11 and passed empty migration
+11/10 down/up, all earlier regression tests and private S3 checks.
+
+## Commands run
 
 ```powershell
 go build ./...
 go vet ./...
-go test ./...
 ./tasks.ps1 lint
-./scripts/verify-uc7.ps1
+./scripts/verify-uc8.ps1 # internally: go test ./... -count=1 with dedicated DBs
 ```
 
-The script uses a unique sa-lathe-uc7-* Compose project, random private process
-credentials, an empty temporary environment and eight fresh dedicated databases.
-It applies migrations 1-10, tests empty migration 10 down/up, preserves legacy
-contacts, runs all uncached staff/UC1-UC7 PostgreSQL/S3 tests and builds/runs API
-and worker. It removes only its own fresh test resources and restores process
-values. No existing database, local .env or real LINE recipient is used.
+The combined script uses nine fresh dedicated databases, random process-only
+credentials and an empty temporary Compose environment. It preserves/backfills
+legacy Worker contacts, builds/runs API and worker and restores process values.
+See UC8_VERIFICATION.md for the combined run and its exact success markers.
 
-## Added checks (execution pending the Docker recovery)
+## Passed checks
 
 - Admin/Worker receiving and claims, Worker finance/evidence denial and explicit
   allowlist redaction in legacy inventory/movement HTTP responses.
@@ -51,5 +60,5 @@ values. No existing database, local .env or real LINE recipient is used.
 - Docker mixed delivery -> claim -> good replacement -> credit/full cash settlement,
   exact physical stock/average and Worker financial redaction.
 
-Do not mark Phase 10 done or claim PHASE10_VERIFICATION_PASSED until the complete
-script exits successfully and cleanup is confirmed. Stop before UC8.
+UC7's real integration gate is resolved by the successful combined run. UC9
+remains unapproved; verification does not authorize a production deployment.

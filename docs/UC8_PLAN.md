@@ -1,12 +1,11 @@
 # Phase 11 — UC8 production, actual usage and completion
 
 Authorized to begin 2026-10-19, planning checkpoint at 9e46118. All five policies
-are confirmed and production implementation is in progress, not yet verified.
-UC7 remains in progress: its code/build/vet/unit/lint checks exist, but real
-PostgreSQL/S3/Docker verification is pending the documented runtime recovery
-approval. UC8 build/vet/unit/lint pass; real integration tests have not run.
-No Docker folders/processes, production stock or existing database are changed.
-Do not mark UC7 or UC8 complete, deploy dependent stock workflows or start UC9.
+are confirmed. UC7 and UC8 implementation and real PostgreSQL/S3/Docker verification
+are now complete: isolated sa-lathe-uc8-a664942c passed on 2026-10-19 and cleaned
+up its disposable resources. Build/vet/lint pass. See UC8_VERIFICATION.md.
+No runtime repair, production stock or existing database changes were performed.
+UC9 remains unapproved; no production deployment is authorized by verification.
 
 ## Sources and existing contracts
 
@@ -93,8 +92,8 @@ these exceptions explicitly; UC9 return handling belongs to that later phase.
 
 ## Verification dependency
 
-Existing Docker socket recovery approval is still outstanding. Do not rename,
-delete, reset or repair runtime folders solely because the owner said next phase.
-Any approved recovery must preserve images/volumes/settings/databases and retained
-socket artifacts. UC7's unexecuted migrations/integration and every earlier stock
-flow must actually pass before claiming UC8 end-to-end readiness.
+The earlier Docker blocker is resolved: the engine responded to the requested
+retry, without a runtime repair. The combined verifier passed UC7/UC8 migrations,
+real integration and every earlier regression. Do not infer authority to rename,
+delete, reset or repair runtime folders from this success or a next-phase request.
+Preserve images/volumes/settings/databases and retained socket artifacts.
