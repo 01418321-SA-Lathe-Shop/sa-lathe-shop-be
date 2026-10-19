@@ -140,14 +140,14 @@ Decision: owner confirmed Admin/Worker receiving and claims, Admin-only supplier
 ## Phase 11 UC8 execute job — in progress
 - [x] Owner asked to begin the next phase on 2026-10-19; inspect clean develop at 070265d.
 - [x] Read repository rules, UC8 guide, job schema, live plan/reservation API, stock-lock hierarchy and pending UC7 verification status.
-- [ ] Confirm production roles/scope, start prerequisites, incremental usage/extra-material rules, completion/photo requirements and actual time/labor-cost entry.
-- [ ] Domain/service tests and versioned job lifecycle commands; no inferred assignments, labor rates or automatic plan consumption.
-- [ ] Audited usage/cost snapshots, stock-issue ledger and reservation reconciliation migration/repository transactions.
-- [ ] Authorized job/start/usage/time/photo/completion APIs with Worker financial redaction and private job-scoped files.
-- [ ] Verify ready/start guards, exact issue/costing, competing jobs, duplicate commands, completion-vs-usage races, leftovers, private files and failure rollback.
+- [x] Confirm production roles/scope, start prerequisites, incremental usage/extra-material rules, completion/photo requirements and actual time/labor-cost entry.
+- [x] Domain/service tests and versioned job lifecycle commands; no inferred assignments, labor rates or automatic plan consumption.
+- [x] Audited usage/cost snapshots, stock-issue ledger and reservation reconciliation migration/repository transactions.
+- [x] Authorized job/start/usage/time/photo/completion APIs with Worker financial redaction and private job-scoped files.
+- [ ] Execute real ready/start, issue/costing, competing-job, duplicate-command, completion race, leftover/photo/rollback checks; prepared in the dedicated integration suite, not yet run.
 - [ ] Resolve the existing UC7 verification gate, then run real PostgreSQL/S3/migrations and full earlier-phase/UC8 Docker regression; do not count skipped tests as success.
 - [ ] Update API/verification docs, commit focused buildable groups, push develop only and verify remote; stop before UC9.
-Decision: UC8 planning has begun, not production feature implementation. UC7 remains in progress with its documented Docker socket-recovery approval and database/S3/Docker verification pending; beginning UC8 does not mark UC7 done or authorize OS/runtime repair. Existing plans freeze at production start, reservations do not consume stock, and earlier owner direction allows additional actual use when material remains; confirm how this interacts with other jobs' reservations and unplanned materials. Private photos need a job-scoped boundary, not reuse of customer or payment attachments. See docs/UC8_PLAN.md. No production mutation, migration, stock write or UC9 work in this checkpoint.
+Decision: owner confirmed all five production rules. Worker-only operations for any active Worker, Admin monitoring/labor cost, fully reserved nonempty start, explicit own-reservation-first/free-stock actual use, unused release, optional photos and manual minutes without assumed rate. Implemented domain policies, migration 000011, audited usage/reservation/ledger transactions, APIs, Admin-only cost and private job photos in buildable commit groups. Build/vet/unit/lint pass. The prepared real verifier stopped at its bounded Docker probe before creating any test resources; integration tests have not run. UC7 remains in progress with Docker recovery approval pending; production confirmations are not approval for OS repair. No existing database migrated or UC9 work. See UC8.md and UC8_VERIFICATION.md. Phase 11 remains in progress and is not deployment-ready; publish as an explicitly incomplete develop checkpoint, not a completed phase.
 ## Phase 12 UC9 deliver and settle — todo
 - [ ] Self/third-party delivery, invoices, post-completion payments and returns.
 

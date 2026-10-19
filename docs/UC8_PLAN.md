@@ -1,9 +1,10 @@
 # Phase 11 — UC8 production, actual usage and completion
 
-Authorized to begin 2026-10-19, clean develop at 070265d. This is planning only.
+Authorized to begin 2026-10-19, planning checkpoint at 9e46118. All five policies
+are confirmed and production implementation is in progress, not yet verified.
 UC7 remains in progress: its code/build/vet/unit/lint checks exist, but real
 PostgreSQL/S3/Docker verification is pending the documented runtime recovery
-approval. No tests were rerun or assumed passed in this UC8 planning checkpoint.
+approval. UC8 build/vet/unit/lint pass; real integration tests have not run.
 No Docker folders/processes, production stock or existing database are changed.
 Do not mark UC7 or UC8 complete, deploy dependent stock workflows or start UC9.
 
@@ -36,7 +37,18 @@ Customer quotation pricing under UC2 is unchanged. Job photos must be private
 S3 objects with keys/metadata and authorized links, separate from customer request
 drawings and Admin-only supplier payment evidence. Reuse file validation/policies.
 
-## Production policies to confirm
+## Owner confirmations received
+
+The owner answered yes to all five production proposals. Any active Worker may
+start/log/complete any job; Admin monitors and enters actual labor cost, not
+production actions. Require a nonempty fully reserved plan and current version.
+Starting does not consume stock. Explicit actual incremental use consumes own
+reservation first, then free stock; extra/unplanned materials are allowed without
+using other jobs' reservations. Complete releases leftovers, photos optional.
+Workers enter actual whole labor minutes; material valuation uses issue-time cost,
+and Admin enters labor cost without an assumed rate. See UC8.md.
+
+### Historical questions (resolved by the five confirmations)
 
 1. Permissions/scope: keep production mutations Worker-only for any active Worker,
    without assignment restrictions, and Admin can monitor/read costs? Existing
@@ -60,7 +72,7 @@ drawings and Admin-only supplier payment evidence. Reuse file validation/policie
    or provide the intended clock/time/rate rules. Do not fabricate labor rates,
    edit history or automatically equate elapsed wall time with actual work.
 
-These are proposals, not confirmed rules. No rejection/rework, cancellation after
+The confirmations above supersede the proposals. No rejection/rework, cancellation after
 consumption, inventory returns, adjustments to historical usage, photo-sharing
 policy, supplier message or automatic scheduling is implied. Resolve any need for
 these exceptions explicitly; UC9 return handling belongs to that later phase.
