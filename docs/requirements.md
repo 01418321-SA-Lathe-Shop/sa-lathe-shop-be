@@ -15,6 +15,16 @@ UC5 required materials, stock check and reservation; UC6 supplier orders;
 UC7 partial receipts, damage and stock/cost updates; UC8 production/material
 usage/photos; UC9 delivery/invoice/payment, with payment after completion allowed.
 
+UC8 five policies confirmed: any active Worker can start/log/complete any job;
+Admin monitors/reads finance and enters actual labor cost, without production
+actions. Start requires nonempty fully reserved current plan and does not consume
+stock. Explicit incremental actual use consumes own reservation first, then free
+stock, including extra/unplanned material; never use another job's reservation.
+Completion releases unused reservations without adding physical stock; optional
+private photos. Worker-entered whole labor minutes, issue-time material valuation,
+Admin-entered labor cost, no assumed rate. See UC8.md. Both UC7 and UC8 still need
+real PostgreSQL/S3/Docker validation; UC9 remains unapproved.
+
 UC7 confirmed 2026-10-19: Admin/Worker receive and manage claims; financial details
 and evidence stay Admin-only. Receive accepted orders partially, no excess. Damaged
 units remain outstanding until good replacements; no refund/write-off. Admin enters

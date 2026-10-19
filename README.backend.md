@@ -42,7 +42,14 @@ UC7 is now authorized and implementation is in progress: receiving/claims for
 Admin/Worker, financial details/settlement/evidence for Admin only. Its code needs
 migration 000010 and pending real PostgreSQL/S3/Docker verification before phase
 completion. See [UC7 contract](docs/UC7.md), [plan](docs/UC7_PLAN.md) and
-[verification status](docs/UC7_VERIFICATION.md). UC8-UC9 remain unapproved.
+[verification status](docs/UC7_VERIFICATION.md). UC9 remains unapproved.
+
+UC8 implementation is also in progress with all five production policies confirmed:
+Worker start/actual use/time/completion and optional private photos, Admin actual
+labor cost, consumption-aware plan reads and unused release. Current code needs
+migrations through 000011. Build/vet/unit/lint pass; do not deploy or mark complete
+before real UC7/UC8 PostgreSQL/S3/Docker verification. See [UC8 API](docs/UC8.md),
+[plan](docs/UC8_PLAN.md) and [verification gate](docs/UC8_VERIFICATION.md).
 
 Worker management now requires email and phone on create, validates email syntax,
 supports international phone formatting and returns contacts on Worker reads.

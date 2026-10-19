@@ -31,6 +31,15 @@
 
 ## Project summary
 
+> UC8 five owner confirmations supersede older production assumptions: any active
+> Worker starts/logs/completes any job, Admin monitors and enters actual labor cost.
+> Nonempty fully reserved plan required; no automatic consumption on start. Explicit
+> incremental use consumes own reservation then free stock, extra/unplanned allowed
+> without taking other jobs' reservations. Completion releases unused quantities
+> without adding on-hand; photos optional/private. Manual whole labor minutes,
+> issue-time material valuation, Admin-entered labor cost, no assumed hourly rate.
+> Implementation is in progress, not integration-verified; see UC8.md/verification.
+
 > UC7 owner confirmations (2026-10-19) override older receiving/payment assumptions:
 > Admin and Worker receive/manage replacement-only claims. Supplier prices, stock
 > costs, credit/payment details and payment evidence are Admin-only. Accepted orders,
