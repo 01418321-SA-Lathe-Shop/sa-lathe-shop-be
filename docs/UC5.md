@@ -26,6 +26,12 @@ Keep the separate worker running for the existing UC4/notification functions.
 
 ## API
 
+> UC8 compatibility: plan lines now include consumed reservation quantity. For
+> in-progress jobs shortage excludes actual reservation consumption; ready is
+> queued-only. Completed jobs do not request replenishment for released leftovers.
+> Use /production/jobs/{id} for actual use and released quantities. The current
+> API therefore needs migration 000011; full UC7/UC8 integration remains pending.
+
 All routes require Bearer authentication; successful commands return 200 JSON.
 Unknown fields, multiple JSON values and floating-point numeric quantities are
 rejected. No user-supplied actor ID, balance, average cost or reservation total.

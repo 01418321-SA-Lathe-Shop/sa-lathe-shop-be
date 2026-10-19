@@ -13,18 +13,19 @@ import (
 
 func loadPlan(ctx context.Context, tx pgx.Tx, jobID string) (m.Plan, error) {
 	value := m.Plan{JobID: jobID, Lines: []m.PlanLine{}}
-	if err := tx.QueryRow(ctx, `SELECT material_plan_version FROM job WHERE id=$1`, jobID).Scan(&value.Version); err != nil {
+	var jobStatus string
+	if err := tx.QueryRow(ctx, `SELECT material_plan_version,status FROM job WHERE id=$1`, jobID).Scan(&value.Version, &jobStatus); err != nil {
 		return value, inventoryError(err)
 	}
-	rows, err := tx.Query(ctx, `SELECT r.material_id::text,r.required_qty::text,COALESCE(s.qty_reserved,0)::text FROM job_material_requirement r LEFT JOIN material_reservation s USING(job_id,material_id) WHERE r.job_id=$1 AND r.required_qty>0 ORDER BY r.material_id`, jobID)
+	rows, err := tx.Query(ctx, `SELECT r.material_id::text,r.required_qty::text,COALESCE(s.qty_reserved,0)::text,COALESCE(s.qty_consumed,0)::text FROM job_material_requirement r LEFT JOIN material_reservation s USING(job_id,material_id) WHERE r.job_id=$1 AND r.required_qty>0 ORDER BY r.material_id`, jobID)
 	if err != nil {
 		return value, err
 	}
 	ready := true
 	for rows.Next() {
 		var line m.PlanLine
-		var required, reserved string
-		if err = rows.Scan(&line.MaterialID, &required, &reserved); err != nil {
+		var required, reserved, consumed string
+		if err = rows.Scan(&line.MaterialID, &required, &reserved, &consumed); err != nil {
 			rows.Close()
 			return value, err
 		}
@@ -38,13 +39,26 @@ func loadPlan(ctx context.Context, tx pgx.Tx, jobID string) (m.Plan, error) {
 			rows.Close()
 			return value, err
 		}
-		line.Shortage, err = line.Required.Subtract(line.Reserved)
+		line.Consumed, err = m.ParseDecimal(consumed)
+		if err != nil {
+			rows.Close()
+			return value, err
+		}
+		remaining, subtractErr := line.Required.Subtract(line.Consumed)
+		if subtractErr != nil {
+			rows.Close()
+			return value, subtractErr
+		}
+		line.Shortage, err = remaining.Subtract(line.Reserved)
 		if err != nil {
 			rows.Close()
 			return value, err
 		}
 		if !line.Shortage.IsZero() {
 			ready = false
+		}
+		if jobStatus == "completed" {
+			line.Shortage = m.Decimal{}
 		}
 		value.Lines = append(value.Lines, line)
 	}
@@ -53,7 +67,7 @@ func loadPlan(ctx context.Context, tx pgx.Tx, jobID string) (m.Plan, error) {
 	if err != nil {
 		return value, err
 	}
-	value.Ready = ready && len(value.Lines) > 0
+	value.Ready = ready && len(value.Lines) > 0 && jobStatus == "queued"
 	return value, nil
 }
 func (d *Database) GetPlan(ctx context.Context, actor, id string) (m.Plan, error) {

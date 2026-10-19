@@ -73,6 +73,7 @@ type PlanLine struct {
 	MaterialID string  `json:"material_id"`
 	Required   Decimal `json:"required"`
 	Reserved   Decimal `json:"reserved"`
+	Consumed   Decimal `json:"consumed"`
 	Shortage   Decimal `json:"shortage"`
 }
 type Plan struct {
