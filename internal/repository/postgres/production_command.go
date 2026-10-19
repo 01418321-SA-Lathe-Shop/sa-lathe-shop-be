@@ -88,7 +88,10 @@ func (d *Database) ApplyProduction(ctx context.Context, actor, id string, in p.A
 	if v.Version != in.ExpectedVersion || requestStatus != "ongoing" {
 		return v, p.ErrConflict
 	}
-	status := v.Status
+	status, e := p.NextStatus(v, in)
+	if e != nil {
+		return v, e
+	}
 	switch in.Kind {
 	case "start":
 		if v.Status != "queued" || v.PlanVersion != in.PlanVersion {
@@ -157,6 +160,9 @@ func (d *Database) ApplyProduction(ctx context.Context, actor, id string, in p.A
 	case "labor":
 		if v.Status != "in_progress" && v.Status != "completed" {
 			return v, p.ErrConflict
+		}
+		if _, e = p.SumAmounts(v.Finance.MaterialCost, *in.Amount); e != nil {
+			return v, e
 		}
 	default:
 		return v, req.ErrInvalidInput
