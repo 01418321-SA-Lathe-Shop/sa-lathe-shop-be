@@ -182,7 +182,7 @@ BEGIN
  IF event_action IS NULL OR (v.version=1 AND event_action<>'place') THEN RAISE EXCEPTION 'Order audit required' USING ERRCODE='23514'; END IF;
  IF event_action='receive' THEN
   SELECT bool_and(i.qty_ordered=COALESCE((SELECT sum(good) FROM material_receipt_line l WHERE l.order_id=i.order_id AND l.material_id=i.material_id),0)) INTO full_good FROM material_order_item i WHERE i.order_id=v.id;
-  IF v.status<>CASE WHEN full_good THEN 'received' ELSE 'partially_received' END THEN RAISE EXCEPTION 'Receipt progress mismatch' USING ERRCODE='23514'; END IF;
+  IF v.status<>(CASE WHEN full_good THEN 'received' ELSE 'partially_received' END) THEN RAISE EXCEPTION 'Receipt progress mismatch' USING ERRCODE='23514'; END IF;
  ELSIF event_action IN ('claim','credit_terms','settle') THEN
   IF event_action='settle' AND NOT EXISTS(SELECT 1 FROM supplier_settlement WHERE order_id=v.id) THEN RAISE EXCEPTION 'Settlement missing' USING ERRCODE='23514'; END IF;
  ELSIF v.version>1 AND ((v.status='ordered' AND event_action<>'accept') OR (v.status='cancelled' AND v.supplier_response='rejected' AND event_action<>'reject') OR (v.status='cancelled' AND v.supplier_response<>'rejected' AND event_action<>'cancel')) THEN RAISE EXCEPTION 'Order event mismatch' USING ERRCODE='23514'; END IF;
