@@ -2,8 +2,8 @@
 
 Owner requested the next phase on 2026-10-19. Started from clean develop at
 1f1eb08, with UC7/UC8 real PostgreSQL/S3/Docker verification complete. UC9 planning
-is authorized; the business decisions below require confirmation before locking
-schema/API or writing feature code. Push develop only, never main.
+was authorized. On 2026-10-20 the owner answered yes to all seven decisions;
+implementation is authorized. Push develop only, never main.
 
 ## Sources reviewed
 
@@ -29,7 +29,7 @@ Direct owner decisions override the older ER and guide proposals.
 - Issued material cannot reappear in stock on a customer return. Further work
   appends usage/time/cost audit; no rewriting old production or payment records.
 
-## Proposed decisions — NOT confirmed
+## Owner-confirmed decisions (2026-10-20)
 
 1. Roles: Admin/Worker issue invoices and record delivery; Customer submits bank
    evidence; Admin alone approves/rejects final payments and records cash receipts.
@@ -63,8 +63,9 @@ Direct owner decisions override the older ER and guide proposals.
    submitting customer. No new LINE event, overdue reminder, timing assumption
    or carrier integration in this phase. Existing configured Admin LINE is unchanged.
 
-These proposals are questions, not permission or settled policy. Confirm/change
-them before implementation; record responses here and in the API contract.
+All seven proposals above are confirmed. Admin enters terms separately before
+Admin/Worker issues the invoice, so Worker invoice permissions do not grant the
+ability to choose/change financial terms. No default credit period is inferred.
 
 ## Implementation sequence after confirmation
 
@@ -93,5 +94,5 @@ them before implementation; record responses here and in the API contract.
 7. Build/vet/lint, runbook and verified PLAN status. Commit logical buildable
    groups while working; push develop and verify its remote tip, never main.
 
-No feature code, migration, production deployment or existing-data migration is
-part of this planning checkpoint. No new cloud/service or performance SLA assumed.
+Implementation is in progress, not complete. No production deployment or existing
+database migration is authorized by this phase. No new cloud/service or SLA assumed.

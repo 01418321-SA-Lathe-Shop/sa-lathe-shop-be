@@ -154,7 +154,7 @@ Decision: owner confirmed all five production rules. Worker-only operations for 
 - [x] Owner requested next phase on 2026-10-19; inspect clean develop at 1f1eb08 and repository rules.
 - [x] Review guide/requirements, full original ER, job/deposit snapshots and production lifecycle guards.
 - [x] Record proposed roles, invoice/delivery cardinality, credit/payment evidence, customer returns, closure and notifications in docs/UC9_PLAN.md.
-- [ ] Confirm the seven business decisions before schema/API or feature implementation.
+- [x] Owner confirmed all seven business decisions on 2026-10-20; implement per docs/UC9_PLAN.md.
 - [ ] Domain policies, role-safe views and exact invoice/installment/balance tests.
 - [ ] Audited delivery/invoice/customer payment/private evidence schema and confirmed production return extension.
 - [ ] Transaction repositories with membership checks, idempotency, no overpayment and atomic closure/outbox.
