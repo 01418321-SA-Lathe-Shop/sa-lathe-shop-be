@@ -1,5 +1,16 @@
 # Machine Shop Custom Manufacturing System — Backend Guide
 
+> Current UC9 decisions (2026-10-20) supersede older open questions below: staff
+> handles invoices/delivery, Admin sets explicit invoice credit days and reviews
+> final payments/records cash; one exact post-deposit invoice per job, installments
+> without overpayment, private bank proof, optional cash proof. Current company
+> members inspect; pre-acceptance reasoned returns open free same-job rework,
+> preserving invoice/payment/cost history without stock restoration. Close only
+> after acceptance and full payment. In-system notices only, no new LINE/reminders.
+> See UC9.md and UC9_VERIFICATION.md for implementation and actual checks. UC7/UC8
+> PostgreSQL/S3/Docker verification already passed; stale in-progress notes below
+> are historical. Existing deployment/file/auth/Go architecture decisions stand.
+
 > Owner-confirmed implementation clarifications (2026-10-15): customers
 > self-register; company users join by invitation and share company requests.
 > Cancel on the sixth rejection, not the fifth. Deposit/PO deadline is 14 days

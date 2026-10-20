@@ -1,5 +1,13 @@
 # Requirements baseline
 
+Current owner confirmation (2026-10-20): all seven UC9 policies in UC9_PLAN.md
+are approved and implementation is authorized. UC9.md defines staff invoice/
+delivery, Admin-only terms/payment review/cash, one post-deposit invoice, customer
+installments with no overpayment, private evidence, pre-acceptance same-job free
+rework, paid+accepted closure and in-system notices. These supersede historical
+UC9-unapproved/unknown statements below. UC7/UC8 real integration already passed;
+use current PLAN.md and verification records, not the historical phase notes.
+
 Sources: owner's conversation and Mermaid schema attachment at
 C:/Users/win/.codex/attachments/77652150-d9dc-4592-a38b-72deefcdca2b/Pasted text.txt.
 UC_Description_Detailed_Exception_Integrated_v2.docx was fully read earlier in

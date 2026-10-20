@@ -94,5 +94,9 @@ ability to choose/change financial terms. No default credit period is inferred.
 7. Build/vet/lint, runbook and verified PLAN status. Commit logical buildable
    groups while working; push develop and verify its remote tip, never main.
 
-Implementation is in progress, not complete. No production deployment or existing
-database migration is authorized by this phase. No new cloud/service or SLA assumed.
+Implementation and real PostgreSQL/S3/Docker verification are complete on
+2026-10-20; both full runs passed and scoped cleanup was observed. Implementation
+batches ed09788 through c487fa2 are published to develop; main unchanged. See
+UC9_VERIFICATION.md for exact projects/checks and PLAN.md for completed checklist.
+No production deployment or existing database migration was performed, and no
+new cloud/service, invoice PDF renderer or performance SLA was inferred.
