@@ -9,7 +9,7 @@ import (
 
 var _ p.Repository = (*Database)(nil)
 
-const productionSummary = `j.id::text,j.request_id::text,j.status,j.production_version,j.material_plan_version,j.started_at,j.completed_at`
+const productionSummary = `j.id::text,j.request_id::text,j.status,j.production_version,j.material_plan_version,j.started_at,j.completed_at,j.production_cycle`
 
 func (d *Database) ProductionJobs(ctx context.Context, actor string, limit, offset int) ([]p.Summary, error) {
 	tx, e := d.pool.Begin(ctx)
@@ -27,7 +27,7 @@ func (d *Database) ProductionJobs(ctx context.Context, actor string, limit, offs
 	values := []p.Summary{}
 	for rows.Next() {
 		var v p.Summary
-		if e = rows.Scan(&v.JobID, &v.RequestID, &v.Status, &v.Version, &v.PlanVersion, &v.StartedAt, &v.CompletedAt); e != nil {
+		if e = rows.Scan(&v.JobID, &v.RequestID, &v.Status, &v.Version, &v.PlanVersion, &v.StartedAt, &v.CompletedAt, &v.Cycle); e != nil {
 			rows.Close()
 			return nil, e
 		}
@@ -41,7 +41,7 @@ func (d *Database) ProductionJobs(ctx context.Context, actor string, limit, offs
 	return values, tx.Commit(ctx)
 }
 
-const productionDocument = `jsonb_build_object('job_id',j.id,'request_id',j.request_id,'status',j.status,'version',j.production_version,'material_plan_version',j.material_plan_version,'started_at',j.started_at,'completed_at',j.completed_at,
+const productionDocument = `jsonb_build_object('job_id',j.id,'request_id',j.request_id,'status',j.status,'version',j.production_version,'cycle',j.production_cycle,'material_plan_version',j.material_plan_version,'started_at',j.started_at,'completed_at',j.completed_at,
  'materials',COALESCE((SELECT jsonb_agg(jsonb_build_object('material_id',m.id,'name',m.name,'unit_name',u.name,'required',COALESCE(q.required_qty,0)::numeric(18,6)::text,'reserved',COALESCE(r.qty_reserved,0)::numeric(18,6)::text,'reservation_consumed',COALESCE(r.qty_consumed,0)::numeric(18,6)::text,
  'used',COALESCE((SELECT sum(quantity) FROM job_material_usage x WHERE x.job_id=j.id AND x.material_id=m.id),0)::numeric(18,6)::text,
  'released',(CASE WHEN j.status='completed' THEN COALESCE(q.required_qty,0)-COALESCE(r.qty_consumed,0) ELSE 0 END)::numeric(18,6)::text) ORDER BY m.id)

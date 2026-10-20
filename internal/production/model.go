@@ -54,6 +54,7 @@ type Summary struct {
 	Status      string     `json:"status"`
 	Version     int64      `json:"version"`
 	PlanVersion int64      `json:"material_plan_version"`
+	Cycle       int64      `json:"cycle"`
 	StartedAt   *time.Time `json:"started_at,omitempty"`
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
 }

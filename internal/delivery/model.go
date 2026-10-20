@@ -97,19 +97,28 @@ type Event struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 type State struct {
-	JobID          string     `json:"job_id"`
-	RequestID      string     `json:"request_id"`
-	JobStatus      string     `json:"job_status"`
-	RequestStatus  string     `json:"request_status"`
-	Version        int64      `json:"version"`
-	Cycle          int64      `json:"cycle"`
-	CreditDays     *int       `json:"credit_days,omitempty"`
-	OpeningBalance q.Amount   `json:"opening_balance"`
-	Deposit        q.Amount   `json:"deposit"`
-	Invoice        *Invoice   `json:"invoice,omitempty"`
-	Deliveries     []Shipment `json:"deliveries"`
-	Payments       []Payment  `json:"payments,omitempty"`
-	Events         []Event    `json:"events"`
+	JobID          string        `json:"job_id"`
+	RequestID      string        `json:"request_id"`
+	JobStatus      string        `json:"job_status"`
+	RequestStatus  string        `json:"request_status"`
+	Version        int64         `json:"version"`
+	Cycle          int64         `json:"cycle"`
+	CreditDays     *int          `json:"credit_days,omitempty"`
+	OpeningBalance q.Amount      `json:"opening_balance"`
+	Deposit        q.Amount      `json:"deposit"`
+	Invoice        *Invoice      `json:"invoice,omitempty"`
+	Deliveries     []Shipment    `json:"deliveries"`
+	Payments       []Payment     `json:"payments,omitempty"`
+	Events         []Event       `json:"events"`
+	ReworkHistory  []ReworkCycle `json:"rework_history"`
+}
+
+type ReworkCycle struct {
+	Cycle       int64     `json:"cycle"`
+	StartedAt   time.Time `json:"started_at"`
+	CompletedAt time.Time `json:"completed_at"`
+	ReopenedAt  time.Time `json:"reopened_at"`
+	DeliveryID  string    `json:"delivery_id"`
 }
 type Repository interface {
 	FulfillmentState(context.Context, string, string) (State, error)
