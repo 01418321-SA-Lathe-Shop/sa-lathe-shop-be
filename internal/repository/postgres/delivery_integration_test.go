@@ -70,6 +70,10 @@ func TestCustomerFulfillmentIntegration(t *testing.T) {
 	check(e)
 	profiles, e := customers.Profiles(ctx, customer)
 	check(e)
+	invitation, e := customers.Invite(ctx, customer, profiles[0].ID)
+	check(e)
+	member, e := customers.Register(ctx, auth.Registration{Username: "uc9_member", Name: "Member", Password: password, CustomerType: "company", Invitation: invitation})
+	check(e)
 	stranger, e := customers.Register(ctx, auth.Registration{Username: "uc9_stranger", Name: "Other", Password: password, CustomerType: "individual"})
 	check(e)
 	requests := req.NewService(db)
@@ -207,7 +211,7 @@ func TestCustomerFulfillmentIntegration(t *testing.T) {
 	check(e)
 	v, e = service.Ship(ctx, admin, job, f.ShipInput{Command: cmd(v.Version), Method: "third_party", ReceiverName: "Buyer"})
 	check(e)
-	v, e = service.Inspect(ctx, customer, job, f.InspectInput{Command: cmd(v.Version), Outcome: "accept"})
+	v, e = service.Inspect(ctx, member, job, f.InspectInput{Command: cmd(v.Version), Outcome: "accept"})
 	check(e)
 	if v.RequestStatus != "ongoing" {
 		t.Fatal("acceptance closed unpaid request")
@@ -243,6 +247,9 @@ func TestCustomerFulfillmentIntegration(t *testing.T) {
 		t.Fatal("installment balance")
 	}
 	// Same-key concurrent cash retries are one receipt/allocation; replay stays original.
+	pending := f.PaymentInput{Command: cmd(v.Version), Amount: amount("600"), PaidAt: now(), EvidenceID: proof(job)}
+	v, e = service.Pay(ctx, customer, job, pending, false)
+	check(e)
 	cash := f.PaymentInput{Command: cmd(v.Version), Amount: amount("600"), PaidAt: now()}
 	var wg sync.WaitGroup
 	results := make(chan error, 2)
@@ -257,8 +264,18 @@ func TestCustomerFulfillmentIntegration(t *testing.T) {
 	}
 	v, e = service.Get(ctx, customer, job)
 	check(e)
-	if v.RequestStatus != "completed" || v.Invoice.Status != "paid" || len(v.Payments) != 2 {
+	if v.RequestStatus != "completed" || v.Invoice.Status != "paid" || len(v.Payments) != 3 {
 		t.Fatal("closure/payment replay", v)
+	}
+	v, e = service.Review(ctx, admin, job, f.ReviewInput{Command: cmd(v.Version), PaymentID: pending.IdempotencyKey, Outcome: "rejected", Reason: "Already settled by cash"})
+	check(e)
+	if v.Invoice.Paid.String() != "1000.00" || v.RequestStatus != "completed" {
+		t.Fatal("closed pending review changed money")
+	}
+	old, e := service.Pay(ctx, admin, job, cash, true)
+	check(e)
+	if old.Version >= v.Version {
+		t.Fatal("retry did not retain original snapshot")
 	}
 	if _, e = service.Inspect(ctx, customer, job, f.InspectInput{Command: cmd(v.Version), Outcome: "return", Reason: "Late warranty"}); e == nil {
 		t.Fatal("post acceptance return")
@@ -312,6 +329,63 @@ func TestCustomerFulfillmentIntegration(t *testing.T) {
 	if r.Invoice.Balance.String() != "300.00" {
 		t.Fatal("race overpaid")
 	}
+	for _, payment := range r.Payments {
+		if payment.Status == "pending" {
+			if _, e = service.Review(ctx, admin, race, f.ReviewInput{Command: cmd(r.Version), PaymentID: payment.ID, Outcome: "approved"}); e == nil {
+				t.Fatal("fresh-version approval overpaid")
+			}
+		}
+	}
+	// Two return cycles preserve old history, invoice and physical stock; the next
+	// competing acceptance/return decisions still have only one winner.
+	repeated := newJob("1000")
+	rv := prepare(repeated)
+	for range 2 {
+		rv, e = service.Ship(ctx, worker.Account, repeated, f.ShipInput{Command: cmd(rv.Version), Method: "self", ReceiverName: "Buyer"})
+		check(e)
+		rv, e = service.Inspect(ctx, member, repeated, f.InspectInput{Command: cmd(rv.Version), Outcome: "return", Reason: "Fit again"})
+		check(e)
+		ps, e := production.Get(ctx, worker.Account, repeated)
+		check(e)
+		_, e = production.Complete(ctx, worker.Account, repeated, p.Command{IdempotencyKey: uuid.NewString(), ExpectedVersion: ps.Version})
+		check(e)
+	}
+	rv, e = service.Get(ctx, customer, repeated)
+	check(e)
+	if len(rv.ReworkHistory) != 2 || rv.Cycle != 3 || rv.Invoice.Amount.String() != "1000.00" {
+		t.Fatal("repeat rework history")
+	}
+	rv, e = service.Ship(ctx, worker.Account, repeated, f.ShipInput{Command: cmd(rv.Version), Method: "self", ReceiverName: "Buyer"})
+	check(e)
+	results = make(chan error, 2)
+	for _, outcome := range []string{"accept", "return"} {
+		wg.Add(1)
+		go func(outcome string) {
+			defer wg.Done()
+			reason := ""
+			if outcome == "return" {
+				reason = "Concurrent return"
+			}
+			_, e := service.Inspect(ctx, member, repeated, f.InspectInput{Command: cmd(rv.Version), Outcome: outcome, Reason: reason})
+			results <- e
+		}(outcome)
+	}
+	wg.Wait()
+	close(results)
+	wins = 0
+	for e := range results {
+		if e == nil {
+			wins++
+		}
+	}
+	if wins != 1 {
+		t.Fatal("inspection race", wins)
+	}
+	var onHand, reserved string
+	check(db.pool.QueryRow(ctx, `SELECT qty_on_hand::text,qty_reserved::text FROM material WHERE id=$1`, steel.ID).Scan(&onHand, &reserved))
+	if onHand != "19.500000" || reserved != "0.000000" {
+		t.Fatal("return restored/auto-reserved material", onHand, reserved)
+	}
 	// Forced event failure must roll back invoice/version and any related effects.
 	fault := newJob("1000")
 	days := 0
@@ -330,12 +404,35 @@ func TestCustomerFulfillmentIntegration(t *testing.T) {
 	if fv.Version != 1 || fv.Invoice != nil {
 		t.Fatal("invoice rollback")
 	}
+	fv, e = service.Issue(ctx, admin, fault, cmd(fv.Version))
+	check(e)
+	proofID := proof(fault)
+	beforeVersion := fv.Version
+	_, e = db.pool.Exec(ctx, `CREATE FUNCTION uc9_test_outbox_fail() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'forced outbox failure'; END $$; CREATE TRIGGER uc9_test_outbox_fail BEFORE INSERT ON outbox FOR EACH ROW EXECUTE FUNCTION uc9_test_outbox_fail()`)
+	check(e)
+	failedPayment := f.PaymentInput{Command: cmd(fv.Version), Amount: amount("10"), PaidAt: now(), EvidenceID: proofID}
+	_, e = service.Pay(ctx, customer, fault, failedPayment, false)
+	if e == nil {
+		t.Fatal("outbox failure ignored")
+	}
+	_, e = db.pool.Exec(ctx, `DROP TRIGGER uc9_test_outbox_fail ON outbox; DROP FUNCTION uc9_test_outbox_fail()`)
+	check(e)
+	fv, e = service.Get(ctx, admin, fault)
+	check(e)
+	if fv.Version != beforeVersion || len(fv.Payments) != 0 {
+		t.Fatal("outbox/payment rollback")
+	}
 	for _, sql := range []string{`UPDATE invoice SET amount=amount+1`, `UPDATE payment_allocation SET amount=amount+1`, `DELETE FROM fulfillment_event`, `UPDATE job SET balance=balance+1 WHERE id='` + job + `'`, `UPDATE job_request SET status='completed' WHERE id=(SELECT request_id FROM job WHERE id='` + race + `')`} {
 		if _, e = db.pool.Exec(ctx, sql); e == nil {
 			t.Fatal("audit/closure mutation allowed", sql)
 		}
 	}
 	// Scoped dispatch: UC9 must not send new LINE or leak Admin notices to Workers.
+	_, e = db.pool.Exec(ctx, `DELETE FROM customer_member WHERE account_id=$1 AND customer_id=$2`, member.ID, profiles[0].ID)
+	check(e)
+	if _, e = service.Get(ctx, member, job); e == nil {
+		t.Fatal("removed member access")
+	}
 	dispatcher := notification.NewDispatcher(db, notification.NewLINE(false, "", ""), slog.New(slog.NewTextHandler(io.Discard, nil)))
 	for range 40 {
 		e = dispatcher.Once(ctx)
@@ -352,6 +449,10 @@ func TestCustomerFulfillmentIntegration(t *testing.T) {
 	check(db.pool.QueryRow(ctx, `SELECT count(*) FROM outbox WHERE kind<>'request' AND channel<>'in_system'`).Scan(&leaks))
 	if leaks != 0 {
 		t.Fatal("unexpected LINE")
+	}
+	check(db.pool.QueryRow(ctx, `SELECT count(*) FROM notification n JOIN outbox o ON o.id=n.event_id WHERE o.kind<>'request' AND n.account_id=$1`, member.ID).Scan(&leaks))
+	if leaks != 0 {
+		t.Fatal("removed member notification")
 	}
 	// Real authenticated HTTP guards, strict JSON and no supplier/internal cost leakage.
 	authHandler := auth.NewHandler(authentication)
@@ -372,6 +473,11 @@ func TestCustomerFulfillmentIntegration(t *testing.T) {
 	router.ServeHTTP(w, request)
 	if w.Code != 400 {
 		t.Fatal("unknown JSON field", w.Code)
+	}
+	_, e = db.pool.Exec(ctx, `UPDATE account SET is_active=false WHERE id=$1`, worker.ID)
+	check(e)
+	if _, e = service.Get(ctx, worker.Account, job); e == nil {
+		t.Fatal("disabled account access")
 	}
 	// Single-connection reads do not nest pool acquisitions.
 	single, e := Open(ctx, dsn, 1)
