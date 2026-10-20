@@ -29,11 +29,16 @@ func (d *Database) DeliverInbox(ctx context.Context, e notification.Event) error
 	}
 	defer tx.Rollback(ctx)
 	var id string
-	err = tx.QueryRow(ctx, `SELECT id::text FROM outbox WHERE id=$1 AND lease_token=$2 AND completed_at IS NULL FOR UPDATE`, e.ID, e.LeaseToken).Scan(&id)
+	var kind, audience string
+	var target *string
+	err = tx.QueryRow(ctx, `SELECT id::text,kind,audience,target_account_id::text FROM outbox WHERE id=$1 AND lease_token=$2 AND completed_at IS NULL FOR UPDATE`, e.ID, e.LeaseToken).Scan(&id, &kind, &audience, &target)
 	if err != nil {
 		return err
 	}
-	rows, err := tx.Query(ctx, `SELECT a.id::text FROM account a JOIN job_request r ON r.id=$1 WHERE a.is_active AND (a.role IN ('admin','worker') OR a.id=r.created_by)`, e.RequestID)
+	rows, err := tx.Query(ctx, `SELECT a.id::text FROM account a JOIN job_request r ON r.id=$1 WHERE a.is_active AND (
+ ($2='request' AND (a.role IN ('admin','worker') OR a.id=r.created_by)) OR
+ ($2='admin' AND a.role='admin') OR
+ ($2 IN ('customer','target') AND a.role='customer' AND EXISTS(SELECT 1 FROM customer_member m WHERE m.account_id=a.id AND m.customer_id=r.customer_id) AND ($2='customer' OR a.id=$3::uuid)))`, e.RequestID, audience, target)
 	if err != nil {
 		return err
 	}
@@ -51,8 +56,19 @@ func (d *Database) DeliverInbox(ctx context.Context, e notification.Event) error
 	if err != nil {
 		return err
 	}
+	title := fmt.Sprintf("New request #%d", e.RequestNumber)
+	switch kind {
+	case "delivery":
+		title = fmt.Sprintf("Delivery ready for inspection — request #%d", e.RequestNumber)
+	case "inspection":
+		title = fmt.Sprintf("Customer inspection recorded — request #%d", e.RequestNumber)
+	case "payment":
+		title = fmt.Sprintf("Customer payment awaiting review — request #%d", e.RequestNumber)
+	case "review":
+		title = fmt.Sprintf("Payment review completed — request #%d", e.RequestNumber)
+	}
 	for _, id := range ids {
-		_, err = tx.Exec(ctx, `INSERT INTO notification(id,account_id,request_id,event_id,title) VALUES($1,$2,$3,$4,$5) ON CONFLICT(event_id,account_id) DO NOTHING`, uuid.NewString(), id, e.RequestID, e.ID, fmt.Sprintf("New request #%d", e.RequestNumber))
+		_, err = tx.Exec(ctx, `INSERT INTO notification(id,account_id,request_id,event_id,title) VALUES($1,$2,$3,$4,$5) ON CONFLICT(event_id,account_id) DO NOTHING`, uuid.NewString(), id, e.RequestID, e.ID, title)
 		if err != nil {
 			return err
 		}

@@ -169,6 +169,7 @@ CREATE TRIGGER production_job_guard BEFORE UPDATE ON job FOR EACH ROW EXECUTE FU
 CREATE CONSTRAINT TRIGGER production_job_consistent AFTER UPDATE ON job DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION check_production_job();
 CREATE FUNCTION guard_fulfillment_job() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
+ IF (NEW.id,NEW.request_id,NEW.quotation_id,NEW.deposit_amount,NEW.balance) IS DISTINCT FROM (OLD.id,OLD.request_id,OLD.quotation_id,OLD.deposit_amount,OLD.balance) THEN RAISE EXCEPTION 'Job contract snapshots are immutable' USING ERRCODE='23514'; END IF;
  IF (NEW.fulfillment_version,NEW.invoice_credit_days) IS DISTINCT FROM (OLD.fulfillment_version,OLD.invoice_credit_days) THEN
   IF NEW.fulfillment_version<>OLD.fulfillment_version+1 OR (OLD.invoice_credit_days IS NOT NULL AND NEW.invoice_credit_days IS DISTINCT FROM OLD.invoice_credit_days) THEN RAISE EXCEPTION 'Versioned immutable invoice terms required' USING ERRCODE='23514'; END IF;
  END IF;RETURN NEW;
@@ -183,6 +184,19 @@ BEGIN
  IF (e.action='invoice' AND NOT EXISTS(SELECT 1 FROM invoice WHERE id=e.id AND job_id=j.id)) OR(e.action='ship' AND NOT EXISTS(SELECT 1 FROM delivery WHERE id=e.id AND job_id=j.id)) OR(e.action IN ('accept','return') AND NOT EXISTS(SELECT 1 FROM delivery WHERE decision_event_id=e.id AND job_id=j.id AND decided_by=e.actor_id AND status=(CASE WHEN e.action='accept' THEN 'delivered' ELSE 'returned' END))) THEN RAISE EXCEPTION 'Fulfillment detail audit required' USING ERRCODE='23514'; END IF;RETURN NULL;
 END $$;
 CREATE CONSTRAINT TRIGGER fulfillment_job_consistent AFTER UPDATE ON job DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION check_fulfillment_job();
+CREATE FUNCTION check_fulfillment_detail() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF TG_TABLE_NAME='invoice' THEN
+  IF NOT EXISTS(SELECT 1 FROM fulfillment_event WHERE id=NEW.id AND job_id=NEW.job_id AND action='invoice') THEN RAISE EXCEPTION 'Invoice command audit required' USING ERRCODE='23514'; END IF;
+ ELSIF TG_TABLE_NAME='delivery' THEN
+  IF NOT EXISTS(SELECT 1 FROM fulfillment_event WHERE id=NEW.id AND job_id=NEW.job_id AND action='ship') OR (NEW.decision_event_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM fulfillment_event WHERE id=NEW.decision_event_id AND job_id=NEW.job_id AND actor_id=NEW.decided_by AND action=(CASE WHEN NEW.status='returned' THEN 'return' ELSE 'accept' END))) THEN RAISE EXCEPTION 'Delivery command audit required' USING ERRCODE='23514'; END IF;
+ ELSIF TG_TABLE_NAME='production_return' THEN
+  IF NOT EXISTS(SELECT 1 FROM delivery d JOIN fulfillment_event e ON e.id=NEW.id WHERE d.id=NEW.delivery_id AND d.job_id=NEW.job_id AND d.cycle=NEW.cycle AND d.status='returned' AND d.decision_event_id=NEW.id AND e.job_id=NEW.job_id AND e.action='return') THEN RAISE EXCEPTION 'Customer rework audit required' USING ERRCODE='23514'; END IF;
+ END IF;RETURN NULL;
+END $$;
+CREATE CONSTRAINT TRIGGER invoice_consistent AFTER INSERT ON invoice DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION check_fulfillment_detail();
+CREATE CONSTRAINT TRIGGER delivery_consistent AFTER INSERT OR UPDATE ON delivery DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION check_fulfillment_detail();
+CREATE CONSTRAINT TRIGGER production_return_consistent AFTER INSERT ON production_return DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION check_fulfillment_detail();
 CREATE FUNCTION guard_request_closure() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
  IF OLD.status='completed' AND NEW.status<>'completed' THEN RAISE EXCEPTION 'Accepted paid request cannot reopen' USING ERRCODE='23514'; END IF;
@@ -196,6 +210,7 @@ ALTER TABLE outbox ADD COLUMN audience text NOT NULL DEFAULT 'request' CHECK(aud
 ALTER TABLE outbox ADD COLUMN target_account_id uuid REFERENCES account(id) ON DELETE RESTRICT;
 ALTER TABLE outbox ADD CONSTRAINT outbox_target_check CHECK((audience='target')=(target_account_id IS NOT NULL));
 CREATE UNIQUE INDEX outbox_request_channel_unique ON outbox(request_id,channel) WHERE kind='request';
+ALTER TABLE outbox ADD CONSTRAINT outbox_uc9_in_system_check CHECK(kind='request' OR channel='in_system');
 COMMENT ON TABLE invoice IS 'One exact post-deposit invoice per job; paid/balance/status derived from immutable approved allocations; no VAT.';
 COMMENT ON TABLE production_return IS 'Immutable completed-cycle snapshot before free same-job rework; never restores material stock or refunds.';
 COMMENT ON TABLE customer_evidence IS 'Private customer-payment proof, uploader/Admin only; never supplier or production-photo access.';

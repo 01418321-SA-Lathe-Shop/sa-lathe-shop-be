@@ -16,9 +16,10 @@ CREATE CONSTRAINT TRIGGER production_job_consistent AFTER UPDATE ON job DEFERRAB
 ALTER TABLE production_event DROP CONSTRAINT production_event_action_check;
 ALTER TABLE production_event ADD CONSTRAINT production_event_action_check CHECK(action IN ('start','use','time','complete','labor'));
 DROP TABLE payment_allocation,customer_payment,customer_evidence,production_return,delivery,invoice,fulfillment_event;
-DROP FUNCTION guard_invoice(),guard_delivery(),guard_customer_payment(),guard_payment_allocation(),check_customer_payment();
+DROP FUNCTION guard_invoice(),guard_delivery(),guard_customer_payment(),guard_payment_allocation(),check_customer_payment(),check_fulfillment_detail();
 ALTER TABLE job DROP COLUMN fulfillment_version,DROP COLUMN invoice_credit_days,DROP COLUMN production_cycle;
 DROP INDEX outbox_request_channel_unique;
 ALTER TABLE outbox DROP CONSTRAINT outbox_target_check;
+ALTER TABLE outbox DROP CONSTRAINT outbox_uc9_in_system_check;
 ALTER TABLE outbox DROP COLUMN target_account_id,DROP COLUMN audience,DROP COLUMN kind;
 ALTER TABLE outbox ADD CONSTRAINT outbox_request_id_channel_key UNIQUE(request_id,channel);

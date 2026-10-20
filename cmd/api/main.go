@@ -6,6 +6,7 @@ import (
 	"flag"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/auth"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/config"
+	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/delivery"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/file"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/health"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/material"
@@ -89,6 +90,7 @@ func main() {
 		procurement.NewHandler(procurement.NewService(db)).Routes(r, authHandler.Authenticate)
 		receiving.NewHandler(receiving.NewService(db), receiving.NewEvidenceService(db, store)).Routes(r, authHandler.Authenticate)
 		production.NewHandler(production.NewService(db), production.NewPhotoService(db, store)).Routes(r, authHandler.Authenticate)
+		delivery.NewHandler(delivery.NewService(db), delivery.NewEvidenceService(db, store)).Routes(r, authHandler.Authenticate)
 	})
 	if err := httpserver.Run(ctx, logger, cfg.HTTPAddr, cfg.ShutdownTimeout, router); err != nil {
 		logger.Error("api stopped", "error", err)
