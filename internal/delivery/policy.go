@@ -3,7 +3,7 @@ package delivery
 import q "github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/quotation"
 
 func CanApply(v State, in Action) error {
-	if v.RequestStatus != "ongoing" || v.Version != in.ExpectedVersion {
+	if (v.RequestStatus != "ongoing" && !(v.RequestStatus == "completed" && in.Kind == "review" && in.Outcome == "rejected")) || v.Version != in.ExpectedVersion {
 		return ErrConflict
 	}
 	switch in.Kind {

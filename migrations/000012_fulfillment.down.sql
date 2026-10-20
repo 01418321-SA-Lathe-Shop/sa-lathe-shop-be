@@ -1,0 +1,24 @@
+DO $$ BEGIN
+ IF EXISTS(SELECT 1 FROM fulfillment_event) OR EXISTS(SELECT 1 FROM customer_evidence) OR EXISTS(SELECT 1 FROM outbox WHERE kind<>'request') OR EXISTS(SELECT 1 FROM job WHERE fulfillment_version<>0 OR production_cycle<>1 OR invoice_credit_days IS NOT NULL) THEN RAISE EXCEPTION 'UC9 contains audit/evidence; restore backup instead of destructive rollback'; END IF;
+END $$;
+DROP TRIGGER request_closure_guard ON job_request;
+DROP FUNCTION guard_request_closure();
+DROP TRIGGER fulfillment_job_consistent ON job;
+DROP TRIGGER fulfillment_job_guard ON job;
+DROP FUNCTION check_fulfillment_job(),guard_fulfillment_job();
+DROP TRIGGER production_job_guard ON job;
+DROP TRIGGER production_job_consistent ON job;
+DROP FUNCTION guard_production_job(),check_production_job();
+ALTER FUNCTION uc8_guard_production_job() RENAME TO guard_production_job;
+ALTER FUNCTION uc8_check_production_job() RENAME TO check_production_job;
+CREATE TRIGGER production_job_guard BEFORE UPDATE ON job FOR EACH ROW EXECUTE FUNCTION guard_production_job();
+CREATE CONSTRAINT TRIGGER production_job_consistent AFTER UPDATE ON job DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION check_production_job();
+ALTER TABLE production_event DROP CONSTRAINT production_event_action_check;
+ALTER TABLE production_event ADD CONSTRAINT production_event_action_check CHECK(action IN ('start','use','time','complete','labor'));
+DROP TABLE payment_allocation,customer_payment,customer_evidence,production_return,delivery,invoice,fulfillment_event;
+DROP FUNCTION guard_invoice(),guard_delivery(),guard_customer_payment(),guard_payment_allocation(),check_customer_payment();
+ALTER TABLE job DROP COLUMN fulfillment_version,DROP COLUMN invoice_credit_days,DROP COLUMN production_cycle;
+DROP INDEX outbox_request_channel_unique;
+ALTER TABLE outbox DROP CONSTRAINT outbox_target_check;
+ALTER TABLE outbox DROP COLUMN target_account_id,DROP COLUMN audience,DROP COLUMN kind;
+ALTER TABLE outbox ADD CONSTRAINT outbox_request_id_channel_key UNIQUE(request_id,channel);
