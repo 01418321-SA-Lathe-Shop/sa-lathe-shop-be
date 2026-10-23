@@ -1,0 +1,742 @@
+openapi: 3.0.3
+info:
+  title: SA Lathe Shop API
+  version: 1.0.0
+  description: >-
+    Contract for the implemented UC1-UC9 HTTP API. Authorization is scoped to
+    the authenticated account and current customer-company membership. Private
+    file bytes use short-lived signed object-storage URLs; the API stores only
+    object metadata and keys. Money is represented as decimal strings.
+servers:
+  - url: http://localhost:8080
+    description: Local development default; check API_PORT in your environment.
+tags:
+  - name: Health
+  - name: Authentication
+  - name: Requests and files
+  - name: Quotations and decisions
+  - name: Deposit and PO
+  - name: Materials and stock
+  - name: Procurement and receiving
+  - name: Production
+  - name: Customer fulfillment
+  - name: Notifications
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Liveness check
+      security: []
+      responses:
+        '200': {description: API process is alive}
+  /health/ready:
+    get:
+      tags: [Health]
+      summary: Readiness and database check
+      security: []
+      responses:
+        '200': {description: Dependencies are ready}
+        '503': {description: A required dependency is unavailable}
+  /auth/register:
+    post:
+      tags: [Authentication]
+      summary: Register a customer account
+      security: []
+      x-allowed-roles: [anonymous]
+      requestBody: {$ref: '#/components/requestBodies/CustomerRegistration'}
+      responses:
+        '201': {$ref: '#/components/responses/Json'}
+        '400': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: Create an opaque bearer session
+      security: []
+      x-allowed-roles: [anonymous]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: {type: string}
+                password: {type: string, format: password}
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+  /auth/me:
+    get:
+      tags: [Authentication]
+      summary: Get the current account
+      x-allowed-roles: [admin, worker, customer]
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '401': {$ref: '#/components/responses/Error'}
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      summary: Revoke the current bearer session
+      x-allowed-roles: [admin, worker, customer]
+      responses:
+        '204': {description: Session revoked}
+        '401': {$ref: '#/components/responses/Error'}
+  /admin/workers:
+    get:
+      tags: [Authentication]
+      summary: List workers
+      x-allowed-roles: [admin]
+      parameters: [{$ref: '#/components/parameters/Limit'}, {$ref: '#/components/parameters/Offset'}]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '401': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}}
+    post:
+      tags: [Authentication]
+      summary: Create a worker account
+      x-allowed-roles: [admin]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'201': {$ref: '#/components/responses/Json'}, '400': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}, '409': {$ref: '#/components/responses/Error'}}
+  /admin/workers/{id}:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    get:
+      tags: [Authentication]
+      summary: Get a worker
+      x-allowed-roles: [admin]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '403': {$ref: '#/components/responses/Error'}, '404': {$ref: '#/components/responses/Error'}}
+    patch:
+      tags: [Authentication]
+      summary: Update or deactivate a worker
+      x-allowed-roles: [admin]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '400': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}, '404': {$ref: '#/components/responses/Error'}}
+  /customers:
+    get:
+      tags: [Authentication]
+      summary: List customer profiles for the current company
+      x-allowed-roles: [customer]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '401': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}}
+  /customers/{customer_id}/invitations:
+    post:
+      tags: [Authentication]
+      summary: Create a one-use company invitation
+      x-allowed-roles: [customer, company owner only]
+      parameters: [{$ref: '#/components/parameters/CustomerID'}]
+      responses: {'201': {$ref: '#/components/responses/Json'}, '403': {$ref: '#/components/responses/Error'}}
+  /customers/join:
+    post:
+      tags: [Authentication]
+      summary: Join a company with an invitation
+      x-allowed-roles: [customer]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'204': {description: Membership created}, '400': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}}
+  /requests:
+    get:
+      tags: [Requests and files]
+      summary: List requests visible to the current account
+      x-allowed-roles: [admin, worker, customer]
+      parameters: [{$ref: '#/components/parameters/Limit'}, {$ref: '#/components/parameters/Offset'}]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '401': {$ref: '#/components/responses/Error'}}
+    post:
+      tags: [Requests and files]
+      summary: Submit a custom lathe job request
+      x-allowed-roles: [customer]
+      requestBody: {$ref: '#/components/requestBodies/RequestCreate'}
+      responses: {'201': {$ref: '#/components/responses/Json'}, '400': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}}
+  /requests/{request_id}:
+    get:
+      tags: [Requests and files]
+      summary: Get a scoped request
+      x-allowed-roles: [admin, worker, customer, current company member]
+      parameters: [{$ref: '#/components/parameters/RequestID'}]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '404': {$ref: '#/components/responses/Error'}}
+  /requests/{request_id}/uploads:
+    post:
+      tags: [Requests and files]
+      summary: Begin a private request attachment upload
+      x-allowed-roles: [customer, current company member]
+      parameters: [{$ref: '#/components/parameters/RequestID'}]
+      requestBody: {$ref: '#/components/requestBodies/UploadIntent'}
+      responses: {'201': {$ref: '#/components/responses/Json'}, '400': {$ref: '#/components/responses/Error'}, '404': {$ref: '#/components/responses/Error'}}
+  /uploads/{attachment_id}/complete:
+    post:
+      tags: [Requests and files]
+      summary: Finalize and freeze an uploaded request attachment
+      x-allowed-roles: [admin, customer, original uploader]
+      parameters: [{$ref: '#/components/parameters/AttachmentID'}]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '403': {$ref: '#/components/responses/Error'}}
+  /attachments/{attachment_id}/download:
+    get:
+      tags: [Requests and files]
+      summary: Get a short-lived private download link
+      x-allowed-roles: [admin, worker, authorized customer member]
+      parameters: [{$ref: '#/components/parameters/AttachmentID'}]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '404': {$ref: '#/components/responses/Error'}}
+  /requests/{request_id}/attachments:
+    get:
+      tags: [Requests and files]
+      summary: List authorized request attachments
+      x-allowed-roles: [admin, worker, authorized customer member]
+      parameters: [{$ref: '#/components/parameters/RequestID'}]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '404': {$ref: '#/components/responses/Error'}}
+  /quotations/estimate:
+    post:
+      tags: [Quotations and decisions]
+      summary: Calculate a preliminary minimum price
+      x-allowed-roles: [worker]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '400': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}}
+  /requests/{request_id}/rejection:
+    get:
+      tags: [Quotations and decisions]
+      summary: Read request rejection status
+      x-allowed-roles: [admin, worker, authorized customer member]
+      parameters: [{$ref: '#/components/parameters/RequestID'}]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '404': {$ref: '#/components/responses/Error'}}
+  /requests/{request_id}/quotations:
+    get:
+      tags: [Quotations and decisions]
+      summary: List quotations for a request
+      x-allowed-roles: [admin, worker, authorized customer member]
+      parameters: [{$ref: '#/components/parameters/RequestID'}, {$ref: '#/components/parameters/Limit'}, {$ref: '#/components/parameters/Offset'}]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '404': {$ref: '#/components/responses/Error'}}
+    post:
+      tags: [Quotations and decisions]
+      summary: Create a worker quotation draft
+      x-allowed-roles: [worker]
+      parameters: [{$ref: '#/components/parameters/RequestID'}]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'201': {$ref: '#/components/responses/Json'}, '400': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}}
+  /requests/{request_id}/reject:
+    post:
+      tags: [Quotations and decisions]
+      summary: Reject a request with a reason
+      x-allowed-roles: [worker]
+      parameters: [{$ref: '#/components/parameters/RequestID'}]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'204': {description: Rejection recorded}, '400': {$ref: '#/components/responses/Error'}, '409': {$ref: '#/components/responses/Error'}}
+  /quotations/{quotation_id}:
+    get:
+      tags: [Quotations and decisions]
+      summary: Read a quotation (internal costs are hidden from customers)
+      x-allowed-roles: [admin, worker, authorized customer member]
+      parameters: [{$ref: '#/components/parameters/QuotationID'}]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '404': {$ref: '#/components/responses/Error'}}
+    patch:
+      tags: [Quotations and decisions]
+      summary: Edit a worker quotation draft with optimistic version
+      x-allowed-roles: [worker]
+      parameters: [{$ref: '#/components/parameters/QuotationID'}]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '400': {$ref: '#/components/responses/Error'}, '409': {$ref: '#/components/responses/Error'}}
+  /quotations/{quotation_id}/send:
+    post:
+      tags: [Quotations and decisions]
+      summary: Send a quotation to its customer
+      x-allowed-roles: [worker]
+      parameters: [{$ref: '#/components/parameters/QuotationID'}]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '409': {$ref: '#/components/responses/Error'}}
+  /quotations/{quotation_id}/decision:
+    get:
+      tags: [Quotations and decisions]
+      summary: Read the company quotation decision
+      x-allowed-roles: [admin, worker, customer, current company member]
+      parameters: [{$ref: '#/components/parameters/QuotationID'}]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '404': {$ref: '#/components/responses/Error'}}
+    post:
+      tags: [Quotations and decisions]
+      summary: Accept or reject a sent quotation
+      x-allowed-roles: [customer, current company member]
+      parameters: [{$ref: '#/components/parameters/QuotationID'}]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '400': {$ref: '#/components/responses/Error'}, '409': {$ref: '#/components/responses/Error'}}
+  /requests/{request_id}/quotation-decisions:
+    get:
+      tags: [Quotations and decisions]
+      summary: List company quotation decisions
+      x-allowed-roles: [customer, current company member]
+      parameters: [{$ref: '#/components/parameters/RequestID'}]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '404': {$ref: '#/components/responses/Error'}}
+  /quotations/{quotation_id}/evidence:
+    post:
+      tags: [Deposit and PO]
+      summary: Submit deposit or company PO evidence
+      x-allowed-roles: [customer, current company member]
+      parameters: [{$ref: '#/components/parameters/QuotationID'}]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '400': {$ref: '#/components/responses/Error'}, '409': {$ref: '#/components/responses/Error'}}
+  /evidence/{evidence_id}/review:
+    post:
+      tags: [Deposit and PO]
+      summary: Approve or reject deposit/PO evidence
+      x-allowed-roles: [admin, worker]
+      parameters: [{$ref: '#/components/parameters/EvidenceID'}]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '400': {$ref: '#/components/responses/Error'}, '409': {$ref: '#/components/responses/Error'}}
+  /quotations/{quotation_id}/fulfillment:
+    get:
+      tags: [Deposit and PO]
+      summary: Read deposit, PO and job opening status
+      x-allowed-roles: [admin, worker, authorized customer member]
+      parameters: [{$ref: '#/components/parameters/QuotationID'}]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '404': {$ref: '#/components/responses/Error'}}
+  /units:
+    get:
+      tags: [Materials and stock]
+      summary: List material units
+      x-allowed-roles: [admin, worker]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '403': {$ref: '#/components/responses/Error'}}
+    post:
+      tags: [Materials and stock]
+      summary: Create a material unit
+      x-allowed-roles: [admin]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '400': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}}
+  /materials:
+    get:
+      tags: [Materials and stock]
+      summary: Search materials (Workers do not receive cost fields)
+      x-allowed-roles: [admin, worker]
+      parameters: [{$ref: '#/components/parameters/Search'}, {$ref: '#/components/parameters/Limit'}, {$ref: '#/components/parameters/Offset'}]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '403': {$ref: '#/components/responses/Error'}}
+    post:
+      tags: [Materials and stock]
+      summary: Create a material
+      x-allowed-roles: [admin]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '400': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}}
+  /materials/{material_id}:
+    patch:
+      tags: [Materials and stock]
+      summary: Update material master data
+      x-allowed-roles: [admin]
+      parameters: [{$ref: '#/components/parameters/MaterialID'}]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '409': {$ref: '#/components/responses/Error'}}
+  /materials/{material_id}/stock:
+    post:
+      tags: [Materials and stock]
+      summary: Add stock or correct a physical count
+      x-allowed-roles: [admin]
+      parameters: [{$ref: '#/components/parameters/MaterialID'}]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '409': {$ref: '#/components/responses/Error'}}
+  /materials/{material_id}/movements:
+    get:
+      tags: [Materials and stock]
+      summary: Read material movement history
+      x-allowed-roles: [admin, worker]
+      parameters: [{$ref: '#/components/parameters/MaterialID'}, {$ref: '#/components/parameters/Limit'}, {$ref: '#/components/parameters/Offset'}]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '403': {$ref: '#/components/responses/Error'}}
+  /jobs/{job_id}/materials:
+    get:
+      tags: [Materials and stock]
+      summary: Read a job material plan and reservations
+      x-allowed-roles: [admin, worker]
+      parameters: [{$ref: '#/components/parameters/JobID'}]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '404': {$ref: '#/components/responses/Error'}}
+    put:
+      tags: [Materials and stock]
+      summary: Save a worker material plan
+      x-allowed-roles: [worker]
+      parameters: [{$ref: '#/components/parameters/JobID'}]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '409': {$ref: '#/components/responses/Error'}}
+  /jobs/{job_id}/materials/reserve:
+    post:
+      tags: [Materials and stock]
+      summary: Reconcile a job plan with available stock
+      x-allowed-roles: [worker]
+      parameters: [{$ref: '#/components/parameters/JobID'}]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '409': {$ref: '#/components/responses/Error'}}
+  /suppliers:
+    get:
+      tags: [Procurement and receiving]
+      summary: Search suppliers
+      x-allowed-roles: [admin]
+      parameters: [{$ref: '#/components/parameters/Search'}, {$ref: '#/components/parameters/Limit'}, {$ref: '#/components/parameters/Offset'}]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '403': {$ref: '#/components/responses/Error'}}
+    post:
+      tags: [Procurement and receiving]
+      summary: Create a supplier
+      x-allowed-roles: [admin]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '400': {$ref: '#/components/responses/Error'}}
+  /suppliers/{supplier_id}:
+    put:
+      tags: [Procurement and receiving]
+      summary: Update a supplier
+      x-allowed-roles: [admin]
+      parameters: [{$ref: '#/components/parameters/SupplierID'}]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '409': {$ref: '#/components/responses/Error'}}
+  /material-orders:
+    get:
+      tags: [Procurement and receiving]
+      summary: List material orders
+      x-allowed-roles: [admin]
+      parameters: [{$ref: '#/components/parameters/JobFilter'}, {$ref: '#/components/parameters/Limit'}, {$ref: '#/components/parameters/Offset'}]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '403': {$ref: '#/components/responses/Error'}}
+    post:
+      tags: [Procurement and receiving]
+      summary: Place a supplier order
+      x-allowed-roles: [admin]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '400': {$ref: '#/components/responses/Error'}, '409': {$ref: '#/components/responses/Error'}}
+  /material-orders/{order_id}:
+    get:
+      tags: [Procurement and receiving]
+      summary: Read a material order
+      x-allowed-roles: [admin]
+      parameters: [{$ref: '#/components/parameters/OrderID'}]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '404': {$ref: '#/components/responses/Error'}}
+  /material-orders/{order_id}/actions:
+    post:
+      tags: [Procurement and receiving]
+      summary: Record supplier response or cancel an unreceived order
+      x-allowed-roles: [admin]
+      parameters: [{$ref: '#/components/parameters/OrderID'}]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '409': {$ref: '#/components/responses/Error'}}
+  /receiving/orders:
+    get:
+      tags: [Procurement and receiving]
+      summary: List receiving orders
+      x-allowed-roles: [admin, worker]
+      parameters: [{$ref: '#/components/parameters/Limit'}, {$ref: '#/components/parameters/Offset'}]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '403': {$ref: '#/components/responses/Error'}}
+  /receiving/orders/{order_id}:
+    get:
+      tags: [Procurement and receiving]
+      summary: Read receipt and replacement status
+      x-allowed-roles: [admin, worker]
+      parameters: [{$ref: '#/components/parameters/OrderID'}]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '404': {$ref: '#/components/responses/Error'}}
+  /receiving/orders/{order_id}/receipts:
+    post:
+      tags: [Procurement and receiving]
+      summary: Record a partial receipt
+      x-allowed-roles: [admin, worker]
+      parameters: [{$ref: '#/components/parameters/OrderID'}]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '409': {$ref: '#/components/responses/Error'}}
+  /receiving/orders/{order_id}/claims/{claim_id}/submit:
+    post:
+      tags: [Procurement and receiving]
+      summary: Submit a replacement claim
+      x-allowed-roles: [admin, worker]
+      parameters: [{$ref: '#/components/parameters/OrderID'}, {$ref: '#/components/parameters/ClaimID'}]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '409': {$ref: '#/components/responses/Error'}}
+  /receiving/orders/{order_id}/credit-terms:
+    post:
+      tags: [Procurement and receiving]
+      summary: Record supplier credit days after full good receipt
+      x-allowed-roles: [admin]
+      parameters: [{$ref: '#/components/parameters/OrderID'}]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '409': {$ref: '#/components/responses/Error'}}
+  /receiving/orders/{order_id}/settlement:
+    post:
+      tags: [Procurement and receiving]
+      summary: Record the one full supplier settlement
+      x-allowed-roles: [admin]
+      parameters: [{$ref: '#/components/parameters/OrderID'}]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '409': {$ref: '#/components/responses/Error'}}
+  /material-orders/{order_id}/evidence/uploads:
+    post:
+      tags: [Procurement and receiving]
+      summary: Start a private supplier-payment evidence upload
+      x-allowed-roles: [admin]
+      parameters: [{$ref: '#/components/parameters/OrderID'}]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '403': {$ref: '#/components/responses/Error'}}
+  /order-evidence/{evidence_id}/complete:
+    post:
+      tags: [Procurement and receiving]
+      summary: Finalize supplier-payment evidence
+      x-allowed-roles: [admin]
+      parameters: [{$ref: '#/components/parameters/EvidenceID'}]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '404': {$ref: '#/components/responses/Error'}}
+  /order-evidence/{evidence_id}/download:
+    get:
+      tags: [Procurement and receiving]
+      summary: Get a private supplier-payment evidence link
+      x-allowed-roles: [admin]
+      parameters: [{$ref: '#/components/parameters/EvidenceID'}]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '404': {$ref: '#/components/responses/Error'}}
+  /production/jobs:
+    get:
+      tags: [Production]
+      summary: List production jobs
+      x-allowed-roles: [admin, worker]
+      parameters: [{$ref: '#/components/parameters/Limit'}, {$ref: '#/components/parameters/Offset'}]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '403': {$ref: '#/components/responses/Error'}}
+  /production/jobs/{job_id}:
+    get:
+      tags: [Production]
+      summary: Read production progress with role-based financial redaction
+      x-allowed-roles: [admin, worker]
+      parameters: [{$ref: '#/components/parameters/JobID'}]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '404': {$ref: '#/components/responses/Error'}}
+  /production/jobs/{job_id}/labor-cost:
+    put:
+      tags: [Production]
+      summary: Record actual labor cost
+      x-allowed-roles: [admin]
+      parameters: [{$ref: '#/components/parameters/JobID'}]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '409': {$ref: '#/components/responses/Error'}}
+  /production/jobs/{job_id}/start:
+    post:
+      tags: [Production]
+      summary: Start a fully reserved job
+      x-allowed-roles: [worker]
+      parameters: [{$ref: '#/components/parameters/JobID'}]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '409': {$ref: '#/components/responses/Error'}}
+  /production/jobs/{job_id}/usage:
+    post:
+      tags: [Production]
+      summary: Record actual material usage
+      x-allowed-roles: [worker]
+      parameters: [{$ref: '#/components/parameters/JobID'}]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '409': {$ref: '#/components/responses/Error'}}
+  /production/jobs/{job_id}/time:
+    post:
+      tags: [Production]
+      summary: Record actual labor minutes
+      x-allowed-roles: [worker]
+      parameters: [{$ref: '#/components/parameters/JobID'}]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '409': {$ref: '#/components/responses/Error'}}
+  /production/jobs/{job_id}/complete:
+    post:
+      tags: [Production]
+      summary: Complete a production cycle
+      x-allowed-roles: [worker]
+      parameters: [{$ref: '#/components/parameters/JobID'}]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '409': {$ref: '#/components/responses/Error'}}
+  /production/jobs/{job_id}/photos/uploads:
+    post:
+      tags: [Production]
+      summary: Start an optional private job-photo upload
+      x-allowed-roles: [worker]
+      parameters: [{$ref: '#/components/parameters/JobID'}]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '403': {$ref: '#/components/responses/Error'}}
+  /job-photos/{photo_id}/complete:
+    post:
+      tags: [Production]
+      summary: Finalize a job-photo upload
+      x-allowed-roles: [worker, original uploader]
+      parameters: [{$ref: '#/components/parameters/PhotoID'}]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '404': {$ref: '#/components/responses/Error'}}
+  /job-photos/{photo_id}/download:
+    get:
+      tags: [Production]
+      summary: Get a private job-photo download link
+      x-allowed-roles: [admin, worker]
+      parameters: [{$ref: '#/components/parameters/PhotoID'}]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '404': {$ref: '#/components/responses/Error'}}
+  /fulfillment/jobs:
+    get:
+      tags: [Customer fulfillment]
+      summary: List authorized invoices, deliveries and balances
+      x-allowed-roles: [admin, worker, customer, current company member]
+      parameters: [{$ref: '#/components/parameters/Limit'}, {$ref: '#/components/parameters/Offset'}]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '401': {$ref: '#/components/responses/Error'}}
+  /fulfillment/jobs/{job_id}:
+    get:
+      tags: [Customer fulfillment]
+      summary: Read a scoped fulfillment record
+      x-allowed-roles: [admin, worker, customer, current company member]
+      parameters: [{$ref: '#/components/parameters/JobID'}]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '404': {$ref: '#/components/responses/Error'}}
+  /fulfillment/jobs/{job_id}/credit-terms:
+    put:
+      tags: [Customer fulfillment]
+      summary: Set invoice credit days once
+      x-allowed-roles: [admin]
+      parameters: [{$ref: '#/components/parameters/JobID'}]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '409': {$ref: '#/components/responses/Error'}}
+  /fulfillment/jobs/{job_id}/invoice:
+    post:
+      tags: [Customer fulfillment]
+      summary: Issue the immutable post-deposit invoice
+      x-allowed-roles: [admin, worker]
+      parameters: [{$ref: '#/components/parameters/JobID'}]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '409': {$ref: '#/components/responses/Error'}}
+  /fulfillment/jobs/{job_id}/deliveries:
+    post:
+      tags: [Customer fulfillment]
+      summary: Record a whole-job delivery
+      x-allowed-roles: [admin, worker]
+      parameters: [{$ref: '#/components/parameters/JobID'}]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '409': {$ref: '#/components/responses/Error'}}
+  /fulfillment/jobs/{job_id}/inspection:
+    post:
+      tags: [Customer fulfillment]
+      summary: Accept delivery or return for free rework
+      x-allowed-roles: [customer, current company member]
+      parameters: [{$ref: '#/components/parameters/JobID'}]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '409': {$ref: '#/components/responses/Error'}}
+  /fulfillment/jobs/{job_id}/payments/bank:
+    post:
+      tags: [Customer fulfillment]
+      summary: Submit a customer bank installment with private proof
+      x-allowed-roles: [customer, current company member]
+      parameters: [{$ref: '#/components/parameters/JobID'}]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '409': {$ref: '#/components/responses/Error'}}
+  /fulfillment/jobs/{job_id}/payments/cash:
+    post:
+      tags: [Customer fulfillment]
+      summary: Record a customer cash installment
+      x-allowed-roles: [admin]
+      parameters: [{$ref: '#/components/parameters/JobID'}]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '409': {$ref: '#/components/responses/Error'}}
+  /fulfillment/jobs/{job_id}/payments/review:
+    post:
+      tags: [Customer fulfillment]
+      summary: Approve or reject a pending bank payment
+      x-allowed-roles: [admin]
+      parameters: [{$ref: '#/components/parameters/JobID'}]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '409': {$ref: '#/components/responses/Error'}}
+  /fulfillment/jobs/{job_id}/evidence/uploads:
+    post:
+      tags: [Customer fulfillment]
+      summary: Start a private customer payment-proof upload
+      x-allowed-roles: [customer, admin]
+      parameters: [{$ref: '#/components/parameters/JobID'}]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '403': {$ref: '#/components/responses/Error'}}
+  /customer-evidence/{evidence_id}/complete:
+    post:
+      tags: [Customer fulfillment]
+      summary: Finalize a payment-proof upload
+      x-allowed-roles: [admin, customer, original uploader]
+      parameters: [{$ref: '#/components/parameters/EvidenceID'}]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '404': {$ref: '#/components/responses/Error'}}
+  /customer-evidence/{evidence_id}/download:
+    get:
+      tags: [Customer fulfillment]
+      summary: Get a private payment-proof download link
+      x-allowed-roles: [admin, original uploader]
+      parameters: [{$ref: '#/components/parameters/EvidenceID'}]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '404': {$ref: '#/components/responses/Error'}}
+  /notifications:
+    get:
+      tags: [Notifications]
+      summary: List the current account's in-system notifications
+      x-allowed-roles: [admin, worker, customer]
+      parameters: [{$ref: '#/components/parameters/Limit'}, {$ref: '#/components/parameters/Offset'}]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '401': {$ref: '#/components/responses/Error'}}
+  /notifications/{notification_id}/read:
+    patch:
+      tags: [Notifications]
+      summary: Mark an owned notification as read
+      x-allowed-roles: [admin, worker, customer]
+      parameters: [{$ref: '#/components/parameters/NotificationID'}]
+      responses: {'204': {description: Notification marked read}, '404': {$ref: '#/components/responses/Error'}}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque session token
+  parameters:
+    ID: {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+    RequestID: {name: request_id, in: path, required: true, schema: {type: string, format: uuid}}
+    QuotationID: {name: quotation_id, in: path, required: true, schema: {type: string, format: uuid}}
+    CustomerID: {name: customer_id, in: path, required: true, schema: {type: string, format: uuid}}
+    AttachmentID: {name: attachment_id, in: path, required: true, schema: {type: string, format: uuid}}
+    EvidenceID: {name: evidence_id, in: path, required: true, schema: {type: string, format: uuid}}
+    MaterialID: {name: material_id, in: path, required: true, schema: {type: string, format: uuid}}
+    JobID: {name: job_id, in: path, required: true, schema: {type: string, format: uuid}}
+    SupplierID: {name: supplier_id, in: path, required: true, schema: {type: string, format: uuid}}
+    OrderID: {name: order_id, in: path, required: true, schema: {type: string, format: uuid}}
+    ClaimID: {name: claim_id, in: path, required: true, schema: {type: string, format: uuid}}
+    PhotoID: {name: photo_id, in: path, required: true, schema: {type: string, format: uuid}}
+    NotificationID: {name: notification_id, in: path, required: true, schema: {type: string, format: uuid}}
+    Limit: {name: limit, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
+    Offset: {name: offset, in: query, required: false, schema: {type: integer, minimum: 0, default: 0}}
+    Search: {name: search, in: query, required: false, schema: {type: string}}
+    JobFilter: {name: job_id, in: query, required: false, schema: {type: string, format: uuid}}
+  requestBodies:
+    CustomerRegistration:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [username, password, name, customer_type]
+            properties:
+              username: {type: string}
+              password: {type: string, format: password, minLength: 12}
+              name: {type: string}
+              customer_type: {type: string, enum: [individual, company]}
+              company_name: {type: string, description: Required for a new company account; omit when joining with an invitation.}
+              invitation: {type: string, description: One-use company invitation token.}
+    RequestCreate:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [customer_id, description, qty, material_spec]
+            properties:
+              customer_id: {type: string, format: uuid}
+              description: {type: string, maxLength: 10000}
+              qty: {type: integer, format: int64, minimum: 1}
+              material_spec: {type: string, maxLength: 2000}
+              deadline: {type: string, format: date-time, description: Optional requested date; not a guaranteed production date.}
+    UploadIntent:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [file_name, content_type, byte_size]
+            properties:
+              file_name: {type: string}
+              content_type: {type: string}
+              byte_size: {type: integer, format: int64, minimum: 1, maximum: 100000000}
+    JsonObject:
+      required: true
+      content:
+        application/json:
+          schema: {type: object, additionalProperties: true}
+  responses:
+    Json:
+      description: Successful JSON response; see the feature contract in docs/UC1.md through docs/UC9.md.
+      content:
+        application/json:
+          schema: {type: object, additionalProperties: true}
+    Error:
+      description: Consistent error response.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error:
+                type: object
+                required: [code, message]
+                properties:
+                  code: {type: string}
+                  message: {type: string}
+security:
+  - bearerAuth: []
