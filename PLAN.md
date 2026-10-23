@@ -166,3 +166,13 @@ Decision: owner confirmed all seven proposals on 2026-10-20. Implemented Admin-e
 Publication confirmation (2026-10-19): separate fix ee0c33c and verification record 1d31580 were pushed to origin/develop, with 1d31580 independently observed remotely. This resolves the publication-only handoff notes above. Main remained 86d5be1. This final checklist acknowledgement is a small documentation-only follow-up on develop.
 
 Every future phase: follow the mandatory AGENTS.md commit/push policy and docs/GIT_WORKFLOW.md. Commit focused buildable groups as work progresses, with clear purpose and relevant tests; never one giant phase commit. Update this plan, run full checks, review status/log and push each completed phase to develop first, verifying the remote tip. Main requires a new explicit owner instruction. Record blockers instead of silently leaving a finished phase unpushed. UC7/UC8 are implemented, integration-verified and published to develop. UC9 business policies are confirmed and implementation is authorized. Historical push-pending notes in Phases 0-3 were resolved before Phase 4. Company decision authority is confirmed for any current active company member.
+
+## Phase 13 API contract, security review, CI and performance baseline — in progress
+- [ ] Record owner approval for documentation, cross-UC security/permission review, CI, and repeatable local latency/query measurement only; no new business behavior or deployment.
+- [ ] Publish an OpenAPI contract and runnable examples that match the registered UC1-UC9 routes, authentication, role boundaries, errors, and private evidence behavior.
+- [ ] Review authorization, data redaction, private evidence, transaction/idempotency and deployment-sensitive controls across UC1-UC9; document evidence, severity, and any safe in-scope correction separately.
+- [ ] Add CI for Go formatting, build, vet, and tests without requiring production secrets, existing databases, or real LINE delivery.
+- [ ] Add a repeatable local HTTP load scenario plus database query measurement instructions; state prerequisites and avoid inventing SLA/hosting assumptions.
+- [ ] Run CI-equivalent checks and validate API contract/examples and benchmark setup; preserve existing data and never deploy.
+- [ ] Update this phase record with outcomes/limitations, commit logical buildable groups, push to origin/develop, and independently verify the remote tip.
+Decision: owner approved Phase 13 scope on 2026-10-23. Phase 12 / UC9 is the final business feature. Performance results will be local diagnostics, not a production capacity claim. No main push or deployment is authorized.
