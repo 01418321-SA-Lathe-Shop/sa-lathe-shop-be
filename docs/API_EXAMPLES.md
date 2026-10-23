@@ -47,10 +47,13 @@ The exact upload allowlist and 100 MB limit are implemented in `internal/file`. 
 Quotation cost/price amounts are JSON decimal strings. This quote meets the confirmed minimum of `(material + labor) * 1.60`, with the minimum rounded upward to one satang.
 
 ```powershell
+$workerLoginBody = @{ username = 'demo-worker'; password = 'replace-with-local-password' } | ConvertTo-Json
+$workerLogin = Invoke-RestMethod -Method Post -Uri "$api/auth/login" -ContentType 'application/json' -Body $workerLoginBody
+$workerHeaders = @{ Authorization = "Bearer $($workerLogin.access_token)" }
 $quoteBody = @{ material_cost = '100.00'; labor_cost = '50.00'; final_price = '240.00' } | ConvertTo-Json
-$quote = Invoke-RestMethod -Method Post -Uri "$api/requests/$($request.id)/quotations" -Headers $headers -ContentType 'application/json' -Body $quoteBody
+$quote = Invoke-RestMethod -Method Post -Uri "$api/requests/$($request.id)/quotations" -Headers $workerHeaders -ContentType 'application/json' -Body $quoteBody
 $sendBody = @{ expected_lock_version = $quote.lock_version } | ConvertTo-Json
-$quote = Invoke-RestMethod -Method Post -Uri "$api/quotations/$($quote.id)/send" -Headers $headers -ContentType 'application/json' -Body $sendBody
+$quote = Invoke-RestMethod -Method Post -Uri "$api/quotations/$($quote.id)/send" -Headers $workerHeaders -ContentType 'application/json' -Body $sendBody
 ```
 
 Use a Worker token for quotation creation and sending. A company customer decides with `POST /quotations/{quotation_id}/decision`, body `{ outcome = 'accept', expected_lock_version = <current quotation lock_version> }`; rejection uses `outcome = 'reject'` and a `reason`. Decisions require a currently active company membership.
@@ -60,11 +63,15 @@ Use a Worker token for quotation creation and sending. A company customer decide
 Protected job commands use `idempotency_key` (UUID) and `expected_version` from the latest fulfillment response. Retry a timed-out command with the same key and identical body. A Worker sees invoice/balance information but not payment receipt rows or proof.
 
 ```powershell
-$fulfillment = Invoke-RestMethod -Method Get -Uri "$api/fulfillment/jobs/$jobId" -Headers $headers
+$adminLoginBody = @{ username = 'demo-admin'; password = 'replace-with-local-password' } | ConvertTo-Json
+$adminLogin = Invoke-RestMethod -Method Post -Uri "$api/auth/login" -ContentType 'application/json' -Body $adminLoginBody
+$adminHeaders = @{ Authorization = "Bearer $($adminLogin.access_token)" }
+$jobId = '00000000-0000-4000-8000-000000000002' # Replace with an existing authorized job UUID.
+$fulfillment = Invoke-RestMethod -Method Get -Uri "$api/fulfillment/jobs/$jobId" -Headers $adminHeaders
 $command = @{ idempotency_key = [guid]::NewGuid().ToString(); expected_version = $fulfillment.version }
 # Admin/Worker invoice command (only after production completion and terms):
 $body = $command | ConvertTo-Json
-Invoke-RestMethod -Method Post -Uri "$api/fulfillment/jobs/$jobId/invoice" -Headers $headers -ContentType 'application/json' -Body $body
+Invoke-RestMethod -Method Post -Uri "$api/fulfillment/jobs/$jobId/invoice" -Headers $adminHeaders -ContentType 'application/json' -Body $body
 ```
 
 For a customer bank installment, first upload a private proof through `/fulfillment/jobs/{job_id}/evidence/uploads`, complete it, then POST `/fulfillment/jobs/{job_id}/payments/bank` with `idempotency_key`, current `expected_version`, `amount` as a decimal string, `paid_at` as RFC3339 UTC, and `evidence_id`. A pending submission does not reduce the balance; an Admin must approve it.
