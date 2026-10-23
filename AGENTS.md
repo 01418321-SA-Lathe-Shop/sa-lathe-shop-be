@@ -51,6 +51,8 @@ Use gofmt, explicit errors, contexts and cancellation. No global DB handles. sna
 
 See docs/SETUP.md. PowerShell: ./tasks.ps1 test; ./tasks.ps1 lint; ./tasks.ps1 run; ./tasks.ps1 migrate-up. Build: go build ./...; vet: go vet ./.... Docker Compose requires private values from a local .env. Do not commit .env or local data.
 
+API reference: docs/openapi.yaml is the route/authentication contract; docs/API_EXAMPLES.md contains PowerShell request and private-upload examples. Read the detailed UC guide before changing a payload or role rule. Security review evidence and deployment-dependent follow-ups are in docs/SECURITY_REVIEW.md. For repeatable local read latency and SQL plan measurements, use docs/PERFORMANCE.md and scripts/benchmark-http.ps1; never benchmark against production or claim an SLA from laptop results. GitHub CI runs formatting, build, vet and the default test suite without secrets. Database/S3 integration verification remains the dedicated scripts/verify-uc*.ps1 workflow and requires fresh disposable resources.
+
 ## Commit and push rules
 
 These are mandatory for every phase, not optional cleanup at the end:
