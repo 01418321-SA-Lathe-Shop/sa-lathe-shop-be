@@ -56,7 +56,7 @@ returns HTTP 503 if unavailable. API can start while DB is unavailable. Worker
 requires DB on startup. HTTP logs omit query strings and credentials.
 Shutdown uses SIGTERM in containers or Ctrl+C locally.
 
-Hosting is undecided. DB SSL disable is for local development only; supply your
+Hosting is undecided for production. For student development/testing without local Docker, see docs/DEPLOY_RAILWAY.md (Railway builds Dockerfile.api/Dockerfile.worker and runs migrations as a pre-deploy step). DB SSL disable is for local development only; supply your
 environment's connection/TLS settings when a hosting target is selected.
 
 ## Disposable full verification
