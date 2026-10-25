@@ -2,12 +2,19 @@ FROM public.ecr.aws/docker/library/golang:1.25-alpine AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
+# Same pinned migration tool as tasks.ps1, bundled so hosted deploys (Railway
+# pre-deploy) can apply migrations without a local Go toolchain or Docker.
+RUN CGO_ENABLED=0 go install -tags postgres github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.0
 COPY . .
 RUN CGO_ENABLED=0 go build -trimpath -o /out/api ./cmd/api
 FROM public.ecr.aws/docker/library/alpine:3.22
 RUN apk add --no-cache ca-certificates && addgroup -S app && adduser -S -G app app
 WORKDIR /app
 COPY --from=build /out/api /app/api
+COPY --from=build /go/bin/migrate /app/migrate
+COPY migrations /app/migrations
+COPY scripts/migrate-up.sh /app/migrate-up.sh
 USER app
 EXPOSE 8080
-ENTRYPOINT ["/app/api"]
+# CMD (not ENTRYPOINT) so a host's pre-deploy/start command replaces it cleanly.
+CMD ["/app/api"]
