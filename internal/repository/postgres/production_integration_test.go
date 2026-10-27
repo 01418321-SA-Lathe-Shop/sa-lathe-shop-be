@@ -372,6 +372,28 @@ func TestProductionIntegration(t *testing.T) {
 	if stock().OnHand.String() != "1.000000" || !stock().Reserved.IsZero() || len(g.Photos) != 1 {
 		t.Fatal("photo completion/release mismatch")
 	}
+	// Both usage rows are written before batched ledger inserts. A ledger failure
+	// must roll back both materials, their reservations, usage, versions and event.
+	multiJob := newJob()
+	multiPlan, e := inventory.Save(ctx, worker.Account, multiJob, m.PlanInput{IdempotencyKey: uuid.NewString(), Lines: []m.Requirement{{MaterialID: steel.ID, Quantity: qty("1")}, {MaterialID: extra.ID, Quantity: qty("1")}}})
+	check(e)
+	multi := start(multiJob, multiPlan.Version)
+	beforeMultiStock := stock()
+	_, e = db.pool.Exec(ctx, `CREATE FUNCTION uc8_fail_batch_ledger() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.mode='job_issue' THEN RAISE EXCEPTION 'test batch failure';END IF;RETURN NEW;END $$;CREATE TRIGGER uc8_fail_batch_ledger BEFORE INSERT ON stock_movement FOR EACH ROW EXECUTE FUNCTION uc8_fail_batch_ledger()`)
+	check(e)
+	_, e = service.Use(ctx, worker.Account, multiJob, p.UsageInput{Command: cmd(multi.Version), Lines: []p.UsageLine{{MaterialID: steel.ID, Quantity: qty("1")}, {MaterialID: extra.ID, Quantity: qty("1")}}})
+	if e == nil {
+		t.Fatal("batched ledger failure ignored")
+	}
+	_, e = db.pool.Exec(ctx, `DROP TRIGGER uc8_fail_batch_ledger ON stock_movement;DROP FUNCTION uc8_fail_batch_ledger()`)
+	check(e)
+	multiAfter, e := service.Get(ctx, worker.Account, multiJob)
+	check(e)
+	if multiAfter.Version != multi.Version || len(multiAfter.Usage) != 0 || stock().OnHand != beforeMultiStock.OnHand || stock().Reserved != beforeMultiStock.Reserved || stock().Version != beforeMultiStock.Version {
+		t.Fatal("batch failure partially committed")
+	}
+	_, e = service.Complete(ctx, worker.Account, multiJob, cmd(multi.Version))
+	check(e)
 	// Snapshots are immutable; monetary overflow and populated rollback are rejected.
 	if _, e = service.Labor(ctx, admin, jobA, p.LaborInput{Command: cmd(adminA.Version), Amount: price("9999999999999999.99")}); !errors.Is(e, req.ErrInvalidInput) {
 		t.Fatal("actual cost overflow", e)

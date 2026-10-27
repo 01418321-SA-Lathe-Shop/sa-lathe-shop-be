@@ -47,12 +47,16 @@ func (s *performanceTrace) TraceQueryEnd(ctx context.Context, _ *pgx.Conn, _ pgx
 	}
 }
 func (s *performanceTrace) TraceBatchStart(ctx context.Context, _ *pgx.Conn, _ pgx.TraceBatchStartData) context.Context {
-	return ctx
+	return context.WithValue(ctx, performanceTraceStart{}, time.Now())
 }
 func (s *performanceTrace) TraceBatchQuery(context.Context, *pgx.Conn, pgx.TraceBatchQueryData) {
 	s.count.Add(1)
 }
-func (s *performanceTrace) TraceBatchEnd(context.Context, *pgx.Conn, pgx.TraceBatchEndData) {}
+func (s *performanceTrace) TraceBatchEnd(ctx context.Context, _ *pgx.Conn, _ pgx.TraceBatchEndData) {
+	if start, ok := ctx.Value(performanceTraceStart{}).(time.Time); ok {
+		s.nanos.Add(time.Since(start).Nanoseconds())
+	}
+}
 
 type performanceSample struct {
 	ms, headers float64
@@ -151,6 +155,9 @@ func performanceLoad(t *testing.T, db *Database, trace *performanceTrace, client
 	result.HeadersP95Ms = performancePercentile(headers, .95)
 	result.RequestsPerSecond = float64(requests) / result.ElapsedSeconds
 	result.SQLStatements = trace.count.Load() - beforeCount
+	if strings.HasPrefix(name, "/fulfillment/jobs?") && result.SQLStatements > int64(8*requests) {
+		t.Errorf("fulfillment list exceeded eight statements/request including authentication: %d/%d", result.SQLStatements, requests)
+	}
 	result.SQLClientWallMs = float64(trace.nanos.Load()-beforeNanos) / 1e6
 	result.PoolWaitMs = float64((db.pool.Stat().EmptyAcquireWaitTime() - beforeWait).Microseconds()) / 1000
 	var memory runtime.MemStats
@@ -234,7 +241,7 @@ func TestPerformanceBaseline(t *testing.T) {
 		mixPaths = append(mixPaths, path)
 	}
 	var measurements []performanceResult
-	paths := []string{"/health", "/requests?limit=25&offset=0", "/fulfillment/jobs?limit=25&offset=0", "/production/jobs?limit=25&offset=0", "/materials?search=steel&limit=25&offset=0", "/suppliers?search=supplier&limit=25&offset=0"}
+	paths := []string{"/health", "/requests?limit=25&offset=0", "/fulfillment/jobs?limit=25&offset=0", "/fulfillment/jobs?limit=50&offset=0", "/production/jobs?limit=25&offset=0", "/materials?search=steel&limit=25&offset=0", "/suppliers?search=supplier&limit=25&offset=0"}
 	for _, job := range fixture.longJobIDs {
 		paths = append(paths, "/production/jobs/"+job)
 	}
@@ -307,7 +314,7 @@ func TestPerformanceBaseline(t *testing.T) {
 		"seed_seconds": fixture.seedElapsed.Seconds(), "pool_max": 10, "production_result_storage_bytes": eventBytes,
 		"history_storage":      historyStorage,
 		"service_login_p95_ms": performancePercentile(loginDurations, .95), "measurements": measurements, "plans": plans,
-		"limitations": "Loopback real HTTP handlers/middleware/auth/PostgreSQL, not deployed API/network. Fixture private S3 is real. Logging discarded. No external LINE/background worker load. SQL wall time includes client row consumption; batched-query timing is not included. Percentiles are successful full responses only. Login and usage-write metrics are service calls, not HTTP throughput. Heap snapshots cover the combined test server/client process, not peak API-only RSS. Not a production SLA.",
+		"limitations": "Loopback real HTTP handlers/middleware/auth/PostgreSQL, not deployed API/network. Fixture private S3 is real. Logging discarded. No external LINE/background worker load. SQL wall time includes client row consumption and whole-batch elapsed time, not individual batched statement timings. Percentiles are successful full responses only. Login and usage-write metrics are service calls, not HTTP throughput. Heap snapshots cover the combined test server/client process, not peak API-only RSS. Not a production SLA.",
 	}
 	data, err := json.Marshal(report)
 	check(err)
