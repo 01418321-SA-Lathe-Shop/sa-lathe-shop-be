@@ -163,4 +163,6 @@ recorded before the phase is claimed published. Final exported snapshots
 and harness checks passed. Final source and Windows API/worker scans report zero
 reachable advisories; unused-module reports remain informational. The paired
 reference/report is committed in 76e7e56. Verify the checkpoint's remote tip after
-pushing. Phases 18-21 remain pending.
+pushing. Publication was independently confirmed at origin/develop
+373708880dc2ae14154a7f826666b1cd9dced394; this acknowledgement is a focused
+documentation follow-up on the same branch. Phases 18-21 remain pending.
