@@ -240,7 +240,10 @@ DELETE FROM person WHERE id='00000000-0000-0000-0000-000000000006';
   $replacementBody=@{idempotency_key=[guid]::NewGuid().ToString();expected_version=$receiving.version;note='Good replacements';lines=@(@{material_id=$material.id;good='2';damaged='0';replacement_claim_id=$claimId})}|ConvertTo-Json -Depth 5
   $receiving=Invoke-RestMethod -Method Post -Uri ($apiAddress+'/receiving/orders/'+$receiveOrder.id+'/receipts') -Headers $workerHeaders -ContentType 'application/json' -Body $replacementBody
   if($receiving.status -ne 'received' -or $receiving.claims[0].status -ne 'resolved'){throw 'Docker replacement completion failed'}
-  $settlementBody=@{idempotency_key=[guid]::NewGuid().ToString();expected_version=$receiving.version;method='cash';paid_at=[DateTime]::UtcNow.ToString('o')}|ConvertTo-Json
+  # The DB requires full_received_at <= paid_at <= its own clock_timestamp().
+  # Use the returned server boundary rather than racing the Windows/VM clocks.
+  $settlementTime=([DateTimeOffset]$receiving.full_received_at).ToUniversalTime().ToString('o')
+  $settlementBody=@{idempotency_key=[guid]::NewGuid().ToString();expected_version=$receiving.version;method='cash';paid_at=$settlementTime}|ConvertTo-Json
   $settled=Invoke-RestMethod -Method Post -Uri ($apiAddress+'/receiving/orders/'+$receiveOrder.id+'/settlement') -Headers $adminHeaders -ContentType 'application/json' -Body $settlementBody
   if($settled.finance.payment_status -ne 'paid' -or $settled.finance.settlement.amount -ne '150.00' -or $null -eq $settled.finance.payment_due_at){throw 'Docker supplier settlement/credit failed'}
   $receivedStock=Invoke-RestMethod -Uri ($apiAddress+'/materials?search=S45C') -Headers $adminHeaders
