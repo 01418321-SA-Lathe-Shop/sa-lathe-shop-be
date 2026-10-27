@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	f "github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/delivery"
+	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/platform/failure"
 	req "github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/request"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -30,14 +31,20 @@ func customerFulfillmentError(e error) error {
 func fulfillmentActor(ctx context.Context, tx pgx.Tx, actor, job string) (string, error) {
 	var role string
 	e := tx.QueryRow(ctx, `SELECT role FROM account WHERE id=$1 AND is_active FOR SHARE`, actor).Scan(&role)
-	if e != nil {
+	if errors.Is(e, pgx.ErrNoRows) {
 		return "", req.ErrForbidden
+	}
+	if e != nil {
+		return "", failure.Wrap("fulfillment.actor", e)
 	}
 	if role == "customer" {
 		var id string
 		e = tx.QueryRow(ctx, `SELECT m.account_id::text FROM customer_member m JOIN job_request r ON r.customer_id=m.customer_id JOIN job j ON j.request_id=r.id WHERE j.id=$2 AND m.account_id=$1 FOR SHARE OF m`, actor, job).Scan(&id)
-		if e != nil {
+		if errors.Is(e, pgx.ErrNoRows) {
 			return "", req.ErrNotFound
+		}
+		if e != nil {
+			return "", failure.Wrap("fulfillment.membership", e)
 		}
 	} else if role != "admin" && role != "worker" {
 		return "", req.ErrForbidden
