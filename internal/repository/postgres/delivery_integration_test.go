@@ -262,6 +262,10 @@ func TestCustomerFulfillmentIntegration(t *testing.T) {
 	for e := range results {
 		check(e)
 	}
+	originalCash, e := service.Pay(ctx, admin, job, cash, true)
+	check(e)
+	originalCashJSON, e := json.Marshal(originalCash)
+	check(e)
 	v, e = service.Get(ctx, customer, job)
 	check(e)
 	if v.RequestStatus != "completed" || v.Invoice.Status != "paid" || len(v.Payments) != 3 {
@@ -276,6 +280,11 @@ func TestCustomerFulfillmentIntegration(t *testing.T) {
 	check(e)
 	if old.Version >= v.Version {
 		t.Fatal("retry did not retain original snapshot")
+	}
+	oldJSON, e := json.Marshal(old)
+	check(e)
+	if !bytes.Equal(originalCashJSON, oldJSON) {
+		t.Fatal("retry changed original full fulfillment response after later review")
 	}
 	if _, e = service.Inspect(ctx, customer, job, f.InspectInput{Command: cmd(v.Version), Outcome: "return", Reason: "Late warranty"}); e == nil {
 		t.Fatal("post acceptance return")

@@ -244,12 +244,19 @@ func TestProductionIntegration(t *testing.T) {
 	if len(c.Usage) != 1 || c.Version != 2 {
 		t.Fatal("duplicate issue")
 	}
+	originalUseJSON, e := json.Marshal(c)
+	check(e)
 	c, e = service.Complete(ctx, worker.Account, jobC, cmd(c.Version))
 	check(e)
 	replay, e := service.Use(ctx, worker.Account, jobC, same)
 	check(e)
 	if replay.Status != "in_progress" || replay.Version != 2 {
 		t.Fatal("retry did not replay original")
+	}
+	replayJSON, e := json.Marshal(replay)
+	check(e)
+	if !bytes.Equal(originalUseJSON, replayJSON) {
+		t.Fatal("retry changed original full production response after completion")
 	}
 	same.Note = "changed"
 	if _, e = service.Use(ctx, worker.Account, jobC, same); !errors.Is(e, p.ErrConflict) {
