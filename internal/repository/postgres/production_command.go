@@ -61,11 +61,7 @@ func (d *Database) ApplyProduction(ctx context.Context, actor, id string, in p.A
 			return v, e
 		}
 		if !finance {
-			v.Finance = nil
-			for i := range v.Usage {
-				v.Usage[i].UnitCost = nil
-				v.Usage[i].Total = nil
-			}
+			v = workerProductionSnapshot(v)
 		}
 		return v, tx.Commit(ctx)
 	}
@@ -81,7 +77,7 @@ func (d *Database) ApplyProduction(ctx context.Context, actor, id string, in p.A
 	if e = tx.QueryRow(ctx, `SELECT id::text FROM job WHERE id=$1 FOR UPDATE`, id).Scan(&locked); e != nil {
 		return p.State{}, productionError(e)
 	}
-	v, e := readProduction(ctx, tx, id, finance)
+	v, plan, e := readProductionCommandState(ctx, tx, id, in.Kind)
 	if e != nil {
 		return v, e
 	}
@@ -97,11 +93,7 @@ func (d *Database) ApplyProduction(ctx context.Context, actor, id string, in p.A
 		if v.Status != "queued" || v.PlanVersion != in.PlanVersion {
 			return v, p.ErrConflict
 		}
-		plan, e := loadPlan(ctx, tx, id)
-		if e != nil {
-			return v, e
-		}
-		if !plan.Ready {
+		if plan == nil || !plan.Ready {
 			return v, p.ErrConflict
 		}
 		for _, line := range plan.Lines {
@@ -184,10 +176,7 @@ func (d *Database) ApplyProduction(ctx context.Context, actor, id string, in p.A
 	if finance {
 		v = full
 	} else {
-		v, e = readProduction(ctx, tx, id, false)
-		if e != nil {
-			return v, e
-		}
+		v = workerProductionSnapshot(full)
 	}
 	event := p.Event{ID: in.IdempotencyKey, ActorID: actor, Action: in.Kind, Version: v.Version}
 	if e = tx.QueryRow(ctx, `SELECT clock_timestamp()`).Scan(&event.CreatedAt); e != nil {
