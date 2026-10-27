@@ -51,6 +51,46 @@ not part of the load. Initial results measure the unoptimized legacy response
 path. Re-run on the same environment/dataset after each optimization, and do not
 compare a race-instrumented run against a normal performance run.
 
+### Phase 17 paired verification (2026-10-27)
+
+The first after-change run, `sa-lathe-perf-ce72311c`, had severe host/load drift:
+even unchanged health/search/list paths slowed. Its absolute timings are not a
+clean comparison. Recorded aggregate host counters later showed 77% CPU and
+547 MiB free of roughly 16 GiB; no apps/settings were changed to force a result.
+
+A new fresh run, `sa-lathe-perf-60ea3b78`, passed in 650.72 s, including a frozen
+test-only pre-optimization list implementation. Both algorithms use identical
+rows, authentication, pool and common middleware. Full response bytes must match.
+Three repeats alternate legacy/optimized order at concurrency 1/10/25. No other
+verification commands ran during this measurement; other host activity and memory
+pressure still limit generalization. Raw report: ignored
+`bin/performance-sa-lathe-perf-60ea3b78.json`.
+
+| Same-run 25-job page | Legacy median p95 ms | Optimized median p95 ms | SQL/request, legacy → optimized |
+| --- | ---: | ---: | ---: |
+| Concurrency 1 | 417.14 | 17.22 | 152 → 2 |
+| Concurrency 10 | 2782.27 | 64.52 | 152 → 2 |
+| Concurrency 25 | 1870.54 | 201.69 | 152 → 2 |
+
+All requests passed; 50-job optimized pages also use two statements including
+authentication. Non-monotonic legacy times illustrate host/pool variability,
+not a reason to invent a production latency guarantee. The 100-identity mix
+recorded p95 250.21/193.95/183.72 ms in three runs. Service-only usage writes now
+issue 17/35/215 statements for 1/10/100 materials (previously 19/73/613). Their
+three observed durations were 102.96/42.53/41.93, 67.64/47.57/37.02 and
+135.59/164.85/149.06 ms, respectively; these are not HTTP latency percentiles.
+
+Batch tracing now counts each statement and records whole-batch elapsed time,
+not individual batched-statement times. The original trace excluded batch time;
+compare query counts and end-to-end timings rather than treating those SQL wall
+totals as directly interchangeable. Stored legacy response snapshots remain
+immutable and still grow with history; opt-in receipt mode belongs to Phase 18.
+
+Search/list EXPLAIN execution times in the new run were 0.81 ms (production list),
+0.30 ms (material search), 0.30 ms (supplier search); long production-history
+aggregation was 15.14 ms. No new index or larger pool was justified here. Large
+legacy history payloads remain a known cost, not silently removed fields.
+
 The older sections below describe the historical Phase 13 deliverables.
 
 ### Measured legacy baseline: 2026-10-27

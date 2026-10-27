@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -260,6 +261,50 @@ func TestPerformanceBaseline(t *testing.T) {
 		result := performanceLoad(t, db, trace, client, server.URL, "100 virtual users; fixed identities; 500ms think time", tokens, mixPaths, 300, 100, 500*time.Millisecond)
 		result.Repeat = repeat
 		measurements = append(measurements, result)
+	}
+	// A/B in one process/dataset. Alternate order to reduce temporal/thermal bias;
+	// do not claim a hosting-independent SLA from this diagnostic reference.
+	legacyRouter := httpserver.RouterWithRoutes(logger, 30*time.Second, []string{"http://localhost:3000"}, health.Live, nil, func(router chi.Router) {
+		f.NewHandler(f.NewService(&legacyFulfillmentReads{db}), f.NewEvidenceService(db, store)).Routes(router, authHandler.Authenticate)
+	})
+	legacyServer := httptest.NewServer(legacyRouter)
+	defer legacyServer.Close()
+	readBody := func(base string) []byte {
+		request, err := http.NewRequest(http.MethodGet, base+"/fulfillment/jobs?limit=25&offset=0", nil)
+		check(err)
+		request.Header.Set("Authorization", "Bearer "+tokens[0])
+		response, err := client.Do(request)
+		check(err)
+		defer response.Body.Close()
+		data, err := io.ReadAll(response.Body)
+		check(err)
+		if response.StatusCode != 200 {
+			t.Fatal("paired reference request failed")
+		}
+		return data
+	}
+	if !bytes.Equal(readBody(legacyServer.URL), readBody(server.URL)) {
+		t.Fatal("paired legacy/optimized response contracts differ")
+	}
+	for _, concurrency := range []int{1, 10, 25} {
+		for repeat := 1; repeat <= 3; repeat++ {
+			order := []bool{false, true}
+			if repeat%2 == 0 {
+				order = []bool{true, false}
+			}
+			for _, optimized := range order {
+				base, name := legacyServer.URL, "paired legacy fulfillment"
+				if optimized {
+					base, name = server.URL, "paired optimized fulfillment"
+				}
+				result := performanceLoad(t, db, trace, client, base, name, tokens[:1], []string{"/fulfillment/jobs?limit=25&offset=0"}, 100, concurrency, 0)
+				result.Repeat = repeat
+				if optimized && result.SQLStatements > 800 {
+					t.Fatal("paired optimized read exceeded query budget")
+				}
+				measurements = append(measurements, result)
+			}
+		}
 	}
 	// Write measurements are separately labelled direct service calls. They keep
 	// real transactions/triggers/valuation and avoid mixing HTTP/read timings.
