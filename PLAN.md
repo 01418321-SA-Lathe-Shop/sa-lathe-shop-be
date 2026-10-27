@@ -1,5 +1,78 @@
 # Implementation plan
 
+## Approved remediation programme (2026-10-27)
+
+Owner approved phases 14-21. Preserve UC1-UC9 business rules, current API
+responses and exact retries; add opt-in compact responses rather than breaking
+existing clients. Remain on develop, with independently buildable logical
+commits and a verified push at each phase completion. No main push, deployment,
+existing-database migration or real LINE delivery is authorized.
+
+### Phase 14 security patches and regression safeguards — done
+- [x] Align module, development, CI and container builds on patched Go 1.27.3.
+- [x] Upgrade x/text to v0.41.0; its minimum requirement also selects x/sync v0.22.0.
+- [x] Pin verified builder image digest and add pinned source/binary vulnerability checks.
+- [x] Characterize current response shapes, financial redaction and exact retries.
+- [x] Build/vet/unit/race tests, real DB/S3 workflows and container/binary checks pass.
+- [x] Separate patch, regression-test and security-CI commits created.
+- [ ] Push final phase checkpoint to develop and independently verify the remote tip.
+
+Verification: Go 1.27.3 build/vet and full race/coverage suite passed. Source,
+Windows API/worker and actual Linux container binary scans reported zero
+reachable vulnerabilities (unused-module advisories remain informational, not
+a claim of no vulnerabilities anywhere). Both Docker images built. Isolated
+sa-lathe-uc9-b06047c3 passed real UC1-UC9 PostgreSQL/private-S3 tests, full JSON
+retry equality, migrations/down-up, Docker HTTP flow and graceful shutdown;
+only its fresh containers/network/volumes were cleaned up. No existing DB,
+real LINE recipient, main branch or deployment was changed. See
+docs/013-remediation-verification.md. Publication is the remaining checkpoint.
+
+### Phase 15 measurements and real integration CI — todo
+- [ ] Correct per-request benchmark timing, body consumption and bounded concurrency; test the harness.
+- [ ] Add mandatory disposable PostgreSQL/private-S3 CI with explicit non-skip verification.
+- [ ] Baseline 100 synthetic accounts, 1,000 jobs/materials, 100 suppliers and long histories.
+- [ ] Measure concurrency 1/10/25 and a 100-user mixed scenario; publish reproducible evidence.
+
+### Phase 16 errors, validation and shared HTTP support — todo
+- [ ] Distinguish missing rows from infrastructure failures; sanitized request-correlated logging.
+- [ ] Share HTTP primitives while preserving feature limits and public errors.
+- [ ] Reject NUL/invalid UTF-8 in persisted text; refactor transaction steps without moving SQL.
+
+### Phase 17 database read/write efficiency — todo
+- [ ] Bulk fulfillment pages with at most eight client statements, including authentication.
+- [ ] Focus production validation reads and build legacy final state once with safe redaction.
+- [ ] Bulk locked material/reservation reads and remove redundant usage queries; preserve triggers.
+- [ ] Measure actual SQL plans/search/pool waits; merge only justified index/query changes.
+
+### Phase 18 compact responses and bounded history — todo
+- [ ] Add opt-in summary reads and role-scoped paginated production/fulfillment histories.
+- [ ] Add response=receipt commands with immutable compact retry records and result-kind migration.
+- [ ] Preserve legacy fingerprints/snapshots; different retry mode conflicts; compatibility-first rollout.
+- [ ] Verify bounded receipt sizes and legacy regression; document retained legacy growth cost.
+
+### Phase 19 login fairness and trusted proxies — todo
+- [ ] Separate coarse IP guard from username/IP failed-login guard; preserve Argon2/session policy.
+- [ ] Separate registration/join/invitation limits, bounded counters and successful-login reset.
+- [ ] Opt-in trusted proxy CIDRs; ignore untrusted forwarding and test spoofing/shared-NAT access.
+
+### Phase 20 upload budget and independent outbox channels — todo
+- [ ] Share cancellation-aware inspection/freezing pipeline and two-slot process-wide budget.
+- [ ] Preserve private file lifecycle/permissions and test all cleanup/failure cases.
+- [ ] Independent inbox/LINE claim loops, set-based inbox inserts and safe lag/failure logs.
+- [ ] Verify leases, retries, stalled LINE isolation and graceful shutdown.
+
+### Phase 21 contracts, documentation and closure — todo
+- [ ] Concrete role-specific OpenAPI schemas and automated route/response contract coverage.
+- [ ] Current setup/auth/security/performance/Railway docs and migration/configuration guidance.
+- [ ] Full UC1-UC9 regression and before/after benchmark/SQL plans; per-finding closure report.
+
+Programme defaults: no new runtime library, Redis, broker, ORM or framework;
+no hosting-independent SLA. Use fresh synthetic environments only. Frontend
+adoption, hosting, production deployment and malware-scanning infrastructure
+remain outside scope. Full legacy snapshots are retained as a compatibility
+cost until clients adopt opt-in receipt mode. Every phase must record its tests,
+limitations, decisions, commit groups and publication result below.
+
 ## Phase 0 repo and docs — done
 - [x] Inspect existing repository and remote; preserve existing README.md.
 - [x] Read available schema and prior fully-read UC context; record missing originals.

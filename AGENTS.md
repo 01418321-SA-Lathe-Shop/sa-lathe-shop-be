@@ -1,5 +1,19 @@
 # SA-Lathe-Shop-BE
 
+Current remediation authorization (2026-10-27): owner approved PLAN.md phases
+14-21. Preserve existing UC1-UC9 APIs, business rules and exact retries; add
+opt-in compact modes rather than breaking clients. Use trusted proxies only
+when explicitly configured, benchmark before claiming performance gains, and
+retain Go/chi/PostgreSQL/private-S3/outbox without new runtime infrastructure.
+Phase 14 patches Go to 1.27.3 and x/text to v0.41.0, pins both builder image
+references and adds source/binary vulnerability gates plus response/retry
+characterization tests. See docs/013-remediation-verification.md for results.
+Continue subsequent approved phases in order, with buildable logical commits
+and a verified origin/develop push at every phase end. No main push, existing
+database migration, production deployment or real LINE delivery is authorized.
+Older phase-specific notes below are historical context, not permission to
+change the confirmed business contracts.
+
 Current authorization (2026-10-20): owner confirmed all seven UC9 proposals.
 Phase 12 implementation is authorized; see docs/UC9_PLAN.md for the confirmed
 delivery, invoice/installment/evidence, free rework, closure and inbox policies.
