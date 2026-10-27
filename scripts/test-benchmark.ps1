@@ -93,4 +93,19 @@ foreach ($mode in @('reorder','body','error','truncated','timeout')) {
     }
   } finally { $server.Dispose() }
 }
+. (Join-Path $PSScriptRoot 'Read-PerformanceReport.ps1')
+$payload = @{name=('long JSON ' * 1000);jobs=1000} | ConvertTo-Json -Compress
+$line = "    fixture.go:1: PERFORMANCE_BASELINE_JSON=$payload`n"
+$chunks = @()
+for ($offset = 0; $offset -lt $line.Length; $offset += 97) {
+  $chunks += [pscustomobject]@{Action='output';Test='TestPerformanceBaseline';Output=$line.Substring($offset,[Math]::Min(97,$line.Length-$offset))}
+}
+$passEvent = [pscustomobject]@{Action='pass';Test='TestPerformanceBaseline'}
+$parsed = Read-PerformanceReport -Events @($chunks + $passEvent) -ExitCode 0
+Assert-True ($parsed.jobs -eq 1000 -and $parsed.name.Length -eq 10000) 'Fragmented Go JSON report was corrupted.'
+foreach ($outcome in @('skip','fail')) {
+  $rejected = $false
+  try { $null = Read-PerformanceReport -Events @($chunks + [pscustomobject]@{Action=$outcome;Test='TestPerformanceBaseline'}) -ExitCode 0 } catch { $rejected = $true }
+  Assert-True $rejected 'Skipped or failed performance test was accepted as evidence.'
+}
 Write-Output 'BENCHMARK_HARNESS_TESTS_PASSED'
