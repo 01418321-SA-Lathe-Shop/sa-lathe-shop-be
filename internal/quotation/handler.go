@@ -24,6 +24,9 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, ErrConflict):
 		status, code, message = 409, "conflict", "Quotation or request changed; reload before retrying"
 	}
+	if status == http.StatusInternalServerError {
+		httpserver.LogInternalError(r, err)
+	}
 	httpserver.WriteError(w, r, status, code, message)
 }
 func (h *Handler) Routes(r chi.Router, authenticate func(http.Handler) http.Handler) {

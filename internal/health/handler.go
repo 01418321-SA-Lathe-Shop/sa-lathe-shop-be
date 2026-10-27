@@ -11,6 +11,7 @@ func Live(w http.ResponseWriter, r *http.Request) {
 
 func (s *Service) Handler(w http.ResponseWriter, r *http.Request) {
 	if err := s.Ready(r.Context()); err != nil {
+		httpserver.LogInternalError(r, err)
 		httpserver.WriteError(w, r, http.StatusServiceUnavailable, "database_unavailable", "Database is not ready")
 		return
 	}
