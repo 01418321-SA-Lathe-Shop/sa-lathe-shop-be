@@ -3,7 +3,7 @@
 ## 1. Local Development Runbook
 
 ### Prerequisites
-- Go 1.25+
+- Go 1.27.3 (security baseline; module, CI and Docker builders use the same version)
 - Git
 - PowerShell 7+
 - Docker Desktop with Linux containers
