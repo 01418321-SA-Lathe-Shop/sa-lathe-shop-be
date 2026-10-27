@@ -29,3 +29,19 @@ Reviewed the registered handlers, feature service guards, PostgreSQL authorizati
 | **Low** *(Performance)* | `FulfillmentJobs` reads a page of IDs and then loads each item through a separate transaction (`internal/repository/postgres/delivery_read.go`). | Page size is capped at 100; benchmark this list route before considering a snapshot/join redesign. Avoid denormalizing status or balances without measurements. |
 
 No confirmed authorization defect required changing business behavior in this review. The deployment-dependent items remain explicit open decisions. See [012-performance.md](012-performance.md) for repeatable local benchmarks.
+# Current automated security gate (Phase 14)
+
+Run `./scripts/check-security.ps1` from PowerShell 7. The script does not read
+`.env`, contact the application database, send LINE messages or deploy anything.
+It builds ignored local binaries and scans source plus both binaries using the
+official `govulncheck` CLI pinned at v1.9.0. Public module/vulnerability database
+network access is required; download/scan failures fail the check, not waive it.
+GitHub CI runs the same three scans. The vulnerability database is current at
+scan time; the tool version is pinned for reproducibility. A clean result is
+not a claim that every vulnerability is detectable or remotely exploitable.
+
+Go 1.27.3 and x/text v0.41.0 are the approved patch baseline. Both Docker builder
+references use the same verified immutable official image index digest. Existing
+Argon2id parameters, opaque session handling and business permissions are unchanged.
+The historical review above remains a record, not a replacement for running the
+current automated gate. See `PLAN.md` for verification results and remaining work.

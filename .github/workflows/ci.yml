@@ -39,3 +39,13 @@ jobs:
         run: go vet ./...
       - name: Unit and HTTP tests
         run: go test ./...
+      - name: Build release binaries
+        run: |
+          mkdir -p bin
+          CGO_ENABLED=0 go build -trimpath -o bin/api ./cmd/api
+          CGO_ENABLED=0 go build -trimpath -o bin/worker ./cmd/worker
+      - name: Scan source and release binaries for reachable vulnerabilities
+        run: |
+          go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+          go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 -mode=binary bin/api
+          go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 -mode=binary bin/worker
