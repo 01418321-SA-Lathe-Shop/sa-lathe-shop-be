@@ -88,3 +88,27 @@ it does not justify new search indexes at this dataset size or a production SLA.
 Phase 16 may be prepared while the fixed compiled baseline runs; publish phase
 checkpoints in order. Transaction-step extraction is grouped with Phase 17 to
 avoid duplicating the same production rewrite. Phases 16-21 are not yet complete.
+
+## Phase 16 — validation, error handling and shared HTTP support
+
+Groups b20c9e8, 1de7395, b82c6ab and 5e6ce0c each passed independent exported
+staged-tree build/focused tests before committing. Full build, vet and race suite
+also passed with all test/performance DSNs cleared.
+
+- Unicode/NUL validation protects request description/material spec, fulfillment
+  receiver/reasons, names and worker positions. Existing contact/enum/file checks
+  were retained; password policy is unchanged.
+- Shared JSON/pagination retains auth's 8-KiB and feature 64-KiB limits, strict
+  unknown-field/trailing-value rejection and existing public error envelopes.
+- Internal failures log request ID, route, safe operation/category and validated
+  SQLSTATE alongside the existing duration summary. Injected private errors,
+  authorization headers and query content never appear in logs or responses.
+- Only pgx.ErrNoRows maps to forbidden/missing in fulfillment authorization;
+  timeout/connection causes survive wrapping. Fault-row tests cover both actor
+  and membership lookup failures without an additional library or database.
+
+No migration, permission, financial/stock rule, endpoint or external service was
+changed. Real DB/S3/container regression is scheduled again with Phase 17.
+Transaction-step extraction accompanies that query rewrite, not claimed as done
+here. GitHub CLI is unavailable, so remote CI status was not observed. Publication
+must be independently verified. Phases 17-21 remain pending.

@@ -34,7 +34,7 @@ origin/develop; independently observed remote b8ab9b56dd52238a1134f7f264a0fc99b2
 - [x] Baseline 100 synthetic accounts, 1,000 jobs/materials, 100 suppliers and long histories.
 - [x] Measure concurrency 1/10/25, 100-user mix and 1/10/100-line service writes; publish evidence.
 - [x] Build/vet/unit/harness checks pass from independently exported b71d1cd snapshot.
-- [ ] Push completed phase groups to develop and verify remote tip.
+- [x] Push completed phase groups to develop and verify remote tip: 5a1f83a947cefd48f8ae0ad7eaeb4a94dd3b20f1.
 
 Verification: fresh sa-lathe-perf-aa349ddd passed in 460.57 s, zero request
 failures, report retained under ignored bin/. Measured fulfillment page size 25:
@@ -50,12 +50,23 @@ the fresh successful rerun resolved that tooling issue. All disposable resources
 were cleaned up; no existing DB or real LINE changed. Linux GitHub execution
 awaits the develop push; local equivalent checks ran on Windows.
 
-### Phase 16 errors, validation and shared HTTP support — in progress
-- [ ] Distinguish missing rows from infrastructure failures; sanitized request-correlated logging.
-- [ ] Share HTTP primitives while preserving feature limits and public errors.
-- [ ] Reject NUL/invalid UTF-8 in persisted text; refactor transaction steps without moving SQL.
+### Phase 16 errors, validation and shared HTTP support — done
+- [x] Distinguish missing rows from infrastructure failures; sanitized request-correlated logging.
+- [x] Share strict JSON/pagination primitives, preserving 8/64-KiB limits and public errors.
+- [x] Reject NUL/invalid UTF-8 in request, fulfillment and profile text before persistence.
+- [x] Unit/failure-injection tests, build/vet/full race suite and exact staged-tree checks pass.
+- [ ] Push phase checkpoint to develop and independently verify the remote tip.
+
+Groups: b20c9e8 (text), 1de7395 (safe diagnostics), b82c6ab (shared HTTP),
+5e6ce0c (authorization error preservation). Every staged tree was exported and
+independently built/tested before committing. Full build/vet/race checks pass.
+Timeout/connection/missing actor/membership fault rows are covered without a DB.
+Full real DB/S3/container regression runs again with Phase 17 query changes.
+Transaction-step extraction accompanies that production rewrite to avoid
+rewriting the same command twice, as recorded before Phase 16.
 
 ### Phase 17 database read/write efficiency — todo
+- [ ] Extract named transaction steps while changing production reads; retain repository-only SQL.
 - [ ] Bulk fulfillment pages with at most eight client statements, including authentication.
 - [ ] Focus production validation reads and build legacy final state once with safe redaction.
 - [ ] Bulk locked material/reservation reads and remove redundant usage queries; preserve triggers.

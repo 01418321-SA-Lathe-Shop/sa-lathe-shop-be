@@ -10,7 +10,7 @@ references and adds source/binary vulnerability gates plus response/retry
 characterization tests. Phase 15 now has corrected measured benchmarks and an
 unconditional real DB/S3 integration CI job; all ten required suites must execute
 and pass. The completed synthetic baseline is in docs/012-performance.md. Phase
-16 error/validation work is next; transaction helper extraction will accompany
+16 error/validation work is implemented and unit/race verified; transaction helper extraction will accompany
 the Phase 17 production-query changes to avoid rewriting those steps twice.
 See docs/013-remediation-verification.md for results.
 Continue subsequent approved phases in order, with buildable logical commits
