@@ -7,7 +7,12 @@ when explicitly configured, benchmark before claiming performance gains, and
 retain Go/chi/PostgreSQL/private-S3/outbox without new runtime infrastructure.
 Phase 14 patches Go to 1.27.3 and x/text to v0.41.0, pins both builder image
 references and adds source/binary vulnerability gates plus response/retry
-characterization tests. See docs/013-remediation-verification.md for results.
+characterization tests. Phase 15 now has corrected measured benchmarks and an
+unconditional real DB/S3 integration CI job; all ten required suites must execute
+and pass. The completed synthetic baseline is in docs/012-performance.md. Phase
+16 error/validation work is next; transaction helper extraction will accompany
+the Phase 17 production-query changes to avoid rewriting those steps twice.
+See docs/013-remediation-verification.md for results.
 Continue subsequent approved phases in order, with buildable logical commits
 and a verified origin/develop push at every phase end. No main push, existing
 database migration, production deployment or real LINE delivery is authorized.

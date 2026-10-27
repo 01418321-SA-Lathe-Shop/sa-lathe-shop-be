@@ -15,7 +15,7 @@ existing-database migration or real LINE delivery is authorized.
 - [x] Characterize current response shapes, financial redaction and exact retries.
 - [x] Build/vet/unit/race tests, real DB/S3 workflows and container/binary checks pass.
 - [x] Separate patch, regression-test and security-CI commits created.
-- [ ] Push final phase checkpoint to develop and independently verify the remote tip.
+- [x] Push final phase checkpoint to develop and independently verify the remote tip.
 
 Verification: Go 1.27.3 build/vet and full race/coverage suite passed. Source,
 Windows API/worker and actual Linux container binary scans reported zero
@@ -25,15 +25,32 @@ sa-lathe-uc9-b06047c3 passed real UC1-UC9 PostgreSQL/private-S3 tests, full JSON
 retry equality, migrations/down-up, Docker HTTP flow and graceful shutdown;
 only its fresh containers/network/volumes were cleaned up. No existing DB,
 real LINE recipient, main branch or deployment was changed. See
-docs/013-remediation-verification.md. Publication is the remaining checkpoint.
+docs/013-remediation-verification.md. Published dc035d8 through b8ab9b5 to
+origin/develop; independently observed remote b8ab9b56dd52238a1134f7f264a0fc99b29cf55b.
 
-### Phase 15 measurements and real integration CI — todo
-- [ ] Correct per-request benchmark timing, body consumption and bounded concurrency; test the harness.
-- [ ] Add mandatory disposable PostgreSQL/private-S3 CI with explicit non-skip verification.
-- [ ] Baseline 100 synthetic accounts, 1,000 jobs/materials, 100 suppliers and long histories.
-- [ ] Measure concurrency 1/10/25 and a 100-user mixed scenario; publish reproducible evidence.
+### Phase 15 measurements and real integration CI — done
+- [x] Correct per-request benchmark timing, body consumption and bounded concurrency; test the harness.
+- [x] Add unconditional disposable PostgreSQL/private-S3 CI with explicit non-skip verification.
+- [x] Baseline 100 synthetic accounts, 1,000 jobs/materials, 100 suppliers and long histories.
+- [x] Measure concurrency 1/10/25, 100-user mix and 1/10/100-line service writes; publish evidence.
+- [x] Build/vet/unit/harness checks pass from independently exported b71d1cd snapshot.
+- [ ] Push completed phase groups to develop and verify remote tip.
 
-### Phase 16 errors, validation and shared HTTP support — todo
+Verification: fresh sa-lathe-perf-aa349ddd passed in 460.57 s, zero request
+failures, report retained under ignored bin/. Measured fulfillment page size 25:
+152 SQL statements/request, median p95 460.21 ms at concurrency 10 and 1021.91 ms
+at 25. The 1000-entry job has 53,569,820 stored snapshot bytes. Search SQL is
+below 0.2 ms here; no speculative index was added. See docs/012-performance.md.
+Strict integration rerun sa-lathe-uc9-6d466554 passed all ten real suites under
+race/coverage plus Docker HTTP/inbox/cleanup. An earlier isolated HTTP attempt
+failed without a location; safe line/status diagnostics were added, the failure
+did not reproduce, and no unconfirmed root cause is claimed. Initial baseline
+report parsing rejected fragmented test2json output; parser regression tests and
+the fresh successful rerun resolved that tooling issue. All disposable resources
+were cleaned up; no existing DB or real LINE changed. Linux GitHub execution
+awaits the develop push; local equivalent checks ran on Windows.
+
+### Phase 16 errors, validation and shared HTTP support — in progress
 - [ ] Distinguish missing rows from infrastructure failures; sanitized request-correlated logging.
 - [ ] Share HTTP primitives while preserving feature limits and public errors.
 - [ ] Reject NUL/invalid UTF-8 in persisted text; refactor transaction steps without moving SQL.
