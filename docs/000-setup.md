@@ -90,6 +90,12 @@ The test suite enforces strict separation between unit tests and real integratio
 - `go test ./...` runs unit tests and in-memory mock tests. Real integration tests against PostgreSQL and S3 are skipped when dedicated test environment variables are absent.
 - Full end-to-end integration is automated via dedicated phase scripts:
   - `./scripts/verify-uc1.ps1` through `./scripts/verify-uc9.ps1`
+- GitHub CI also runs `verify-uc9.ps1` as an unconditional separate integration
+  job with disposable PostgreSQL/private S3, race/coverage tests and Docker HTTP
+  workflows. The verifier checks actual JSON test outcomes: all ten top-level
+  repository suites must execute and pass; absent/skipped suites fail the gate.
+  Normal unit-only runs retain their opt-in integration behavior. Repository
+  branch-protection settings are not changed by adding a workflow job.
 - Each script provisions an isolated Docker Compose project (e.g. `sa-lathe-uc*-<hash>`), sets up multiple fresh databases, executes real migrations, runs uncached concurrency and rollback tests, tests Docker HTTP workflows, and cleans up all temporary containers, networks, and volumes upon completion. No local `.env` or existing database data is ever modified.
 
 ---

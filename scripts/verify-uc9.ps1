@@ -3,7 +3,9 @@ $ErrorActionPreference='Stop'
 $probeOut=New-TemporaryFile
 $probeErr=New-TemporaryFile
 try {
- $probe=Start-Process -FilePath (Get-Command docker).Source -ArgumentList @('info','--format','{{.ServerVersion}}') -WindowStyle Hidden -PassThru -RedirectStandardOutput $probeOut.FullName -RedirectStandardError $probeErr.FullName
+ $probeStart=@{FilePath=(Get-Command docker).Source;ArgumentList=@('info','--format','{{.ServerVersion}}');PassThru=$true;RedirectStandardOutput=$probeOut.FullName;RedirectStandardError=$probeErr.FullName}
+ if($IsWindows){$probeStart.WindowStyle='Hidden'}
+ $probe=Start-Process @probeStart
  if(-not $probe.WaitForExit(15000)){Stop-Process -Id $probe.Id -ErrorAction SilentlyContinue;throw 'Docker engine unavailable or stuck. Start a healthy Docker Desktop engine before verification.'}
  if($probe.ExitCode -ne 0){throw 'Docker engine unavailable. Start Docker Desktop before verification.'}
 } finally {Remove-Item -LiteralPath $probeOut.FullName,$probeErr.FullName -ErrorAction SilentlyContinue}
@@ -104,8 +106,19 @@ DELETE FROM person WHERE id='00000000-0000-0000-0000-000000000006';
  $env:PHASE12_DATABASE_URL='postgres://sa_lathe_shop:'+$env:DB_PASSWORD+'@'+$dbAddress+'/sa_lathe_shop_phase12_test?sslmode=disable'
  go run -tags postgres github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.0 -path migrations -database $env:PHASE12_DATABASE_URL up
  if($LASTEXITCODE -ne 0){throw 'UC9 migrations failed'}
- go test ./... -count=1
- if($LASTEXITCODE -ne 0){throw 'Real PostgreSQL/S3 integration failed'}
+ # Parse actual test outcomes so a missing/renamed configuration cannot silently
+ # turn this required integration gate into a passing skipped-test run.
+ $testOutput=@(go test ./... -count=1 -race -cover -json)
+ $testExit=$LASTEXITCODE
+ $events=@($testOutput | ForEach-Object { $_ | ConvertFrom-Json })
+ foreach($entry in $events){if($entry.Action -eq 'output') {Write-Host $entry.Output.TrimEnd()}}
+ if($testExit -ne 0){throw 'Real PostgreSQL/S3 integration failed'}
+ $expectedTests=@('TestStaffAuthIntegration','TestUC1Integration','TestQuotationIntegration','TestDecisionIntegration','TestFulfillmentIntegration','TestMaterialIntegration','TestProcurementIntegration','TestReceivingIntegration','TestProductionIntegration','TestCustomerFulfillmentIntegration')
+ foreach($testName in $expectedTests){
+  $outcomes=@($events | Where-Object {$_.Package -eq 'github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/repository/postgres' -and $_.Test -eq $testName -and $_.Action -in @('pass','skip','fail')})
+  if($outcomes.Count -ne 1 -or $outcomes[0].Action -ne 'pass'){throw "Required integration test did not execute and pass: $testName"}
+ }
+ Write-Output 'ALL_TEN_INTEGRATION_TESTS_EXECUTED_AND_PASSED'
  $env:S3_PUBLIC_ENDPOINT=$env:TEST_S3_ENDPOINT
  $env:API_PORT='0'
  $env:LINE_ENABLED='false'
@@ -292,7 +305,12 @@ DELETE FROM person WHERE id='00000000-0000-0000-0000-000000000006';
    if($inbox.items.Count -ge 1){$delivered=$true;break};Start-Sleep -Seconds 1
   }
   if(-not $delivered){throw 'Worker did not deliver the Docker request notification'}
- } catch {throw 'Docker customer/request/worker flow failed; credentials withheld'}
+ } catch {
+  $failureLine=$_.InvocationInfo.ScriptLineNumber
+  $failureStatus=if($_.Exception.Response){[int]$_.Exception.Response.StatusCode}else{0}
+  Write-Output "DOCKER_FLOW_FAILURE line=$failureLine http_status=$failureStatus exception=$($_.Exception.GetType().Name); response bodies/credentials withheld"
+  throw 'Docker customer/request/worker flow failed; see safe failure location above'
+ }
  docker compose @composeArgs stop api worker
  if($LASTEXITCODE -ne 0){throw 'Graceful container shutdown failed'}
  Write-Output 'PHASE12_VERIFICATION_PASSED'

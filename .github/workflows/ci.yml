@@ -39,6 +39,9 @@ jobs:
         run: go vet ./...
       - name: Unit and HTTP tests
         run: go test ./...
+      - name: Benchmark harness regression tests
+        shell: pwsh
+        run: ./scripts/test-benchmark.ps1
       - name: Build release binaries
         run: |
           mkdir -p bin
@@ -49,3 +52,18 @@ jobs:
           go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
           go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 -mode=binary bin/api
           go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 -mode=binary bin/worker
+
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      LINE_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Required PostgreSQL, private S3 and Docker workflows
+        shell: pwsh
+        run: ./scripts/verify-uc9.ps1
