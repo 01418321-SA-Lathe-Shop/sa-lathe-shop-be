@@ -3,62 +3,51 @@ param(
   [Parameter(Mandatory=$true)][string]$Path,
   [ValidateRange(1,10000)][int]$Requests = 200,
   [ValidateRange(1,100)][int]$Concurrency = 10,
-  [string]$BearerToken = $env:LATHE_BENCH_TOKEN
+  [string]$BearerToken = $env:LATHE_BENCH_TOKEN,
+  [ValidateRange(1,300)][int]$TimeoutSeconds = 30,
+  [switch]$IncludeSamples,
+  [switch]$AsJson
 )
 $ErrorActionPreference = 'Stop'
-if (-not $Path.StartsWith('/')) { throw 'Path must begin with /.' }
+if (-not $Path.StartsWith('/') -or $Path.StartsWith('//')) { throw 'Path must begin with one /.' }
 $uri = [Uri]::new($BaseUrl.TrimEnd('/') + $Path)
-$client = [System.Net.Http.HttpClient]::new()
-$client.Timeout = [TimeSpan]::FromSeconds(30)
-if ($BearerToken) {
-  $client.DefaultRequestHeaders.Authorization = [System.Net.Http.Headers.AuthenticationHeaderValue]::new('Bearer', $BearerToken)
+if (-not $uri.IsAbsoluteUri -or $uri.Scheme -notin @('http','https') -or $uri.UserInfo) {
+  throw 'BaseUrl must be an absolute HTTP(S) URL without credentials.'
 }
-$samples = [System.Collections.Generic.List[double]]::new()
-$failures = 0
-$watch = [System.Diagnostics.Stopwatch]::StartNew()
-try {
-  for ($start = 0; $start -lt $Requests; $start += $Concurrency) {
-    $count = [Math]::Min($Concurrency, $Requests - $start)
-    $batch = [System.Collections.Generic.List[object]]::new()
-    for ($i = 0; $i -lt $count; $i++) {
-      $timer = [System.Diagnostics.Stopwatch]::StartNew()
-      $task = $client.GetAsync($uri, [System.Net.Http.HttpCompletionOption]::ResponseHeadersRead)
-      $batch.Add([pscustomobject]@{ Timer = $timer; Task = $task })
-    }
-    foreach ($item in $batch) {
-      try {
-        $response = $item.Task.GetAwaiter().GetResult()
-        $item.Timer.Stop()
-        $samples.Add($item.Timer.Elapsed.TotalMilliseconds)
-        if (-not $response.IsSuccessStatusCode) { $failures++ }
-        $response.Dispose()
-      } catch {
-        $item.Timer.Stop()
-        $samples.Add($item.Timer.Elapsed.TotalMilliseconds)
-        $failures++
-      }
-    }
-  }
-} finally {
-  $watch.Stop()
-  $client.Dispose()
+if ($BearerToken -match '[\x00-\x20\x7f]') { throw 'Bearer token must not contain whitespace/control characters.' }
+if (-not ('Lathe.Benchmark.Runner' -as [type])) {
+  Add-Type -Path (Join-Path $PSScriptRoot 'HttpBenchmark.cs')
 }
-$sorted = @($samples | Sort-Object)
+$result = [Lathe.Benchmark.Runner]::RunAsync($uri.AbsoluteUri, $BearerToken, $Requests, $Concurrency, $TimeoutSeconds).GetAwaiter().GetResult()
+$successful = @($result.Samples | Where-Object Success)
+$sorted = @($successful.FullResponseMs | Sort-Object)
+$headers = @($successful.HeadersMs | Sort-Object)
 function Get-Percentile([double[]]$Values, [double]$Percentile) {
+  if ($Values.Count -eq 0) { return $null }
   $index = [Math]::Max(0, [Math]::Ceiling($Values.Count * $Percentile) - 1)
-  return $Values[$index]
+  return [Math]::Round($Values[$index], 2)
 }
-$success = $Requests - $failures
-[pscustomobject]@{
+$statuses = [ordered]@{}
+foreach ($group in ($result.Samples | Group-Object Status)) { $statuses[$group.Name] = $group.Count }
+$errors = [ordered]@{}
+foreach ($group in ($result.Samples | Where-Object { -not $_.Success } | Group-Object FailureCategory)) { $errors[$group.Name] = $group.Count }
+$report = [pscustomobject]@{
   Endpoint = $uri.AbsolutePath
   Requests = $Requests
   Concurrency = $Concurrency
-  Failures = $failures
-  SuccessPercent = [Math]::Round(100.0 * $success / $Requests, 2)
-  P50Ms = [Math]::Round((Get-Percentile $sorted 0.50), 2)
-  P95Ms = [Math]::Round((Get-Percentile $sorted 0.95), 2)
-  P99Ms = [Math]::Round((Get-Percentile $sorted 0.99), 2)
-  MaxMs = [Math]::Round($sorted[-1], 2)
-  RequestsPerSecond = [Math]::Round($Requests / $watch.Elapsed.TotalSeconds, 2)
-  ElapsedSeconds = [Math]::Round($watch.Elapsed.TotalSeconds, 2)
-} | Format-List
+  Failures = $Requests - $successful.Count
+  SuccessPercent = [Math]::Round(100.0 * $successful.Count / $Requests, 2)
+  LatencyPopulation = 'successful full responses only; includes body drain'
+  P50Ms = Get-Percentile $sorted 0.50
+  P95Ms = Get-Percentile $sorted 0.95
+  P99Ms = Get-Percentile $sorted 0.99
+  MaxMs = Get-Percentile $sorted 1
+  HeadersP95Ms = Get-Percentile $headers 0.95
+  ResponseBytes = ($result.Samples | Measure-Object Bytes -Sum).Sum
+  StatusCounts = $statuses
+  FailureCounts = $errors
+  RequestsPerSecond = [Math]::Round($Requests / $result.ElapsedSeconds, 2)
+  ElapsedSeconds = [Math]::Round($result.ElapsedSeconds, 2)
+}
+if ($IncludeSamples) { $report | Add-Member -NotePropertyName Samples -NotePropertyValue $result.Samples }
+if ($AsJson) { $report | ConvertTo-Json -Depth 8 } else { $report }
