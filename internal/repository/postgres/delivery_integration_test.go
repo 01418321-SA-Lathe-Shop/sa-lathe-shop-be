@@ -483,6 +483,7 @@ func TestCustomerFulfillmentIntegration(t *testing.T) {
 	if w.Code != 400 {
 		t.Fatal("unknown JSON field", w.Code)
 	}
+	verifyFulfillmentListContract(t, ctx, db, []auth.Account{admin, worker.Account, customer, member, stranger})
 	_, e = db.pool.Exec(ctx, `UPDATE account SET is_active=false WHERE id=$1`, worker.ID)
 	check(e)
 	if _, e = service.Get(ctx, worker.Account, job); e == nil {

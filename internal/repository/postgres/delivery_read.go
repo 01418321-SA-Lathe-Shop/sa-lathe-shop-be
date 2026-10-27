@@ -9,6 +9,7 @@ import (
 	req "github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/request"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"strings"
 )
 
 var _ f.Repository = (*Database)(nil)
@@ -95,31 +96,33 @@ func (d *Database) FulfillmentState(ctx context.Context, actor, id string) (f.St
 	return v, tx.Commit(ctx)
 }
 func (d *Database) FulfillmentJobs(ctx context.Context, actor string, limit, offset int) ([]f.State, error) {
-	rows, e := d.pool.Query(ctx, `SELECT j.id::text FROM job j JOIN job_request r ON r.id=j.request_id WHERE `+accessibleRequest+` ORDER BY j.created_at DESC,j.id LIMIT $2 OFFSET $3`, actor, limit, offset)
+	// One statement supplies one MVCC snapshot for authorization, page and all
+	// child histories. Paginate before building documents; never open a per-job
+	// transaction or hold read locks while a client consumes a list response.
+	rows, e := d.pool.Query(ctx, fulfillmentListQuery, actor, limit, offset)
 	if e != nil {
-		return nil, e
+		return nil, failure.Wrap("fulfillment.list", e)
 	}
-	ids := []string{}
-	for rows.Next() {
-		var id string
-		if e = rows.Scan(&id); e != nil {
-			rows.Close()
-			return nil, e
-		}
-		ids = append(ids, id)
-	}
-	e = rows.Err()
-	rows.Close()
-	if e != nil {
-		return nil, e
-	}
+	defer rows.Close()
 	result := []f.State{}
-	for _, id := range ids {
-		v, e := d.FulfillmentState(ctx, actor, id)
-		if e != nil {
+	for rows.Next() {
+		var data []byte
+		if e = rows.Scan(&data); e != nil {
 			return nil, e
 		}
-		result = append(result, v)
+		var value f.State
+		if e = json.Unmarshal(data, &value); e != nil {
+			return nil, e
+		}
+		result = append(result, value)
 	}
-	return result, nil
+	return result, rows.Err()
 }
+
+// SQL rewriting is confined to this constant template, never user text. Share
+// the exact legacy document allowlist with detail/command responses.
+var fulfillmentListQuery = `WITH viewer AS MATERIALIZED (SELECT role FROM account WHERE id=$1 AND is_active),
+ page AS MATERIALIZED (SELECT j.* FROM job j JOIN job_request r ON r.id=j.request_id
+ WHERE ` + accessibleRequest + ` ORDER BY j.created_at DESC,j.id LIMIT $2 OFFSET $3)
+ SELECT ` + strings.ReplaceAll(fulfillmentDocument, "$2::text", "viewer.role") + `
+ FROM page j JOIN job_request r ON r.id=j.request_id CROSS JOIN viewer ORDER BY j.created_at DESC,j.id`
