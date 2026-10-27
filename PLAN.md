@@ -55,7 +55,7 @@ awaits the develop push; local equivalent checks ran on Windows.
 - [x] Share strict JSON/pagination primitives, preserving 8/64-KiB limits and public errors.
 - [x] Reject NUL/invalid UTF-8 in request, fulfillment and profile text before persistence.
 - [x] Unit/failure-injection tests, build/vet/full race suite and exact staged-tree checks pass.
-- [ ] Push phase checkpoint to develop and independently verify the remote tip.
+- [x] Push phase checkpoint to develop and verify remote 012a4d8a8972b3c7c500ab95eb35bf1736db0283.
 
 Groups: b20c9e8 (text), 1de7395 (safe diagnostics), b82c6ab (shared HTTP),
 5e6ce0c (authorization error preservation). Every staged tree was exported and
@@ -65,12 +65,33 @@ Full real DB/S3/container regression runs again with Phase 17 query changes.
 Transaction-step extraction accompanies that production rewrite to avoid
 rewriting the same command twice, as recorded before Phase 16.
 
-### Phase 17 database read/write efficiency — todo
-- [ ] Extract named transaction steps while changing production reads; retain repository-only SQL.
-- [ ] Bulk fulfillment pages with at most eight client statements, including authentication.
-- [ ] Focus production validation reads and build legacy final state once with safe redaction.
-- [ ] Bulk locked material/reservation reads and remove redundant usage queries; preserve triggers.
-- [ ] Measure actual SQL plans/search/pool waits; merge only justified index/query changes.
+### Phase 17 database read/write efficiency — done
+- [x] Extract focused command-state/material-read/batch steps; retain repository-only SQL.
+- [x] Bulk fulfillment pages; real tests enforce one repository statement and list/detail equality for scoped roles.
+- [x] Focus production validation reads and build legacy final state once with safe redaction.
+- [x] Bulk locked material/reservation reads and batched usage/ledger writes; preserve all triggers.
+- [x] Paired baseline, real Docker workflow, race/harness/vet and source/binary vulnerability checks pass.
+- [x] Exported 5d1f9d3/4af3d05/b589b21/d0308c1/76e7e56 snapshots independently build.
+- [ ] Push phase checkpoint and independently verify origin/develop.
+
+Code groups: 5d1f9d3 (bulk fulfillment), 4af3d05 (focused command state),
+b589b21 (batched usage and rollback/trace tests). Default race tests pass and
+all ten real DB/S3 suites passed in sa-lathe-uc9-6280d46e. Its Docker flow then
+failed at supplier settlement fixture line 244 (HTTP 400). The fixture used an
+independent host clock while the DB enforces full_received_at <= paid_at <= now;
+it now uses the returned server full_received_at boundary, with no production
+guard change. Final sa-lathe-uc9-c335c3fb passed all ten suites and full Docker
+flow, with scoped cleanup. Paired sa-lathe-perf-60ea3b78 passed with identical
+bodies and zero failures: legacy/optimized median p95 417.14/17.22 ms at
+concurrency 1, 2782.27/64.52 ms at 10 and 1870.54/201.69 ms at 25. Fulfillment
+HTTP uses 2 statements at page sizes 25/50 versus 152 previously at 25;
+100-material usage uses 215 versus 613. Earlier uncontrolled results are retained,
+not presented as clean comparisons. Captured host counters show 77% CPU and
+547 MiB free RAM, so no normal-load or production SLA is claimed. Final source/
+API/worker scans find zero reachable advisories, with unused-module warnings
+retained as informational. No index or pool-size change
+is justified by the original small search-query timings. Legacy snapshot growth
+remains for Phase 18's explicitly opt-in receipt mode.
 
 ### Phase 18 compact responses and bounded history — todo
 - [ ] Add opt-in summary reads and role-scoped paginated production/fulfillment histories.

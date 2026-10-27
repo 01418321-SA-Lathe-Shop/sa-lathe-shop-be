@@ -112,3 +112,55 @@ changed. Real DB/S3/container regression is scheduled again with Phase 17.
 Transaction-step extraction accompanies that query rewrite, not claimed as done
 here. GitHub CLI is unavailable, so remote CI status was not observed. Publication
 must be independently verified. Phases 17-21 remain pending.
+
+## Phase 17 — database round trips (verification in progress)
+
+Code groups: 5d1f9d3 (one-statement scoped fulfillment page), 4af3d05 (focused
+production validation and one final legacy snapshot), b589b21 (bulk material/
+reservation reads and batched issues/ledger), d0308c1 (server-timed test fixture).
+No schema/index/pool-size change, removed constraint, cached stock, truncated
+legacy response or rewritten historical retry was introduced.
+
+The first workflow gate failed without a retained assertion; no cause is claimed
+from that truncated output. A logged rerun passed all ten real repository suites
+but caught HTTP 400 at supplier settlement fixture line 244. Its timestamp came
+from the host while PostgreSQL enforces receipt_time <= paid_at <= DB_time.
+The fixture now uses the server-returned full_received_at. Production validation
+is unchanged. Final sa-lathe-uc9-c335c3fb passed all ten suites under race/coverage,
+including list/detail equality, scoped access, single-connection reads, exact
+replays, multi-material batch rollback, full Docker workflow and cleanup.
+Default build/vet/race/harness checks also pass. These are correctness results,
+not yet proof that every latency acceptance gate is satisfied.
+
+The after-change synthetic run sa-lathe-perf-ce72311c passed with zero request
+failures and records two SQL statements per fulfillment HTTP request for both
+25/50-item pages (authentication plus one read), versus the original 152 at 25.
+Usage service commands issue 17/35/215 statements for 1/10/100 materials versus
+19/73/613. Trigger work still executes; these count client-issued statements.
+
+Do not treat that run's raw timings as a clean before/after comparison: even
+unchanged liveness p95 rose from 2.01 to 14.67 ms at concurrency 10, unchanged
+search/list paths slowed, and seeding rose from 304.53 to 1030.22 s. Both runs
+used the same Docker CPU/memory allocation but other verification work overlapped;
+host/load drift is suspected, not precisely attributed. The report's base commit
+is 012a4d8 plus the then-uncommitted Phase 17 patch, not unmodified 012a4d8.
+Raw reports are retained locally under ignored bin/ for transparency.
+
+A fresh run with no other verification jobs includes a frozen test-only legacy list and
+optimized list over the same rows, pool, middleware and authentication. Full
+response bytes must match; three repeats alternate legacy/optimized order at
+concurrency 1/10/25. It passed as sa-lathe-perf-60ea3b78 in 650.72 s. Paired
+legacy/optimized median p95 was 417.14/17.22 ms at concurrency 1,
+2782.27/64.52 ms at 10 and 1870.54/201.69 ms at 25, with zero failures.
+Aggregate host counters showed 77% CPU and 547 MiB free RAM, so these remain
+local loaded-host diagnostics, not a normal-load or production SLA. Query counts
+and complete response equality supply independent structural/contract evidence.
+See 012-performance.md for timings, caveats and remaining legacy-history costs.
+Both benchmark projects and all workflow resources cleaned up their own fresh
+containers/volumes. Publication and independent snapshot checks must still be
+recorded before the phase is claimed published. Final exported snapshots
+5d1f9d3/4af3d05/b589b21/d0308c1/76e7e56 independently built. Vet, default race
+and harness checks passed. Final source and Windows API/worker scans report zero
+reachable advisories; unused-module reports remain informational. The paired
+reference/report is committed in 76e7e56. Verify the checkpoint's remote tip after
+pushing. Phases 18-21 remain pending.

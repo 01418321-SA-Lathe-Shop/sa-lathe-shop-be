@@ -13,6 +13,11 @@ and pass. The completed synthetic baseline is in docs/012-performance.md. Phase
 16 error/validation work is implemented and unit/race verified; transaction helper extraction will accompany
 the Phase 17 production-query changes to avoid rewriting those steps twice.
 See docs/013-remediation-verification.md for results.
+Phase 17 now implements bulk scoped fulfillment, focused production validation
+and batched material issues with unchanged locks/triggers/retries. Real workflows
+and paired measurements pass; preserve host-load caveats, not a production SLA.
+Phases 18-21 remain authorized but unimplemented. Next is opt-in compact responses
+and history pagination without breaking legacy APIs or pruning immutable snapshots.
 Continue subsequent approved phases in order, with buildable logical commits
 and a verified origin/develop push at every phase end. No main push, existing
 database migration, production deployment or real LINE delivery is authorized.
