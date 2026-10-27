@@ -2,6 +2,7 @@ package auth
 
 import (
 	"fmt"
+	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/platform/validation"
 	"github.com/google/uuid"
 	"net/mail"
 	"regexp"
@@ -58,7 +59,7 @@ func validatePassword(s string) error {
 	return nil
 }
 func validateName(s string) error {
-	if !utf8.ValidString(s) || strings.TrimSpace(s) == "" || utf8.RuneCountInString(s) > 200 {
+	if !validation.Text(s, 1, 200) || strings.TrimSpace(s) == "" {
 		return fmt.Errorf("%w: name must contain 1-200 characters", ErrInvalidInput)
 	}
 	return nil
@@ -71,7 +72,7 @@ func normalizeEmployee(s string) (string, error) {
 	return s, nil
 }
 func validatePosition(s string) error {
-	if !utf8.ValidString(s) || utf8.RuneCountInString(s) > 100 {
+	if !validation.Text(s, 0, 100) {
 		return fmt.Errorf("%w: position must be at most 100 characters", ErrInvalidInput)
 	}
 	return nil

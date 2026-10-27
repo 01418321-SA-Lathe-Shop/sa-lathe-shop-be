@@ -3,11 +3,11 @@ package delivery
 import (
 	"context"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/auth"
+	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/platform/validation"
 	req "github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/request"
 	"github.com/google/uuid"
 	"strings"
 	"time"
-	"unicode/utf8"
 )
 
 type Service struct{ repo Repository }
@@ -76,14 +76,14 @@ func (s *Service) Issue(ctx context.Context, a auth.Account, id string, in Comma
 }
 func (s *Service) Ship(ctx context.Context, a auth.Account, id string, in ShipInput) (State, error) {
 	in.ReceiverName = strings.TrimSpace(in.ReceiverName)
-	if (in.Method != "self" && in.Method != "third_party") || in.ReceiverName == "" || utf8.RuneCountInString(in.ReceiverName) > 200 {
+	if (in.Method != "self" && in.Method != "third_party") || !validation.Text(in.ReceiverName, 1, 200) {
 		return State{}, req.ErrInvalidInput
 	}
 	return s.apply(ctx, a, id, "staff", Action{Command: in.Command, Kind: "ship", Method: in.Method, ReceiverName: in.ReceiverName})
 }
 func (s *Service) Inspect(ctx context.Context, a auth.Account, id string, in InspectInput) (State, error) {
 	in.Reason = strings.TrimSpace(in.Reason)
-	if (in.Outcome != "accept" && in.Outcome != "return") || (in.Outcome == "return" && in.Reason == "") || (in.Outcome == "accept" && in.Reason != "") || utf8.RuneCountInString(in.Reason) > 2000 {
+	if (in.Outcome != "accept" && in.Outcome != "return") || (in.Outcome == "return" && in.Reason == "") || (in.Outcome == "accept" && in.Reason != "") || !validation.Text(in.Reason, 0, 2000) {
 		return State{}, req.ErrInvalidInput
 	}
 	return s.apply(ctx, a, id, "customer", Action{Command: in.Command, Kind: in.Outcome, Reason: in.Reason})
@@ -101,7 +101,7 @@ func (s *Service) Pay(ctx context.Context, a auth.Account, id string, in Payment
 }
 func (s *Service) Review(ctx context.Context, a auth.Account, id string, in ReviewInput) (State, error) {
 	in.Reason = strings.TrimSpace(in.Reason)
-	if !validID(in.PaymentID) || (in.Outcome != "approved" && in.Outcome != "rejected") || (in.Outcome == "rejected" && in.Reason == "") || (in.Outcome == "approved" && in.Reason != "") || utf8.RuneCountInString(in.Reason) > 2000 {
+	if !validID(in.PaymentID) || (in.Outcome != "approved" && in.Outcome != "rejected") || (in.Outcome == "rejected" && in.Reason == "") || (in.Outcome == "approved" && in.Reason != "") || !validation.Text(in.Reason, 0, 2000) {
 		return State{}, req.ErrInvalidInput
 	}
 	return s.apply(ctx, a, id, "admin", Action{Command: in.Command, Kind: "review", PaymentID: in.PaymentID, Outcome: in.Outcome, Reason: in.Reason})

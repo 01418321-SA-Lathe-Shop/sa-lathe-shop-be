@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/auth"
+	req "github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/request"
 	"github.com/google/uuid"
 	"testing"
 	"time"
@@ -13,6 +14,27 @@ type mockRepository struct {
 	calls int
 	last  Action
 	err   error
+}
+
+func TestPersistedTextRejectsNULAndInvalidUTF8BeforeRepository(t *testing.T) {
+	for _, value := range []string{"name\x00hidden", string([]byte{0xff})} {
+		repository := &mockRepository{}
+		service := NewService(repository)
+		ctx := context.Background()
+		job := uuid.NewString()
+		command := Command{IdempotencyKey: uuid.NewString(), ExpectedVersion: 1}
+		_, shipErr := service.Ship(ctx, auth.Account{Active: true, Role: auth.RoleWorker}, job, ShipInput{Command: command, Method: "self", ReceiverName: value})
+		_, inspectionErr := service.Inspect(ctx, auth.Account{Active: true, Role: auth.RoleCustomer}, job, InspectInput{Command: command, Outcome: "return", Reason: value})
+		_, reviewErr := service.Review(ctx, auth.Account{Active: true, Role: auth.RoleAdmin}, job, ReviewInput{Command: command, PaymentID: uuid.NewString(), Outcome: "rejected", Reason: value})
+		for _, err := range []error{shipErr, inspectionErr, reviewErr} {
+			if !errors.Is(err, req.ErrInvalidInput) {
+				t.Fatal("incompatible PostgreSQL text was not rejected as invalid input")
+			}
+		}
+		if repository.calls != 0 {
+			t.Fatal("invalid text reached repository")
+		}
+	}
 }
 
 func (m *mockRepository) FulfillmentState(context.Context, string, string) (State, error) {

@@ -60,6 +60,8 @@ func TestSubmitValidation(t *testing.T) {
 		"description too long": {CustomerID: accountID, Description: strings.Repeat("ก", MaxDescriptionCharacters+1), Quantity: 1},
 		"material too long":    {CustomerID: accountID, Description: "job", Quantity: 1, MaterialSpec: strings.Repeat("a", MaxMaterialSpecCharacters+1)},
 		"invalid utf8":         {CustomerID: accountID, Description: string([]byte{0xff}), Quantity: 1},
+		"NUL description":      {CustomerID: accountID, Description: "job\x00name", Quantity: 1},
+		"NUL material":         {CustomerID: accountID, Description: "job", Quantity: 1, MaterialSpec: "S45\x00C"},
 		"past deadline":        {CustomerID: accountID, Description: "job", Quantity: 1, Deadline: func() *time.Time { v := time.Unix(1, 0); return &v }()},
 	} {
 		t.Run(name, func(t *testing.T) {

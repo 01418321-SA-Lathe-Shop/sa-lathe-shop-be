@@ -2,9 +2,9 @@ package request
 
 import (
 	"context"
+	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/platform/validation"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/google/uuid"
 )
@@ -42,9 +42,8 @@ func (s *Service) Submit(ctx context.Context, p Principal, input Input) (Request
 	}
 	input.Description = strings.TrimSpace(input.Description)
 	input.MaterialSpec = strings.TrimSpace(input.MaterialSpec)
-	if !validID(input.CustomerID) || !utf8.ValidString(input.Description) || !utf8.ValidString(input.MaterialSpec) ||
-		input.Description == "" || utf8.RuneCountInString(input.Description) > MaxDescriptionCharacters ||
-		utf8.RuneCountInString(input.MaterialSpec) > MaxMaterialSpecCharacters || input.Quantity <= 0 {
+	if !validID(input.CustomerID) || !validation.Text(input.Description, 1, MaxDescriptionCharacters) ||
+		!validation.Text(input.MaterialSpec, 0, MaxMaterialSpecCharacters) || input.Quantity <= 0 {
 		return Request{}, ErrInvalidInput
 	}
 	now := s.now().UTC()
