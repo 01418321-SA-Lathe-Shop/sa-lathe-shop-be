@@ -176,4 +176,12 @@ Every future phase: follow the mandatory AGENTS.md commit/push policy and docs/G
 - [x] Run CI-equivalent checks and validate API contract/examples and benchmark setup; preserve existing data and never deploy.
 - [x] Update this phase record with outcomes/limitations, commit logical buildable groups, push to origin/develop, and independently verify the remote tip.
 Decision: owner approved Phase 13 scope on 2026-10-23. Phase 12 / UC9 is the final business feature. Performance results are local diagnostics, not a production capacity claim. Security review found no confirmed authorization defect; proxy topology, malware scanning, and outbox/retention alerting remain deployment decisions. No main push or deployment was authorized.
-Verification: gofmt, `go build ./...`, `go vet ./...`, and `go test ./...` passed with DB/S3 integration environment variables cleared. OpenAPI and CI YAML parsed successfully; the benchmark script passed PowerShell syntax parsing and a 6-request loopback smoke test (100% success) against a temporary HTTP server. This smoke test is not a shop API latency result. No SQL plan or full Docker integration run was performed during Phase 13; see docs/PHASE13_VERIFICATION.md.
+Verification: gofmt, `go build ./...`, `go vet ./...`, and `go test ./...` passed with DB/S3 integration environment variables cleared. OpenAPI and CI YAML parsed successfully; the benchmark script passed PowerShell syntax parsing and a 6-request loopback smoke test (100% success) against a temporary HTTP server. This smoke test is not a shop API latency result. No SQL plan or full Docker integration run was performed during Phase 13; see docs/012-performance.md.
+
+## Documentation consolidation and reformatting — done
+- [x] Read and analyzed all documentation in `docs/`.
+- [x] Identified duplicates and overlapping content across requirements, setup/workflow, auth, and UC1–UC9 specifications, plans, and verification records.
+- [x] Consolidated 38 fragmented markdown documents into 15 unified, zero-loss, numbered documents matching the `number-name.md` convention (foundational docs `000-*`, use cases `001-UC1.md` through `009-UC9.md`, and reference docs `010-*` to `012-*`), preserving `openapi.yaml`.
+- [x] Updated cross-references in `README.backend.md`, `AGENTS.md`, and `docs/openapi.yaml`.
+- [x] Verified `go build ./...`, `go vet ./...`, `go test ./...`, and lint checks pass cleanly.
+

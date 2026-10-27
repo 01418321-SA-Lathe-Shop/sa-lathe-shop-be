@@ -49,9 +49,9 @@ Use gofmt, explicit errors, contexts and cancellation. No global DB handles. sna
 
 ## Run and verify
 
-See docs/SETUP.md. PowerShell: ./tasks.ps1 test; ./tasks.ps1 lint; ./tasks.ps1 run; ./tasks.ps1 migrate-up. Build: go build ./...; vet: go vet ./.... Docker Compose requires private values from a local .env. Do not commit .env or local data.
+See docs/000-setup.md. PowerShell: ./tasks.ps1 test; ./tasks.ps1 lint; ./tasks.ps1 run; ./tasks.ps1 migrate-up. Build: go build ./...; vet: go vet ./.... Docker Compose requires private values from a local .env. Do not commit .env or local data.
 
-API reference: docs/openapi.yaml is the route/authentication contract; docs/API_EXAMPLES.md contains PowerShell request and private-upload examples. Read the detailed UC guide before changing a payload or role rule. Security review evidence and deployment-dependent follow-ups are in docs/SECURITY_REVIEW.md. For repeatable local read latency and SQL plan measurements, use docs/PERFORMANCE.md and scripts/benchmark-http.ps1; never benchmark against production or claim an SLA from laptop results. GitHub CI runs formatting, build, vet and the default test suite without secrets. Database/S3 integration verification remains the dedicated scripts/verify-uc*.ps1 workflow and requires fresh disposable resources.
+API reference: docs/openapi.yaml is the route/authentication contract; docs/010-api-examples.md contains PowerShell request and private-upload examples. Read the detailed UC guide before changing a payload or role rule. Security review evidence and deployment-dependent follow-ups are in docs/011-security-review.md. For repeatable local read latency and SQL plan measurements, use docs/012-performance.md and scripts/benchmark-http.ps1; never benchmark against production or claim an SLA from laptop results. GitHub CI runs formatting, build, vet and the default test suite without secrets. Database/S3 integration verification remains the dedicated scripts/verify-uc*.ps1 workflow and requires fresh disposable resources.
 
 ## Commit and push rules
 
@@ -64,7 +64,7 @@ These are mandatory for every phase, not optional cleanup at the end:
 5. At the end of EVERY completed phase, update PLAN.md, review the staged diff, git status and git log --oneline, then push that phase's separate commits to the authorized branch. Do not accumulate completed phases locally. Standing owner instruction for every phase and follow-up: always push to origin/develop first, until the owner explicitly asks to push main. Permission to start/finish a phase is not permission to push main.
 6. Verify the remote branch tip after pushing and report the branch, commit range and test results. If a push is blocked, report the reason and pending commits; never claim the phase was pushed. Never force-push or rewrite published history without explicit authorization.
 
-Never include unrelated changes, secrets, outputs or local data. If no remote exists, ask the owner for its URL; never invent one. Preserve pre-existing user files and changes. PLAN.md must record phase status, decisions and problems. See docs/GIT_WORKFLOW.md for examples.
+Never include unrelated changes, secrets, outputs or local data. If no remote exists, ask the owner for its URL; never invent one. Preserve pre-existing user files and changes. PLAN.md must record phase status, decisions and problems. See docs/000-setup.md for examples.
 
 ## Open questions
 

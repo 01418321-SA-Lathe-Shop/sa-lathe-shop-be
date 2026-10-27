@@ -720,7 +720,7 @@ components:
           schema: {type: object, additionalProperties: true}
   responses:
     Json:
-      description: Successful JSON response; see the feature contract in docs/UC1.md through docs/UC9.md.
+      description: Successful JSON response; see the feature contract in docs/001-UC1.md through docs/009-UC9.md.
       content:
         application/json:
           schema: {type: object, additionalProperties: true}
