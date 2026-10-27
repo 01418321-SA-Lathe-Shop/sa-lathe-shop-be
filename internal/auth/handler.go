@@ -1,14 +1,10 @@
 package auth
 
 import (
-	"encoding/json"
 	"errors"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/platform/httpserver"
 	"github.com/go-chi/chi/v5"
-	"io"
-	"mime"
 	"net/http"
-	"strconv"
 )
 
 type Handler struct{ service *Service }
@@ -30,18 +26,7 @@ func (h *Handler) Routes(r chi.Router) {
 	})
 }
 func decode(w http.ResponseWriter, r *http.Request, v any) error {
-	media, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
-	if err != nil || media != "application/json" {
-		return ErrInvalidInput
-	}
-	r.Body = http.MaxBytesReader(w, r.Body, 8*1024)
-	d := json.NewDecoder(r.Body)
-	d.DisallowUnknownFields()
-	if err = d.Decode(v); err != nil {
-		return ErrInvalidInput
-	}
-	var extra any
-	if d.Decode(&extra) != io.EOF {
+	if httpserver.DecodeJSON(w, r, v, 8*1024) != nil {
 		return ErrInvalidInput
 	}
 	return nil
@@ -60,6 +45,9 @@ func writeAuthError(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, message = 404, "not_found", "Worker not found"
 	case errors.Is(err, ErrConflict):
 		status, code, message = 409, "conflict", "Account, employee number or membership already exists"
+	}
+	if status == http.StatusInternalServerError {
+		httpserver.LogInternalError(r, err)
 	}
 	httpserver.WriteError(w, r, status, code, message)
 }
@@ -125,21 +113,10 @@ func (h *Handler) updateWorker(w http.ResponseWriter, r *http.Request) {
 	httpserver.JSON(w, 200, worker)
 }
 func (h *Handler) listWorkers(w http.ResponseWriter, r *http.Request) {
-	limit, offset := 50, 0
-	var err error
-	if raw := r.URL.Query().Get("limit"); raw != "" {
-		limit, err = strconv.Atoi(raw)
-		if err != nil {
-			writeAuthError(w, r, ErrInvalidInput)
-			return
-		}
-	}
-	if raw := r.URL.Query().Get("offset"); raw != "" {
-		offset, err = strconv.Atoi(raw)
-		if err != nil {
-			writeAuthError(w, r, ErrInvalidInput)
-			return
-		}
+	limit, offset, err := httpserver.Pagination(r)
+	if err != nil {
+		writeAuthError(w, r, ErrInvalidInput)
+		return
 	}
 	workers, err := h.service.ListWorkers(r.Context(), CurrentAccount(r.Context()), limit, offset)
 	if err != nil {
