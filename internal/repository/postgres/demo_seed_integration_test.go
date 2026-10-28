@@ -68,6 +68,9 @@ func TestDemoSeedIntegration(t *testing.T) {
 		check(e)
 		before, e := db.FindAccount(ctx, a.Username)
 		check(e)
+		if _, e = auth.NewLocalTestService(db, true, time.Hour).Login(ctx, a.Username); !errors.Is(e, auth.ErrUnauthenticated) {
+			t.Fatal("unowned matching username accepted by password-free login")
+		}
 		_, e = seed.Apply(ctx, credentials)
 		if !errors.Is(e, demoseed.ErrConflict) {
 			t.Fatal("unowned account not rejected")
@@ -221,6 +224,7 @@ func TestDemoSeedIntegration(t *testing.T) {
 		check(e)
 	})
 	t.Run("real_http_roles_and_customer_isolation", func(t *testing.T) { verifyDemoAccountHTTP(t, db, cfg, password) })
+	t.Run("password_free_seed_sessions", func(t *testing.T) { verifyLocalTestSessions(t, db) })
 	t.Run("used_dataset_refuses_cleanup_and_can_retire", func(t *testing.T) {
 		before, e := db.FindAccount(ctx, "pim.admin")
 		check(e)
@@ -236,6 +240,9 @@ func TestDemoSeedIntegration(t *testing.T) {
 		check(e)
 		if status.State != "retired" {
 			t.Fatal("retirement not recorded")
+		}
+		if _, e = auth.NewLocalTestService(db, true, time.Hour).Login(ctx, "pim.admin"); !errors.Is(e, auth.ErrUnauthenticated) {
+			t.Fatal("retired dataset accepted by password-free login")
 		}
 		_, e = staff.Authenticate(ctx, login.AccessToken)
 		if !errors.Is(e, auth.ErrUnauthenticated) {
