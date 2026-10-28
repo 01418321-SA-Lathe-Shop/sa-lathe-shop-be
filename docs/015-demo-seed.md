@@ -83,6 +83,44 @@ frontend public configuration or the handoff. Do not use the browser mock passwo
 go run ./cmd/seed-demo apply --profile accounts
 ```
 
+Task aliases are `./tasks.ps1 seed-plan`, `seed-apply`, `seed-status` and
+`seed-verify`. Unlike normal tasks, these intentionally skip .env loading.
+
+## Real API verification and cleanup
+
+Start the API using normal private configuration pointed at the *same* demo
+database. Set `SEED_API_BASE_URL` to its loopback origin, such as
+`http://127.0.0.1:8080`, then run:
+
+```powershell
+./scripts/seed-demo.ps1 verify
+# Or, with six existing passwords already in private process environment:
+go run ./cmd/seed-demo verify --api-base "<loopback-api-origin>"
+
+# No deletion unless --execute is explicitly supplied:
+go run ./cmd/seed-demo cleanup --dry-run
+go run ./cmd/seed-demo cleanup --execute
+# Used datasets can instead be explicitly disabled, retaining all data:
+go run ./cmd/seed-demo retire --execute
+```
+
+Verify checks real logins, /auth/me, role-gated reads, customer profile boundaries,
+logout and revocation. API identity UUIDs must match the seed target; matching
+usernames on another database are not enough. It never creates business rows.
+Tokens/response bodies are withheld. A failed run may leave a session until
+expiry if even best-effort logout cannot reach the server. Observe the existing
+ten-logins-per-minute IP limiter; wait before repeating, do not disable it.
+
+Cleanup simulates exact registered deletions inside a savepoint, rolls back by
+default, and checks FKs before reporting eligibility. Even revoked tester sessions
+prevent deletion because account deletion would otherwise cascade them. Other
+dependencies/identity drift also cause refusal, with the whole operation rolled
+back. No trigger or audit guard is disabled. Retirement explicitly deactivates
+only the six seed-owned accounts and revokes their sessions, preserving hashes,
+memberships, business rows and provenance; rerun cannot reactivate them.
+Stop the dedicated API before apply/cleanup/retire. Normal API verification must
+run with it started. Retirement is not a stock/payment/workflow reset.
+
 Plan/status validate the connected target and report only public manifest/status
 metadata. Apply commits six accounts, two customer profiles, three memberships,
 one consumed invitation and twelve ownership bindings atomically. It generates
@@ -100,11 +138,11 @@ rejected; the actual connected database is checked again. These are accidental
 misuse guards, not protection against a database administrator or a deliberately
 mislabelled production copy. Remote Railway seeding is not supported/authorized.
 
-Run only while the dedicated demo API is stopped. The command locks application
+Mutation commands run only while the dedicated demo API is stopped. The command locks application
 tables against writes during short identity/provenance transactions and uses a
 five-second lock timeout. Ordinary API instances never use this transaction seam.
 
-## Verification so far
+## Verification record — 2026-10-28
 
 S1: fresh PostgreSQL 17 migrations 1-13 and empty provenance down/up passed;
 service-created Admin/Worker/company/invited member rolled back with the outer
@@ -113,3 +151,26 @@ late validation/capture failures, unrelated identity refusal, concurrent exact
 reruns, hash preservation and identity/connected-database drift checks.
 The verifier creates its own labelled container, never reads .env, and removes
 only that container and its fresh anonymous volume. No existing DB is seeded.
+
+S3 passed non-skipped real PostgreSQL identity/seed suites under race detection,
+including unowned membership and unknown cascading-FK refusal, atomic dry-run/
+failure rollback, populated downgrade refusal, retirement and session revocation.
+Real HTTP fixtures verify company sharing, individual/cross-company isolation,
+Worker/Admin boundaries and request/outbox consistency. A second fresh DB runs
+the actual CLI plan/apply/rerun plus an independently started API process: all
+six logins, exact UUID/role checks, company ownership, logout, revocation and
+CORS pass. The first CORS assertion expected 204; existing chi/cors returns
+valid 200. Request logs confirmed it and only the verifier was corrected.
+
+Full existing UC1-UC9 regression `sa-lathe-uc9-2eacc129` passed all ten required
+real suites, private S3, API/worker Docker builds/HTTP flows and graceful stop,
+with migrations through 13. Build, vet and default race tests pass. The pinned
+source vulnerability scan reports zero reachable vulnerabilities; twenty
+unused-module advisories are informational, not a claim of no advisories.
+CI includes the seed verifier, but hosted GitHub results have not been observed.
+
+No frontend browser verification, persistent demo database, hosted API, actual
+workflow seed, S3 provisioning for demo attachments, existing DB migration or
+real LINE occurred. Verification containers/volumes were removed; ignored local
+build/log artifacts remain in bin. Operator setup is still required before
+frontend testers can use seeded accounts. Frontend handoff: [016-frontend-demo-handoff.md](016-frontend-demo-handoff.md).

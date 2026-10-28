@@ -1,7 +1,12 @@
-param([ValidateSet('run','worker','build','test','lint','migrate-up','migrate-down','migrate-version','dev-up','dev-down','bootstrap-admin')][string]$Task='test')
+param([ValidateSet('run','worker','build','test','lint','migrate-up','migrate-down','migrate-version','dev-up','dev-down','bootstrap-admin','seed-plan','seed-apply','seed-status','seed-verify')][string]$Task='test')
 $ErrorActionPreference='Stop'
 Push-Location $PSScriptRoot
 try {
+  # Seed tasks require explicit private process environment, never .env fallback.
+  if($Task.StartsWith('seed-')){
+    & ./scripts/seed-demo.ps1 -Action ($Task.Substring(5))
+    return
+  }
   if(Test-Path -LiteralPath '.env') {
     foreach($line in Get-Content -LiteralPath '.env') {
       if($line -match '^\s*([A-Za-z_][A-Za-z0-9_]*)=(.*)$') {

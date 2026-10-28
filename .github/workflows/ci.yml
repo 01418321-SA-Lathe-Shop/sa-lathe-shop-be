@@ -67,3 +67,6 @@ jobs:
       - name: Required PostgreSQL, private S3 and Docker workflows
         shell: pwsh
         run: ./scripts/verify-uc9.ps1
+      - name: Guarded demo accounts and real API verification
+        shell: pwsh
+        run: ./scripts/verify-demo-seed.ps1
