@@ -1,5 +1,14 @@
 # SA-Lathe-Shop-BE
 
+Current follow-up authorization (2026-10-29): add password-free login only for
+the six provenance-owned demo accounts when LOCAL_TEST_ACCOUNT_ENABLE=true.
+Default OFF; dedicated sa_lathe_shop_demo/sa_lathe_shop_seed_test databases only.
+No frontend changes, deployment, existing database migration, new fixtures or
+real LINE. Keep normal password login and revocable sessions/role boundaries.
+Record verification and publish logical buildable groups to develop only.
+This follow-up supersedes the earlier stop-after-handoff instruction only
+for this explicitly enabled local test login.
+
 Current task authorization (2026-10-28): implement approved demo-account seed
 phases S0-S3 before resuming remediation. Six compatible frontend fictional
 accounts only; omit legacy.staff (missing required contacts). Dedicated guarded

@@ -2,6 +2,14 @@
 
 ## 1. Authentication Architecture
 
+Optional password-free local testing: only `LOCAL_TEST_ACCOUNT_ENABLE=true`
+registers `POST /auth/local-test/login` with `{ "username": "pim.admin" }`.
+Default OFF (404). Requires the dedicated seeded demo/test database and active
+provenance-owned identity; returns the standard revocable Bearer session.
+Normal password login and role/company authorization are unchanged. Never
+expose an enabled API publicly. See [015-demo-seed.md](015-demo-seed.md) for
+all six accounts, exact guards and disable/revocation behavior.
+
 The system provides role-based authentication for **Admin**, **Worker**, and **Customer** accounts. Suppliers have no accounts and interact externally. Public registration is restricted to customers (`/auth/register`, UC1). Admin and Worker accounts are strictly provisioned by Admin.
 
 ### Credential & Session Specifications

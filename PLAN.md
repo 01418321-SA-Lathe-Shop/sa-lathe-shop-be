@@ -1,5 +1,31 @@
 # Implementation plan
 
+## Password-free local demo login (2026-10-29) — done
+
+- [x] Inspect auth/session composition, seed provenance and current configuration.
+- [x] Add explicitly gated password-free login with normal sessions and role checks.
+- [x] Require dedicated demo/test DB and exact active seed identity/manifest.
+- [x] Add default-off configuration, Docker wiring and regression tests.
+- [x] Complete disposable real PostgreSQL/API verification and full race/build/vet.
+- [x] Update API/frontend handoff and commit logical buildable groups to develop.
+
+Verification: go build ./..., go vet ./... and uncached full race suite pass.
+The disposable seed verifier ran both required real PostgreSQL suites (not
+skipped), including password-free sessions for all six identities, rejection of
+unowned matching names, inactive/role-drifted accounts, bad manifest and retired
+datasets. Its independent API process verified normal password login still
+works, six password-free logins with /auth/me, Admin-only gate and logout/401.
+Restart with flag=false proved endpoint 404. It emitted
+LOCAL_TEST_ACCOUNT_VERIFICATION_PASSED and DEMO_SEED_VERIFICATION_PASSED; only
+the fresh labelled verification resources were removed. No browser/frontend,
+shared DB, deployment or full UC/S3 regression is claimed for this follow-up.
+Publication uses separate service/repository/tests, configuration/runtime
+verification, and documentation commits; verify origin/develop at final handoff.
+
+No frontend changes, persistent/shared seed, existing DB migration, deployment
+or workflow fixtures. Flag is a process startup setting. Turning it off removes
+the shortcut after restart, not existing sessions or ordinary password login.
+
 ## Approved demo account seeding (2026-10-28)
 
 Owner approved the recommended S0-S3 account-only scope. This task precedes

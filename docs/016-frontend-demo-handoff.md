@@ -4,7 +4,8 @@
 
 Backend develop provides a guarded account-only seed command, migration 000013
 for provenance and real HTTP verification. It reuses existing Argon2id, opaque
-Bearer sessions and permissions. No API contracts or login endpoints changed.
+Bearer sessions and permissions. A later opt-in password-free endpoint is
+documented below; normal login remains unchanged.
 No workflows, attachments, stock, invoices or payments are seeded. Empty lists
 after first login are expected, not a reason to switch to mock data.
 
@@ -36,12 +37,14 @@ Old AUTH.md/SETUP.md/UC*.md paths were consolidated into numbered docs.
 1. Work on develop; preserve existing unrelated changes and logical commit rules.
 2. Configure NEXT_PUBLIC_API_BASE_URL for the operator-provided API. It is public
    and build-time; no DB credentials, S3 keys or real seed passwords belong in it.
-3. Use normal /login -> mode live -> POST /auth/login -> GET /auth/me. Existing
-   components already support this. Keep explicit mock shortcuts browser-only.
+3. Normal /login -> mode live -> POST /auth/login -> GET /auth/me still works.
+   For an explicitly enabled local/test target, add a separate password-free
+   demo selector using POST /auth/local-test/login as described below. Keep
+   browser mock shortcuts separate and explicit.
 4. Preserve memory-only sessions, server roles, expiry/logout and error handling.
    No localStorage/sessionStorage tokens, role bypass or live-to-mock fallback.
 5. Clarify login/help text only if needed; never hard-code real demo passwords
-   or turn mock shortcut buttons into credentialed live shortcuts. UI changes
+   or turn browser mock shortcuts into hidden credentialed live calls. UI changes
    require the frontend DESIGN.md maintenance procedure.
 6. Test Customer/Worker/Admin navigation using privately shared credentials.
    Nida and Ploy share company scope; Somchai must not see their records.
@@ -51,12 +54,51 @@ Old AUTH.md/SETUP.md/UC*.md paths were consolidated into numbered docs.
 8. Distinguish browser-mock tests, backend real HTTP tests and browser-to-real-API
    verification. Do not claim the latter if the operator target is unavailable.
 
-No new feature endpoints or dependency upgrades are needed. Do not run seeds,
+No additional backend endpoints or dependency upgrades are needed. Do not run seeds,
 migrations, deploy, or change backend rules as part of the frontend handoff
 without separate authority. Use the existing UC1-UC9 screens to create real
 test data after account login; persistent workflow fixtures remain deferred.
 
 ## Acceptance
+
+### Password-free selector contract (2026-10-29)
+
+The backend operator explicitly enables LOCAL_TEST_ACCOUNT_ENABLE=true and
+restarts the API connected to a seeded dedicated demo/test DB. Do not send this
+variable as a request field/header or assume frontend environment enables the
+server. Backend default false/unset means the route does not exist (404).
+
+Add clearly labelled "Local test accounts" buttons/selector for the six usernames
+listed above, only in an explicitly configured frontend local-test UI. Keep
+ordinary password login and explicit browser mock mode separate. The selector
+must use the REAL transport, never mock routing:
+
+```http
+POST /auth/local-test/login
+Content-Type: application/json
+
+{"username":"pim.admin"}
+```
+
+No password, role, account ID or extra properties. Response is the normal
+access_token/token_type/expires_at/account contract in openapi.yaml. Put the
+opaque token in the existing memory-only live session, call GET /auth/me and
+use server role navigation. Normal logout must POST /auth/logout. Do not
+hard-code passwords, fabricate tokens/roles, persist tokens in browser storage,
+or fall back to browser mocks on 401/404/429/network errors. Show a useful
+disabled/unseeded or rate-limit error instead; never auto-create seed accounts.
+
+Verify Admin/Worker/Customer buttons, Nida/Ploy shared company and Somchai
+isolation, unauthorized actions, logout, disabled endpoint and offline behavior
+against an actual running API. Backend verification is not frontend browser
+verification; this change did not modify frontend code or leave an API running.
+
+Only trusted local testers may reach an enabled backend: password-free Admin
+is intentional privileged access, NOT safe public demo authentication. Turning
+off the flag and restarting removes new shortcut logins; existing sessions
+need normal revocation/expiry. Seed retirement disables the used demo identities.
+
+### Existing acceptance checks
 
 - Correct role route and Connected API mode after normal login.
 - Private credentials never appear in source, logs, browser storage or URLs.

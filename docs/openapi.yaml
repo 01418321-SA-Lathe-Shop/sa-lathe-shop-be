@@ -68,6 +68,58 @@ paths:
         '200': {$ref: '#/components/responses/Json'}
         '400': {$ref: '#/components/responses/Error'}
         '401': {$ref: '#/components/responses/Error'}
+  /auth/local-test/login:
+    post:
+      tags: [Authentication]
+      summary: Password-free login for an explicitly enabled local demo account
+      description: >-
+        Registered only when LOCAL_TEST_ACCOUNT_ENABLE=true; otherwise 404.
+        Requires a dedicated demo/test database and active seed-owned identity.
+        Private/local trusted testers only; anyone reaching an enabled API can
+        sign in as demo Admin. Normal permissions and revocable sessions apply.
+        Ten attempts per minute per socket IP. Disabling and restarting removes
+        this endpoint but does not revoke previously issued sessions.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [username]
+              properties:
+                username:
+                  type: string
+                  enum: [pim.admin, anan.staff, kittipong.staff, nida.company, ploy.company, somchai]
+      responses:
+        '200':
+          description: Normal opaque bearer session; Cache-Control no-store
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [access_token, token_type, expires_at, account]
+                properties:
+                  access_token: {type: string, description: Opaque secret; memory only}
+                  token_type: {type: string, enum: [Bearer]}
+                  expires_at: {type: string, format: date-time}
+                  account:
+                    type: object
+                    required: [id, person_id, username, name, role, is_active, created_at]
+                    properties:
+                      id: {type: string, format: uuid}
+                      person_id: {type: string, format: uuid}
+                      username: {type: string}
+                      name: {type: string}
+                      role: {type: string, enum: [admin, worker, customer]}
+                      is_active: {type: boolean}
+                      created_at: {type: string, format: date-time}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '404': {description: Disabled endpoint is not registered}
+        '429': {$ref: '#/components/responses/Error'}
+        '500': {$ref: '#/components/responses/Error'}
   /auth/me:
     get:
       tags: [Authentication]

@@ -1,5 +1,46 @@
 # Demo accounts on the real backend
 
+## Password-free shortcut (2026-10-29)
+
+After applying migrations through 000013 and explicitly seeding the dedicated
+demo DB, set `LOCAL_TEST_ACCOUNT_ENABLE=true` in the API process environment
+(or local Docker Compose `.env`) and restart/recreate the API. Default is false;
+only exact lowercase true enables it. Invalid values fail startup. The API
+requires DB name `sa_lathe_shop_demo` or `sa_lathe_shop_seed_test`, also checked
+against the actual connected database inside the login transaction. Do not
+rename an existing business DB to circumvent this guard.
+
+`POST /auth/local-test/login` accepts JSON `{"username":"pim.admin"}` with
+Content-Type application/json and no password. The same works for the other
+five usernames below. Result is the normal `access_token`, `token_type`,
+`expires_at`, `account` response. Use Authorization Bearer for protected APIs,
+GET /auth/me and POST /auth/logout as usual. No role, UUID or password overrides
+are accepted. Backend role checks and company scope are unchanged.
+
+Only an active account with matching registered UUID, username, role, safe
+identity snapshot and completed matching seed manifest is eligible; matching
+names alone, unrelated accounts, inactive/drifted accounts and retired datasets
+are refused with 401. Missing migrations/storage failures fail closed. There is
+no auto-seed, password reset, fake session or business-rule bypass. Successful
+shortcut logins create real sessions, so subsequent destructive cleanup is
+refused; use explicit retirement to deactivate a used demo dataset.
+
+The endpoint is NOT registered when false/unset (404); a hidden frontend button
+is not the security boundary. It uses the existing ten-attempts/minute/IP limiter
+and no-store responses. A startup warning records enablement, never tokens.
+
+IMPORTANT: anyone who can reach an enabled API can sign in as demo Admin and
+exercise its real permissions. Keep this API private/local to trusted testers;
+CORS and the variable are not public-access protection. Never enable against
+production. Turning the variable off and restarting prevents NEW shortcut
+logins; already issued sessions still last until normal logout/revocation/TTL,
+and seeded accounts still support ordinary password login. Use seed retirement
+to deactivate all six accounts and revoke their sessions when testing ends.
+
+Seed creation still requires private strong passwords; the shortcut means
+testers need not know or type them. No frontend change was made here. See
+016-frontend-demo-handoff.md for the client contract.
+
 ## Approved scope
 
 Account-only S0-S3, approved 2026-10-28. This is real Go authentication and

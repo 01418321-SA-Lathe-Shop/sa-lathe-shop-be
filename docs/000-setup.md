@@ -2,6 +2,14 @@
 
 ## 1. Local Development Runbook
 
+Password-free demo login is separately opt-in: set
+`LOCAL_TEST_ACCOUNT_ENABLE=true` in the API process environment or local Compose
+`.env`, then restart/recreate the API. It defaults false and requires an already
+seeded `sa_lathe_shop_demo` or `sa_lathe_shop_seed_test` DB (migration 000013).
+Do not enable it on a public/production API. Setup does not auto-seed or migrate
+an existing DB. See [015-demo-seed.md](015-demo-seed.md) and the frontend contract
+in [016-frontend-demo-handoff.md](016-frontend-demo-handoff.md).
+
 ### Prerequisites
 - Go 1.27.3 (security baseline; module, CI and Docker builders use the same version)
 - Git
