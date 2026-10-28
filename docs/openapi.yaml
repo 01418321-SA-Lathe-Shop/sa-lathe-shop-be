@@ -468,6 +468,28 @@ paths:
       x-allowed-roles: [admin]
       parameters: [{$ref: '#/components/parameters/EvidenceID'}]
       responses: {'200': {$ref: '#/components/responses/Json'}, '404': {$ref: '#/components/responses/Error'}}
+  /dashboard/overview:
+    get:
+      tags: [Production]
+      summary: Read exact creation-cohort job counts and first-completion activity
+      description: Read-only shared shop report. See docs/014-dashboard.md for all response fields, calendar semantics and incomplete-history handling. No finance fields.
+      x-allowed-roles: [admin, worker]
+      parameters:
+        - {name: range, in: query, schema: {type: string, enum: [today, 7d, 30d, year], default: 30d}}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '400': {$ref: '#/components/responses/Error'}, '401': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}}
+  /dashboard/jobs:
+    get:
+      tags: [Production]
+      summary: Read paginated named jobs by creation cohort or first-completion day
+      description: first_completed_on forbids range and status, and must fall in the rolling heatmap window. Total is the full filtered count, including cancelled jobs. See docs/014-dashboard.md.
+      x-allowed-roles: [admin, worker]
+      parameters:
+        - {name: range, in: query, schema: {type: string, enum: [today, 7d, 30d, year], default: 30d}}
+        - {name: status, in: query, schema: {type: string, enum: [queued, in_progress, completed, cancelled]}}
+        - {name: first_completed_on, in: query, schema: {type: string, format: date}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+        - {$ref: '#/components/parameters/Offset'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '400': {$ref: '#/components/responses/Error'}, '401': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}}
   /production/jobs:
     get:
       tags: [Production]

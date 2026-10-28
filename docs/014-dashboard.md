@@ -46,7 +46,22 @@ to existing UC endpoints. Reporting SQL uses one read-only repeatable-read
 transaction per response with a current active-role check; rows and totals
 share that snapshot. Lists fetch only the requested page, never per-job reads.
 
-## Implementation status
+## Implementation and verification
 
-Domain/calendar/filter/summary tests implemented first; HTTP/PostgreSQL reads
-and integration verification follow as a separate buildable commit.
+Both routes are registered in cmd/api using the existing Bearer middleware.
+No existing route, command, migration or business policy changed.
+
+`go test ./internal/dashboard` covers Bangkok midnight, year/leap boundaries,
+filter exclusion, role gates, tie-breaking, streak, empty and incomplete history.
+`TestDashboardIntegration` runs only with a dedicated empty database named
+sa_lathe_dashboard_test. It creates a minimal reporting fixture, not a shop
+schema migration: 125 jobs across all four states, full filtered totals/pages,
+multiple completion events/rework, an earlier completion outside the period,
+missing history, financial-field exclusion and current active-role checks.
+The fresh PostgreSQL 18.3 container run passed on 2026-10-28 and was removed.
+This verifies reporting SQL, not a new full UC1–UC9/S3 workflow run or an SLA.
+
+Run the SQL test with a private process-only `DASHBOARD_DATABASE_URL` pointed
+at that disposable empty database; it refuses a different name or existing
+public tables. Never point it at an existing shop database. Without that
+explicit variable, the integration test is skipped by the default test suite.

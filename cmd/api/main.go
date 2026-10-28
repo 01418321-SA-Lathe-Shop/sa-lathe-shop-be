@@ -6,6 +6,7 @@ import (
 	"flag"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/auth"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/config"
+	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/dashboard"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/delivery"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/file"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/health"
@@ -83,6 +84,7 @@ func main() {
 		req.NewHandler(requestService).Routes(r, authHandler.Authenticate)
 		fileService.Routes(r, authHandler.Authenticate)
 		notification.Routes(r, notification.NewInbox(db), authHandler.Authenticate)
+		dashboard.NewHandler(dashboard.NewService(db)).Routes(r, authHandler.Authenticate)
 		quotation.NewHandler(quotation.NewService(db)).Routes(r, authHandler.Authenticate)
 		quotation.NewDecisionHandler(quotation.NewDecisionService(db)).Routes(r, authHandler.Authenticate)
 		payment.NewHandler(payment.NewService(db)).Routes(r, authHandler.Authenticate)
