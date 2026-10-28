@@ -11,10 +11,17 @@ remaining remediation phases; it does not authorize optional workflow fixtures.
 - [x] Separate account seeding from workflows, storage and real API verification.
 - [x] Define local/test guards, ownership, no password resets and cleanup refusal.
 
-### S1 ownership and identity transaction support — todo
-- [ ] Add provenance migration without changing business schema or audit guards.
-- [ ] Bind existing identity repositories to a transaction using savepoints.
-- [ ] Verify migration and existing auth compatibility; publish logical groups.
+### S1 ownership and identity transaction support — done
+- [x] Add provenance migration without changing business schema or audit guards.
+- [x] Bind existing identity repositories to a transaction using savepoints.
+- [x] Verify migration and existing auth compatibility; publish logical groups.
+
+Verification: build and focused auth/repository tests passed. Disposable
+PostgreSQL 17 migration 1-13, empty 13 down/up and real nested identity rollback
+passed under race detection. The test creates Admin/Worker/company/invited
+member through existing services, then proves the outer rollback leaves all
+identity tables and sessions empty. Only the uniquely labelled test container
+and its fresh anonymous volume were removed. No existing DB was changed.
 
 ### S2 guarded account command — todo
 - [ ] Add explicit plan/apply/status and private process-only credential inputs.
