@@ -42,7 +42,7 @@ func authError(err error) error {
 	return err
 }
 func (d *Database) FindAccount(ctx context.Context, username string) (auth.Account, error) {
-	return accountRow(d.pool.QueryRow(ctx, `SELECT `+accountFields+` FROM account a JOIN person p ON p.id=a.person_id WHERE a.username=$1`, username))
+	return accountRow(d.identityQueries().QueryRow(ctx, `SELECT `+accountFields+` FROM account a JOIN person p ON p.id=a.person_id WHERE a.username=$1`, username))
 }
 
 func (d *Database) CreateSession(ctx context.Context, s auth.Session, expectedHash string) error {
@@ -100,7 +100,7 @@ func insertStaff(ctx context.Context, tx pgx.Tx, input auth.NewStaff) (auth.Acco
 	return a, authError(err)
 }
 func (d *Database) BootstrapAdmin(ctx context.Context, input auth.NewStaff) (auth.Account, error) {
-	tx, err := d.pool.Begin(ctx)
+	tx, err := d.identityBegin(ctx)
 	if err != nil {
 		return auth.Account{}, err
 	}
@@ -124,7 +124,7 @@ func (d *Database) BootstrapAdmin(ctx context.Context, input auth.NewStaff) (aut
 	return a, tx.Commit(ctx)
 }
 func (d *Database) CreateWorker(ctx context.Context, input auth.NewStaff) (auth.Worker, error) {
-	tx, err := d.pool.Begin(ctx)
+	tx, err := d.identityBegin(ctx)
 	if err != nil {
 		return auth.Worker{}, err
 	}

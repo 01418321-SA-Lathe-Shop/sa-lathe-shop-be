@@ -11,7 +11,7 @@ import (
 var _ auth.CustomerRepository = (*Database)(nil)
 
 func (d *Database) RegisterCustomer(ctx context.Context, in auth.CustomerRegistration) (auth.Account, error) {
-	tx, err := d.pool.Begin(ctx)
+	tx, err := d.identityBegin(ctx)
 	if err != nil {
 		return auth.Account{}, err
 	}
@@ -47,7 +47,7 @@ func (d *Database) RegisterCustomer(ctx context.Context, in auth.CustomerRegistr
 	return a, tx.Commit(ctx)
 }
 func (d *Database) CustomerProfiles(ctx context.Context, accountID string) ([]auth.CustomerProfile, error) {
-	rows, err := d.pool.Query(ctx, `SELECT c.id::text,c.customer_type,c.name,m.is_owner FROM customer c JOIN customer_member m ON m.customer_id=c.id JOIN account a ON a.id=m.account_id WHERE m.account_id=$1 AND a.is_active AND a.role='customer' ORDER BY c.created_at,c.id`, accountID)
+	rows, err := d.identityQueries().Query(ctx, `SELECT c.id::text,c.customer_type,c.name,m.is_owner FROM customer c JOIN customer_member m ON m.customer_id=c.id JOIN account a ON a.id=m.account_id WHERE m.account_id=$1 AND a.is_active AND a.role='customer' ORDER BY c.created_at,c.id`, accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ func (d *Database) CustomerProfiles(ctx context.Context, accountID string) ([]au
 	return result, rows.Err()
 }
 func (d *Database) SaveInvitation(ctx context.Context, in auth.Invitation) error {
-	tag, err := d.pool.Exec(ctx, `INSERT INTO customer_invitation(id,customer_id,created_by,token_hash,expires_at)
+	tag, err := d.identityQueries().Exec(ctx, `INSERT INTO customer_invitation(id,customer_id,created_by,token_hash,expires_at)
  SELECT $1,c.id,a.id,$4,$5 FROM customer c JOIN customer_member m ON m.customer_id=c.id JOIN account a ON a.id=m.account_id
  WHERE c.id=$2 AND a.id=$3 AND c.customer_type='company' AND m.is_owner AND a.is_active AND a.role='customer'`, in.ID, in.CustomerID, in.CreatedBy, in.Hash, in.ExpiresAt)
 	if err != nil {
@@ -104,7 +104,7 @@ func acceptCompanyInvitation(ctx context.Context, tx pgx.Tx, accountID string, h
 	return err
 }
 func (d *Database) AcceptInvitation(ctx context.Context, accountID string, hash []byte) error {
-	tx, err := d.pool.Begin(ctx)
+	tx, err := d.identityBegin(ctx)
 	if err != nil {
 		return err
 	}

@@ -2,12 +2,16 @@ package postgres
 
 import (
 	"context"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"time"
 )
 
 // Database owns infrastructure connections. No driver types cross this boundary.
-type Database struct{ pool *pgxpool.Pool }
+type Database struct {
+	pool       *pgxpool.Pool
+	identityTx pgx.Tx
+}
 
 func Open(ctx context.Context, dsn string, maxConnections int32) (*Database, error) {
 	cfg, err := pgxpool.ParseConfig(dsn)
