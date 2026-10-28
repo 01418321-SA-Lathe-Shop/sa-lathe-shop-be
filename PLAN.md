@@ -23,11 +23,20 @@ member through existing services, then proves the outer rollback leaves all
 identity tables and sessions empty. Only the uniquely labelled test container
 and its fresh anonymous volume were removed. No existing DB was changed.
 
-### S2 guarded account command — todo
-- [ ] Add explicit plan/apply/status and private process-only credential inputs.
-- [ ] Create six accounts/memberships and provenance in one transaction.
-- [ ] Verify reruns/conflicts/atomic rollback without creating sessions.
-- [ ] Update documentation and publish logical groups.
+### S2 guarded account command — done
+- [x] Add explicit plan/apply/status and private process-only credential inputs.
+- [x] Create six accounts/memberships and provenance in one transaction.
+- [x] Verify reruns/conflicts/atomic rollback without creating sessions.
+- [x] Update documentation and publish logical groups.
+
+Verification: build/vet and seed/auth unit tests pass. Real PostgreSQL tests
+cover late invalid password and injected provenance failures (no partial rows),
+unowned matching username refusal, six valid Argon2id identities, concurrent
+reruns without reading/resetting credentials, drift and actual database guard.
+The initial combined test run exposed a test-order assumption, not an auth bug:
+the fresh-DB rollback test now executes first in a separate invocation, with
+explicit non-skip gates. No credentials or hashes are printed by the command.
+No persistent demo DB or hosted service was provisioned; verification is disposable.
 
 ### S3 integration verification and safe cleanup — todo
 - [ ] Verify real HTTP login, role gates and company isolation on disposable PostgreSQL.
