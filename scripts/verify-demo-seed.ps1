@@ -30,8 +30,20 @@ try {
  if($LASTEXITCODE -ne 0){throw 'Empty provenance migration rollback failed'}
  go run -tags postgres github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.0 -path migrations -database $env:SEED_TEST_DATABASE_URL up
  if($LASTEXITCODE -ne 0){throw 'Provenance migration reapply failed'}
- go test ./internal/repository/postgres -run 'TestIdentityTransactionIntegration|TestDemoSeedIntegration' -count=1 -race -v
- if($LASTEXITCODE -ne 0){throw 'Real seed integration tests failed'}
+ # Identity rollback must run before the account dataset is committed. Separate
+ # invocations make the fresh-DB contract explicit, not Go test file-order dependent.
+ foreach($suite in @('TestIdentityTransactionIntegration','TestDemoSeedIntegration')){
+  $lines=@(go test ./internal/repository/postgres -run "^$suite`$" -count=1 -race -json)
+  $testExit=$LASTEXITCODE
+  $events=@($lines | ForEach-Object {$_ | ConvertFrom-Json})
+  $pass=@($events | Where-Object {$_.Test -eq $suite -and $_.Action -eq 'pass'})
+  $skip=@($events | Where-Object {$_.Test -eq $suite -and $_.Action -eq 'skip'})
+  if($testExit -ne 0 -or $pass.Count -ne 1 -or $skip.Count -ne 0){
+   $events | Where-Object {$_.Action -eq 'output'} | ForEach-Object {$_.Output.TrimEnd()}
+   throw "Required real suite $suite failed or did not execute"
+  }
+  Write-Output "$suite passed (real PostgreSQL, race enabled)"
+ }
  Write-Output 'DEMO_SEED_VERIFICATION_PASSED (fresh PostgreSQL; no existing data changed)'
 } finally {
  if($created){
