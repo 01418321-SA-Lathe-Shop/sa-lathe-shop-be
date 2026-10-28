@@ -38,10 +38,29 @@ the fresh-DB rollback test now executes first in a separate invocation, with
 explicit non-skip gates. No credentials or hashes are printed by the command.
 No persistent demo DB or hosted service was provisioned; verification is disposable.
 
-### S3 integration verification and safe cleanup — todo
-- [ ] Verify real HTTP login, role gates and company isolation on disposable PostgreSQL.
-- [ ] Implement dry-run cleanup, dependency refusal and explicit retirement.
-- [ ] Document commands, results and frontend handoff; publish verified groups.
+### S3 integration verification and safe cleanup — done
+- [x] Verify real HTTP login, role gates and company isolation on disposable PostgreSQL.
+- [x] Implement dry-run cleanup, dependency refusal and explicit retirement.
+- [x] Document commands, results and frontend handoff; publish verified groups.
+
+Verification: the dedicated verifier passes both non-skipped real PostgreSQL
+suites under race detection, actual CLI plan/apply/rerun and a separate API
+process with six role logins, membership matching, logout/revocation and CORS.
+Fresh test-only requests prove company sharing/cross-company isolation, role
+gates and atomic outbox writes; these are not persistent workflow fixtures.
+Cleanup proves dry-run rollback, failure rollback, unowned membership/FK and
+unknown cascade refusal, plus retirement without password changes or deleting
+business data. Populated provenance refuses downgrade. Full UC1-UC9 regression
+sa-lathe-uc9-2eacc129 passed all ten real suites, Docker HTTP flow, private S3,
+migrations including 13 and graceful stop. Disposable resources were removed.
+Initial standalone verifier assumed preflight 204; actual chi/cors returns
+valid 200, confirmed in request logs. Only the assertion was corrected.
+Build/vet/default race and source vulnerability checks pass (zero reachable;
+20 unused-module advisories remain informational). CI now includes the seed
+verifier; hosted GitHub execution has not been observed. No frontend/browser
+run, shared/hosted DB provisioning, deployment, existing DB migration, real
+LINE delivery or S4-S5 fixtures occurred. See docs/015-demo-seed.md and
+docs/016-frontend-demo-handoff.md. Stop after this handoff.
 
 ### S4-S5 workflow fixtures/private objects — todo (not authorized)
 - [ ] Rebuild R1-R10/O1-O3 through domain services, with durable recovery.

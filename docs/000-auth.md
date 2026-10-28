@@ -13,6 +13,11 @@ The system provides role-based authentication for **Admin**, **Worker**, and **C
 - **Rate Limiting**: Login allows at most 10 attempts per minute per socket IP address. Failed and disabled credentials share a generic 401 error.
 
 ### Admin Provisioning
+
+Optional local/test fictional accounts use the guarded command described in
+[015-demo-seed.md](015-demo-seed.md), reusing this same hashing and initial-Admin
+policy. The seed does not add public account-provisioning routes or reset an
+existing account. Frontend browser mock credentials are never real seed passwords.
 The initial Admin account cannot be created via public HTTP. It is bootstrapped through the CLI:
 ```powershell
 ./tasks.ps1 bootstrap-admin

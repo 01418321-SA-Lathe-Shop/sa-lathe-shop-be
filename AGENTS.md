@@ -7,7 +7,10 @@ local/test databases only; no existing shop migration, hosted seed, deployment,
 workflow fixtures, S3 provisioning, real LINE or frontend changes. Add ownership
 metadata and reuse existing auth services/Argon2id. Never adopt unrelated accounts,
 reset passwords on rerun or seed sessions. Publish buildable groups to develop.
-See docs/015-demo-seed.md and PLAN.md. S4-S5 workflows remain optional/unapproved.
+See docs/015-demo-seed.md and PLAN.md. S0-S3 are implemented and verified with
+disposable real PostgreSQL/HTTP/Docker; no shared demo DB/API was left running
+or deployed. Stop after the frontend handoff. S4-S5 workflows remain
+optional/unapproved; remediation phases 18-21 are outside this seed work item.
 
 Current remediation authorization (2026-10-27): owner approved PLAN.md phases
 14-21. Preserve existing UC1-UC9 APIs, business rules and exact retries; add

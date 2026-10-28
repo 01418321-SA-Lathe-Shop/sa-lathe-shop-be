@@ -71,6 +71,13 @@ docker compose down
 
 ---
 
+For optional fictional accounts on a dedicated real PostgreSQL demo database,
+see [015-demo-seed.md](015-demo-seed.md). The account-only command requires clean
+migration 000013, explicit local/test guards and private process passwords. It
+does not bootstrap on startup, seed workflows, provision storage, or target an
+existing shop/hosted database. Normal API/worker features still use business
+migrations through 000012; 000013 adds only operator seed provenance.
+
 ## 3. Scaffolding Verification Record
 
 Initial scaffolding and infrastructure verification was conducted on **2026-10-11 (Asia/Bangkok)**:
