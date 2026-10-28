@@ -7,8 +7,21 @@ import (
 )
 
 func (s *demoSeedStore) Cleanup(ctx context.Context, execute bool) error {
+	var unsafeCascade bool
+	e := s.identityTx.QueryRow(ctx, `SELECT EXISTS(
+ SELECT 1 FROM pg_constraint c JOIN pg_class p ON p.oid=c.confrelid JOIN pg_namespace n ON n.oid=p.relnamespace
+ WHERE c.contype='f' AND n.nspname='public' AND p.relname IN
+ ('person','account','admin','worker','customer','customer_member','customer_invitation','demo_seed_dataset','demo_seed_record','demo_seed_step')
+ AND c.confdeltype NOT IN ('a','r')
+ AND NOT(c.conrelid='auth_session'::regclass AND c.confrelid='account'::regclass AND c.confdeltype='c'))`).Scan(&unsafeCascade)
+	if e != nil {
+		return e
+	}
+	if unsafeCascade {
+		return demoseed.ErrDependency
+	}
 	var sessions bool
-	e := s.identityTx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM auth_session WHERE account_id IN
+	e = s.identityTx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM auth_session WHERE account_id IN
  (SELECT record_id FROM demo_seed_record WHERE dataset_id=$1 AND entity_type='account'))`, s.datasetID).Scan(&sessions)
 	if e != nil {
 		return e

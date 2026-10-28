@@ -33,7 +33,7 @@ func main() {
 }
 func run() error {
 	if len(os.Args) < 2 {
-		return fmt.Errorf("usage: seed-demo plan|apply|status --profile accounts")
+		return fmt.Errorf("usage: seed-demo plan|apply|status|verify|cleanup|retire --profile accounts")
 	}
 	action := os.Args[1]
 	flags := flag.NewFlagSet("seed-demo", flag.ContinueOnError)
@@ -76,7 +76,10 @@ func run() error {
 	case "verify":
 		e = service.VerifyHTTP(ctx, *apiBase, os.Getenv)
 		if e == nil {
-			status.State = "real_api_verified"
+			status, e = service.Status(ctx)
+			if e == nil {
+				status.State = "real_api_verified"
+			}
 		}
 	default:
 		status, e = service.Status(ctx)

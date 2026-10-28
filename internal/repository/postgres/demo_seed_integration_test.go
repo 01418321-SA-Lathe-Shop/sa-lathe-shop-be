@@ -151,6 +151,44 @@ func TestDemoSeedIntegration(t *testing.T) {
 			t.Fatal("connected database mismatch accepted")
 		}
 	})
+	t.Run("unowned_membership_blocks_cleanup_without_sessions", func(t *testing.T) {
+		customers := auth.NewCustomerService(db, hasher)
+		owner, e := db.FindAccount(ctx, "nida.company")
+		check(e)
+		profiles, e := customers.Profiles(ctx, owner)
+		check(e)
+		invitation, e := customers.Invite(ctx, owner, profiles[0].ID)
+		check(e)
+		member, e := customers.Register(ctx, auth.Registration{Username: "unexpected.member", Name: "Unowned Member", Password: password, CustomerType: "company", Invitation: invitation})
+		check(e)
+		var invitationID string
+		check(db.pool.QueryRow(ctx, `SELECT id::text FROM customer_invitation WHERE created_by=$1 AND id NOT IN (SELECT record_id FROM demo_seed_record WHERE entity_type='invitation')`, owner.ID).Scan(&invitationID))
+		_, e = seed.Cleanup(ctx, true)
+		if !errors.Is(e, demoseed.ErrDependency) || count("account") != 7 || count("customer_member") != 4 || count("auth_session") != 0 || count("demo_seed_record") != 12 {
+			t.Fatal("unowned dependency was removed or cleanup partially committed")
+		}
+		// Remove only these exact ephemeral test-created dependencies, not seed data.
+		_, e = db.pool.Exec(ctx, `DELETE FROM customer_member WHERE account_id=$1 AND customer_id=$2`, member.ID, profiles[0].ID)
+		check(e)
+		_, e = db.pool.Exec(ctx, `DELETE FROM customer_invitation WHERE id=$1`, invitationID)
+		check(e)
+		_, e = db.pool.Exec(ctx, `DELETE FROM account WHERE id=$1`, member.ID)
+		check(e)
+		_, e = db.pool.Exec(ctx, `DELETE FROM person WHERE id=$1`, member.PersonID)
+		check(e)
+	})
+	t.Run("unknown_cascade_dependency_is_not_deleted", func(t *testing.T) {
+		_, e := db.pool.Exec(ctx, `CREATE TABLE seed_test_external(customer_id uuid REFERENCES customer(id) ON DELETE CASCADE)`)
+		check(e)
+		_, e = db.pool.Exec(ctx, `INSERT INTO seed_test_external SELECT id FROM customer WHERE customer_type='company'`)
+		check(e)
+		_, e = seed.Cleanup(ctx, true)
+		if !errors.Is(e, demoseed.ErrDependency) || count("seed_test_external") != 1 || count("account") != 6 {
+			t.Fatal("unowned cascade dependency was deleted")
+		}
+		_, e = db.pool.Exec(ctx, `DROP TABLE seed_test_external`)
+		check(e)
+	})
 	t.Run("migration_and_cleanup_safety", func(t *testing.T) {
 		down, e := os.ReadFile("../../../migrations/000013_demo_seed.down.sql")
 		check(e)
