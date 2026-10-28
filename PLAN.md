@@ -306,7 +306,14 @@ Verification: gofmt, `go build ./...`, `go vet ./...`, and `go test ./...` passe
 - [x] Add documented read models, Bangkok calendar/filter validation and summary tests.
 - [x] Add authenticated read-only PostgreSQL aggregate and paginated joined list routes.
 - [x] Verify repeatable-read/read-only repository, 125 jobs, cancelled inclusion, first completion/rework, privacy and permissions in a fresh PostgreSQL 18.3 minimal reporting fixture; not a full UC/S3 regression run.
-- [x] First domain/contract commit 7f21b13 published to develop; HTTP/repository batch follows after full checks. No migration, deployment or existing UC command change.
+- [x] Domain/contract 7f21b13 and HTTP/repository b806865 published separately to origin/develop after checks. No migration, deployment or existing UC command change.
+
+Verification: Go build/vet/full default suite passed. Dedicated fresh PostgreSQL
+18.3 reporting SQL fixture passed without skipped execution and was removed.
+Frontend consumer adds a responsive shared-queue dashboard and contract mock;
+the browser mock/fixture pass is not deployed Go/PostgreSQL/S3 verification.
+Both read routes must be present in the running API before live reports work;
+no production restart, existing database mutation or deployment was performed.
 
 ## Documentation consolidation and reformatting — done
 - [x] Read and analyzed all documentation in `docs/`.

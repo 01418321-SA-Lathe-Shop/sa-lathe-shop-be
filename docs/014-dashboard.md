@@ -60,6 +60,11 @@ multiple completion events/rework, an earlier completion outside the period,
 missing history, financial-field exclusion and current active-role checks.
 The fresh PostgreSQL 18.3 container run passed on 2026-10-28 and was removed.
 This verifies reporting SQL, not a new full UC1–UC9/S3 workflow run or an SLA.
+Go build, vet and the full default suite also pass. Domain contract 7f21b13 and
+HTTP/repository b806865 were published separately to origin/develop. Frontend
+uses these additive endpoints; an older running/deployed API must be updated
+before live dashboard reports are available. This task did not deploy or restart
+production services, migrate an existing database, or send LINE messages.
 
 Run the SQL test with a private process-only `DASHBOARD_DATABASE_URL` pointed
 at that disposable empty database; it refuses a different name or existing
