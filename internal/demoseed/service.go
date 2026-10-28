@@ -21,6 +21,8 @@ type Store interface {
 	Inspect(context.Context) (Status, error)
 	Initialize(context.Context) error
 	Capture(context.Context) error
+	Cleanup(context.Context, bool) error
+	Retire(context.Context) error
 }
 type Repository interface {
 	Within(context.Context, Config, func(Store) error) error
@@ -109,6 +111,51 @@ func (s *Service) Apply(ctx context.Context, get func(string) string) (Status, e
 		}
 		status, e = store.Inspect(ctx)
 		return e
+	})
+	return status, e
+}
+
+// Cleanup is a savepoint-backed dry run unless the operator explicitly executes.
+func (s *Service) Cleanup(ctx context.Context, execute bool) (Status, error) {
+	var status Status
+	e := s.repo.Within(ctx, s.cfg, func(store Store) error {
+		var e error
+		status, e = store.Inspect(ctx)
+		if e != nil || status.State == "uninitialized" {
+			return e
+		}
+		if e = store.Cleanup(ctx, execute); e != nil {
+			return e
+		}
+		if execute {
+			status = Status{State: "uninitialized"}
+		} else {
+			status.State = "cleanup_eligible"
+		}
+		return nil
+	})
+	return status, e
+}
+
+func (s *Service) Retire(ctx context.Context) (Status, error) {
+	var status Status
+	e := s.repo.Within(ctx, s.cfg, func(store Store) error {
+		var e error
+		status, e = store.Inspect(ctx)
+		if e != nil {
+			return e
+		}
+		if status.State == "retired" {
+			return nil
+		}
+		if status.State != "ready" {
+			return ErrConflict
+		}
+		if e = store.Retire(ctx); e != nil {
+			return e
+		}
+		status.State = "retired"
+		return nil
 	})
 	return status, e
 }

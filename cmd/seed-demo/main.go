@@ -7,6 +7,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"syscall"
@@ -20,7 +21,7 @@ import (
 func main() {
 	if e := run(); e != nil {
 		message := "Demo seed operation failed; no credentials or database details are logged."
-		for _, safe := range []error{demoseed.ErrGuard, demoseed.ErrConflict, demoseed.ErrDependency, auth.ErrInvalidInput, auth.ErrAdminExists, auth.ErrConflict} {
+		for _, safe := range []error{demoseed.ErrGuard, demoseed.ErrConflict, demoseed.ErrDependency, demoseed.ErrVerification, auth.ErrInvalidInput, auth.ErrAdminExists, auth.ErrConflict} {
 			if errors.Is(e, safe) {
 				message = safe.Error()
 				break
@@ -36,11 +37,15 @@ func run() error {
 	}
 	action := os.Args[1]
 	flags := flag.NewFlagSet("seed-demo", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
 	profile := flags.String("profile", "accounts", "Only accounts is supported; no workflow fixtures")
+	execute := flags.Bool("execute", false, "Explicitly execute cleanup or retirement")
+	dryRun := flags.Bool("dry-run", false, "Simulate cleanup and roll back all changes")
+	apiBase := flags.String("api-base", os.Getenv("SEED_API_BASE_URL"), "Loopback API origin for real verification")
 	if e := flags.Parse(os.Args[2:]); e != nil {
 		return e
 	}
-	if *profile != "accounts" || flags.NArg() != 0 || (action != "plan" && action != "apply" && action != "status") {
+	if *profile != "accounts" || flags.NArg() != 0 || (*execute && *dryRun) || (*execute && action != "cleanup" && action != "retire") || (*dryRun && action != "cleanup") || (action != "plan" && action != "apply" && action != "status" && action != "cleanup" && action != "retire" && action != "verify") {
 		return demoseed.ErrGuard
 	}
 	cfg, e := demoseed.LoadConfig(os.Getenv)
@@ -58,9 +63,22 @@ func run() error {
 	defer db.Close()
 	service := demoseed.New(postgres.NewDemoSeedRepository(db), auth.NewArgonHasher(), cfg)
 	var status demoseed.Status
-	if action == "apply" {
+	switch action {
+	case "apply":
 		status, e = service.Apply(ctx, os.Getenv)
-	} else {
+	case "cleanup":
+		status, e = service.Cleanup(ctx, *execute)
+	case "retire":
+		if !*execute {
+			return demoseed.ErrGuard
+		}
+		status, e = service.Retire(ctx)
+	case "verify":
+		e = service.VerifyHTTP(ctx, *apiBase, os.Getenv)
+		if e == nil {
+			status.State = "real_api_verified"
+		}
+	default:
 		status, e = service.Status(ctx)
 	}
 	if e != nil {

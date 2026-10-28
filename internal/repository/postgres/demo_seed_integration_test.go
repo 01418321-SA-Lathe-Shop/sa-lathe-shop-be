@@ -6,6 +6,7 @@ import (
 	"os"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/auth"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/demoseed"
@@ -148,6 +149,78 @@ func TestDemoSeedIntegration(t *testing.T) {
 		_, e = demoseed.New(NewDemoSeedRepository(db), hasher, bad).Status(ctx)
 		if !errors.Is(e, demoseed.ErrGuard) {
 			t.Fatal("connected database mismatch accepted")
+		}
+	})
+	t.Run("migration_and_cleanup_safety", func(t *testing.T) {
+		down, e := os.ReadFile("../../../migrations/000013_demo_seed.down.sql")
+		check(e)
+		tx, e := db.pool.Begin(ctx)
+		check(e)
+		_, e = tx.Exec(ctx, string(down))
+		if e == nil {
+			t.Fatal("populated provenance downgrade was allowed")
+		}
+		check(tx.Rollback(ctx))
+		_, e = db.pool.Exec(ctx, `CREATE FUNCTION seed_test_delete_fail() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected cleanup failure'; END $$; CREATE TRIGGER seed_test_delete_fail BEFORE DELETE ON account FOR EACH ROW EXECUTE FUNCTION seed_test_delete_fail()`)
+		check(e)
+		_, e = seed.Cleanup(ctx, true)
+		if !errors.Is(e, demoseed.ErrDependency) || count("account") != 6 || count("customer_member") != 3 || count("demo_seed_record") != 12 {
+			t.Fatal("cleanup failure did not preserve all rows")
+		}
+		_, e = db.pool.Exec(ctx, `DROP TRIGGER seed_test_delete_fail ON account;DROP FUNCTION seed_test_delete_fail()`)
+		check(e)
+		status, e := seed.Cleanup(ctx, false)
+		check(e)
+		if status.State != "cleanup_eligible" || count("account") != 6 {
+			t.Fatal("dry run persisted deletion")
+		}
+		status, e = seed.Cleanup(ctx, true)
+		check(e)
+		if status.State != "uninitialized" || count("person") != 0 || count("demo_seed_dataset") != 0 {
+			t.Fatal("unused account cleanup incomplete")
+		}
+		_, e = seed.Apply(ctx, credentials)
+		check(e)
+	})
+	t.Run("real_http_roles_and_customer_isolation", func(t *testing.T) { verifyDemoAccountHTTP(t, db, cfg, password) })
+	t.Run("used_dataset_refuses_cleanup_and_can_retire", func(t *testing.T) {
+		before, e := db.FindAccount(ctx, "pim.admin")
+		check(e)
+		staff, e := auth.NewService(db, hasher, time.Hour)
+		check(e)
+		login, e := staff.Login(ctx, "pim.admin", password)
+		check(e)
+		_, e = seed.Cleanup(ctx, true)
+		if !errors.Is(e, demoseed.ErrDependency) || count("account") != 7 || count("job_request") != 3 {
+			t.Fatal("used data not preserved")
+		}
+		status, e := seed.Retire(ctx)
+		check(e)
+		if status.State != "retired" {
+			t.Fatal("retirement not recorded")
+		}
+		_, e = staff.Authenticate(ctx, login.AccessToken)
+		if !errors.Is(e, auth.ErrUnauthenticated) {
+			t.Fatal("retired session remains active")
+		}
+		after, e := db.FindAccount(ctx, "pim.admin")
+		check(e)
+		if after.Active || after.PasswordHash != before.PasswordHash || count("job_request") != 3 {
+			t.Fatal("retirement changed credentials or business rows")
+		}
+		other, e := db.FindAccount(ctx, "outside.company")
+		check(e)
+		if !other.Active {
+			t.Fatal("unowned account retired")
+		}
+		_, e = seed.Apply(ctx, credentials)
+		if !errors.Is(e, demoseed.ErrConflict) {
+			t.Fatal("retired identities silently reactivated")
+		}
+		status, e = seed.Status(ctx)
+		check(e)
+		if status.State != "retired" {
+			t.Fatal("retired provenance invalid")
 		}
 	})
 }

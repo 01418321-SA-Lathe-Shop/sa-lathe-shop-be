@@ -39,3 +39,14 @@ func TestManifestHasNoLegacyOrCredentials(t *testing.T) {
 		seen[a.Username] = true
 	}
 }
+
+func TestVerificationOrigin(t *testing.T) {
+	for _, base := range []string{"https://remote.example", "http://user:private@localhost:8080", "http://localhost:8080/path", "http://localhost:8080?redirect=other", "file:///tmp/api", "http://127.0.0.1:8080#fragment"} {
+		if verifyOrigin(base) {
+			t.Fatal("unsafe verification origin accepted")
+		}
+	}
+	if !verifyOrigin("http://127.0.0.1:8080") {
+		t.Fatal("loopback verification rejected")
+	}
+}
