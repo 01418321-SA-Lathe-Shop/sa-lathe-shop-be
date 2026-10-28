@@ -1,5 +1,14 @@
 # SA-Lathe-Shop-BE
 
+Current task authorization (2026-10-28): implement approved demo-account seed
+phases S0-S3 before resuming remediation. Six compatible frontend fictional
+accounts only; omit legacy.staff (missing required contacts). Dedicated guarded
+local/test databases only; no existing shop migration, hosted seed, deployment,
+workflow fixtures, S3 provisioning, real LINE or frontend changes. Add ownership
+metadata and reuse existing auth services/Argon2id. Never adopt unrelated accounts,
+reset passwords on rerun or seed sessions. Publish buildable groups to develop.
+See docs/015-demo-seed.md and PLAN.md. S4-S5 workflows remain optional/unapproved.
+
 Current remediation authorization (2026-10-27): owner approved PLAN.md phases
 14-21. Preserve existing UC1-UC9 APIs, business rules and exact retries; add
 opt-in compact modes rather than breaking clients. Use trusted proxies only

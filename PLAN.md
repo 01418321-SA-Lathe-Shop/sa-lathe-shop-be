@@ -1,5 +1,40 @@
 # Implementation plan
 
+## Approved demo account seeding (2026-10-28)
+
+Owner approved the recommended S0-S3 account-only scope. This task precedes
+remaining remediation phases; it does not authorize optional workflow fixtures.
+
+### S0 scope and safety contract — done
+- [x] Inspect both repositories, current schema/auth/domain services and mock data.
+- [x] Record six compatible accounts; legacy.staff is excluded, not fabricated.
+- [x] Separate account seeding from workflows, storage and real API verification.
+- [x] Define local/test guards, ownership, no password resets and cleanup refusal.
+
+### S1 ownership and identity transaction support — todo
+- [ ] Add provenance migration without changing business schema or audit guards.
+- [ ] Bind existing identity repositories to a transaction using savepoints.
+- [ ] Verify migration and existing auth compatibility; publish logical groups.
+
+### S2 guarded account command — todo
+- [ ] Add explicit plan/apply/status and private process-only credential inputs.
+- [ ] Create six accounts/memberships and provenance in one transaction.
+- [ ] Verify reruns/conflicts/atomic rollback without creating sessions.
+- [ ] Update documentation and publish logical groups.
+
+### S3 integration verification and safe cleanup — todo
+- [ ] Verify real HTTP login, role gates and company isolation on disposable PostgreSQL.
+- [ ] Implement dry-run cleanup, dependency refusal and explicit retirement.
+- [ ] Document commands, results and frontend handoff; publish verified groups.
+
+### S4-S5 workflow fixtures/private objects — todo (not authorized)
+- [ ] Rebuild R1-R10/O1-O3 through domain services, with durable recovery.
+- [ ] Provision real private objects; verify stock/financial/state consistency.
+
+No existing DB is targeted. Never run automatically, TRUNCATE, reset a DB,
+disable triggers or remove immutable audits. Passwords/tokens/hashes stay out
+of output and provenance. Seeded accounts use normal live frontend login.
+
 ## Approved remediation programme (2026-10-27)
 
 Owner approved phases 14-21. Preserve UC1-UC9 business rules, current API
