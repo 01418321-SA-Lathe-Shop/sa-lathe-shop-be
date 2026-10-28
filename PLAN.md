@@ -300,6 +300,14 @@ Every future phase: follow the mandatory AGENTS.md commit/push policy and docs/G
 Decision: owner approved Phase 13 scope on 2026-10-23. Phase 12 / UC9 is the final business feature. Performance results are local diagnostics, not a production capacity claim. Security review found no confirmed authorization defect; proxy topology, malware scanning, and outbox/retention alerting remain deployment decisions. No main push or deployment was authorized.
 Verification: gofmt, `go build ./...`, `go vet ./...`, and `go test ./...` passed with DB/S3 integration environment variables cleared. OpenAPI and CI YAML parsed successfully; the benchmark script passed PowerShell syntax parsing and a 6-request loopback smoke test (100% success) against a temporary HTTP server. This smoke test is not a shop API latency result. No SQL plan or full Docker integration run was performed during Phase 13; see docs/012-performance.md.
 
+## Staff/Admin dashboard read-only reporting — in progress (2026-10-28)
+
+- [x] Owner approved shared queue, Job-only creation-cohort states and first-completion-per-Job heatmap.
+- [x] Add documented read models, Bangkok calendar/filter validation and summary tests.
+- [ ] Add authenticated read-only PostgreSQL aggregate and paginated joined list routes.
+- [ ] Verify database snapshot, >100 jobs, cancelled inclusion, first completion/rework, privacy and permissions.
+- [ ] Publish focused commits to develop; no migration, deployment or existing UC command change.
+
 ## Documentation consolidation and reformatting — done
 - [x] Read and analyzed all documentation in `docs/`.
 - [x] Identified duplicates and overlapping content across requirements, setup/workflow, auth, and UC1–UC9 specifications, plans, and verification records.
