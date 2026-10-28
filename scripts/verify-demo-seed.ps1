@@ -5,6 +5,7 @@ $nonce=[guid]::NewGuid().ToString('N')
 $container='sa-lathe-seed-'+$nonce.Substring(0,8)
 $keys=@('POSTGRES_PASSWORD','SEED_TEST_DATABASE_URL','SEED_TEST_PASSWORD','SEED_TEST_CONFIRM','SEED_ENABLED','SEED_ENV','SEED_DATABASE_URL','SEED_CONFIRM_DATABASE','SEED_API_BASE_URL','SEED_PIM_PASSWORD','SEED_ANAN_PASSWORD','SEED_KITTIPONG_PASSWORD','SEED_NIDA_PASSWORD','SEED_PLOY_PASSWORD','SEED_SOMCHAI_PASSWORD','DATABASE_URL','HTTP_ADDR','CORS_ORIGINS','LINE_ENABLED')
 $saved=@{}
+$keys += 'LOCAL_TEST_ACCOUNT_ENABLE'
 foreach($key in $keys){$saved[$key]=[Environment]::GetEnvironmentVariable($key,'Process')}
 $created=$false
 $apiProcess=$null
@@ -62,6 +63,7 @@ try {
  $probe.Start();$port=$probe.LocalEndpoint.Port;$probe.Stop()
  $env:DATABASE_URL=$env:SEED_DATABASE_URL;$env:HTTP_ADDR="127.0.0.1:$port";$env:CORS_ORIGINS='http://localhost:3000';$env:LINE_ENABLED='false'
  $env:SEED_API_BASE_URL="http://127.0.0.1:$port"
+ $env:LOCAL_TEST_ACCOUNT_ENABLE='true'
  New-Item -ItemType Directory -Path bin -Force | Out-Null
  $suffix=if($IsWindows){'.exe'}else{''}
  $binary=Join-Path $repo "bin/seed-api-$nonce$suffix"
@@ -85,6 +87,38 @@ try {
  if($cors.StatusCode -ne 200 -or $allowedOrigin -ne 'http://localhost:3000' -or $allowedMethods -notmatch 'POST' -or $allowedHeaders -notmatch 'Content-Type'){throw 'Real API CORS preflight failed'}
  go run ./cmd/seed-demo verify
  if($LASTEXITCODE -ne 0){throw 'Real CLI/API login and permission verification failed'}
+ # Password-free login must produce the same DB-backed, revocable sessions.
+ # Never print bearer tokens or HTTP bodies containing them.
+ foreach($username in @('pim.admin','anan.staff','kittipong.staff','nida.company','ploy.company','somchai')){
+  $body=@{username=$username} | ConvertTo-Json -Compress
+  $login=Invoke-RestMethod "$env:SEED_API_BASE_URL/auth/local-test/login" -Method Post -ContentType 'application/json' -Body $body
+  if($login.account.username -ne $username -or $login.token_type -ne 'Bearer' -or -not $login.access_token){throw 'Password-free login returned wrong identity/session'}
+  $headers=@{Authorization=('Bearer '+$login.access_token)}
+  $me=Invoke-RestMethod "$env:SEED_API_BASE_URL/auth/me" -Headers $headers
+  if($me.id -ne $login.account.id){throw 'Password-free session is not backed by real authentication'}
+  $gate=Invoke-WebRequest "$env:SEED_API_BASE_URL/admin/workers" -Headers $headers -SkipHttpErrorCheck
+  $expected=if($username -eq 'pim.admin'){200}else{403}
+  if($gate.StatusCode -ne $expected){throw 'Password-free login bypassed role checks'}
+  Invoke-RestMethod "$env:SEED_API_BASE_URL/auth/logout" -Method Post -Headers $headers | Out-Null
+  $revoked=Invoke-WebRequest "$env:SEED_API_BASE_URL/auth/me" -Headers $headers -SkipHttpErrorCheck
+  if($revoked.StatusCode -ne 401){throw 'Password-free session could not be revoked'}
+  $login=$null;$headers=$null
+ }
+ # Restart with flag OFF: endpoint must be absent, not merely hidden in UI.
+ Stop-Process -Id $apiProcess.Id;$apiProcess.WaitForExit(5000) | Out-Null
+ $env:LOCAL_TEST_ACCOUNT_ENABLE='false'
+ $start.RedirectStandardOutput=Join-Path $repo "bin/seed-api-$nonce-disabled.out.log"
+ $start.RedirectStandardError=Join-Path $repo "bin/seed-api-$nonce-disabled.err.log"
+ $apiProcess=Start-Process @start
+ $ready=$false
+ for($i=0;$i -lt 40;$i++){
+  if($apiProcess.HasExited){throw 'Disabled-mode API exited'}
+  try{Invoke-RestMethod "$env:SEED_API_BASE_URL/health/ready" -TimeoutSec 2 | Out-Null;$ready=$true;break}catch{Start-Sleep -Milliseconds 250}
+ }
+ if(-not $ready){throw 'Disabled-mode API not ready'}
+ $disabled=Invoke-WebRequest "$env:SEED_API_BASE_URL/auth/local-test/login" -Method Post -ContentType 'application/json' -Body '{"username":"pim.admin"}' -SkipHttpErrorCheck
+ if($disabled.StatusCode -ne 404){throw 'Password-free endpoint exists with flag disabled'}
+ Write-Output 'LOCAL_TEST_ACCOUNT_VERIFICATION_PASSED (six real logins, role gates, revocation, disabled endpoint)'
  Write-Output 'CLI plan/apply/rerun and independent real API login/CORS verification passed'
  Write-Output 'DEMO_SEED_VERIFICATION_PASSED (fresh PostgreSQL; no existing data changed)'
 } finally {

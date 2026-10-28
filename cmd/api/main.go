@@ -69,6 +69,10 @@ func main() {
 	}
 	healthService := health.NewService(db, cfg.DBPingTimeout)
 	authHandler := auth.NewHandler(authService)
+	localTestService := auth.NewLocalTestService(db, cfg.LocalTestAccountEnable, cfg.SessionTTL)
+	if cfg.LocalTestAccountEnable {
+		logger.Warn("Password-free demo account login enabled; restrict this API to trusted local testers")
+	}
 	integrations, err := config.LoadIntegrations()
 	if err != nil {
 		logger.Error("invalid integration configuration", "error", err)
@@ -80,6 +84,7 @@ func main() {
 	customerService := auth.NewCustomerService(db, hasher)
 	router := httpserver.RouterWithRoutes(logger, cfg.HTTPTimeout, cfg.CORSOrigins, health.Live, healthService.Handler, func(r chi.Router) {
 		authHandler.Routes(r)
+		localTestService.Routes(r)
 		authHandler.CustomerRoutes(r, customerService)
 		req.NewHandler(requestService).Routes(r, authHandler.Authenticate)
 		fileService.Routes(r, authHandler.Authenticate)
