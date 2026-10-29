@@ -10,6 +10,11 @@ Do not enable it on a public/production API. Setup does not auto-seed or migrate
 an existing DB. See [015-demo-seed.md](015-demo-seed.md) and the frontend contract
 in [016-frontend-demo-handoff.md](016-frontend-demo-handoff.md).
 
+For optional representative PO/job/request/inventory/payment fixtures, migrate
+only the dedicated local demo DB through000014 and use the explicitly enabled
+operator command in [017-demo-workflows.md](017-demo-workflows.md). No automatic
+seeding/reset occurs. Identity-only seeding supports clean000013 or000014.
+
 ### Prerequisites
 - Go 1.27.3 (security baseline; module, CI and Docker builders use the same version)
 - Git

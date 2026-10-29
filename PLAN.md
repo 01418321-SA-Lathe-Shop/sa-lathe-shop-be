@@ -88,18 +88,40 @@ run, shared/hosted DB provisioning, deployment, existing DB migration, real
 LINE delivery or S4-S5 fixtures occurred. See docs/015-demo-seed.md and
 docs/016-frontend-demo-handoff.md. Stop after this handoff.
 
-### S4-S5 workflow fixtures/private objects — in progress (authorized 2026-10-29)
+### S4-S5 workflow fixtures/private objects — done (authorized 2026-10-29)
 - [x] Owner requested related test data for the seeded demo identities.
-- [ ] Add guarded command and DB-backed workflow checkpoints/ownership roots.
-- [ ] Build requests/quotes/PO/deposit/jobs/stock/orders through real HTTP APIs.
-- [ ] Provision clearly marked private test documents, never fake ready URLs.
-- [ ] Verify disposable real workflow, rerun/failure/isolation/financial/stock behavior.
-- [ ] Seed local demo only, preserve existing tester data, document and push develop.
+- [x] Add guarded command and DB-backed workflow checkpoints/ownership roots.
+- [x] Build requests/quotes/PO/deposit/jobs/stock/orders through real HTTP APIs.
+- [x] Provision clearly marked private test documents, never fake ready URLs.
+- [x] Verify disposable real workflow, rerun/failure/isolation/financial/stock behavior.
+- [x] Seed local demo only, preserve existing tester data and document logical develop groups.
 
 Account identity provenance remains separate. Completed reruns never restore
 fixture states over tester actions. Partial non-idempotent uncertain writes
 must stop for reconciliation rather than create duplicates. No destructive
 workflow reset/cleanup is offered; immutable business audit remains intact.
+
+Verification: build/vet/full uncached race suite pass. Final disposable project
+sa-lathe-workflows-99e7e3e9 passed 141 real API steps, 20 private document
+uploads/downloads/anonymous denial, stock/WAC and payment/closure checks,
+company isolation and role redaction. Completed rerun preserved an additional
+tester stock entry without changing account/session/request/job/step counts.
+Independent post-restart readback passed and fresh resources were removed.
+Earlier harness failures were corrected: a dynamic API port changes on restart;
+received supplier credit has existing payment_status=pending, not unpaid.
+No business contract was changed for either assertion. Unit tests cover exact
+idempotent replay, checkpoint ambiguity refusal and foreign storage origins.
+
+The separate running local sa_lathe_shop_demo was explicitly migrated13->14
+(metadata tables only), seeded and verified through localhost:8080. All141
+steps completed; repeat apply reports reuse. Original sa_lathe_shop, frontend
+files and real LINE remain untouched; existing Docker services stay running.
+No browser UI or hosted CI pass is claimed. See docs/017-demo-workflows.md.
+The existing account verifier also passed on schema14: real identity rollback,
+seed/cleanup/retirement tests, six normal and password-free API logins, role
+gates, revocation and default-off endpoint checks. Live demo readback confirmed
+11 requests, 6 jobs, 5 term_evidence POs, 3 deposits and clean schema14.
+Final publication is grouped on develop; remote tip is verified at handoff.
 
 No existing DB is targeted. Never run automatically, TRUNCATE, reset a DB,
 disable triggers or remove immutable audits. Passwords/tokens/hashes stay out

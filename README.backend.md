@@ -22,6 +22,9 @@ The existing README.md has been preserved exactly.
 - [Security & Permission Review](docs/011-security-review.md)
 - [Performance & Latency Benchmarks](docs/012-performance.md)
 - [OpenAPI 3.0 Specification](docs/openapi.yaml)
+- [Guarded demo accounts and password-free local login](docs/015-demo-seed.md)
+- [Frontend demo integration handoff](docs/016-frontend-demo-handoff.md)
+- [PO/job/request workflow testing dataset](docs/017-demo-workflows.md)
 - [Architecture and open questions](AGENTS.md)
 - [Phased plan](PLAN.md)
 

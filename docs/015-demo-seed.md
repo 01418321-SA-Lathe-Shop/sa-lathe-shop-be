@@ -1,5 +1,12 @@
 # Demo accounts on the real backend
 
+Update 2026-10-29: representative workflow/private-document fixtures are now
+implemented as a separate explicitly enabled command. See
+[017-demo-workflows.md](017-demo-workflows.md). Identity seeding remains
+account-only; clean migration13 or14 is supported. Workflow seeding needs14.
+Earlier S0-S3 verification records below describe the account-only scope at
+that time, not a prohibition on the later owner-authorized workflow command.
+
 ## Password-free shortcut (2026-10-29)
 
 After applying migrations through 000013 and explicitly seeding the dedicated
@@ -45,7 +52,8 @@ testers need not know or type them. No frontend change was made here. See
 
 Account-only S0-S3, approved 2026-10-28. This is real Go authentication and
 PostgreSQL with fictional accounts, not an HTTP mock. No workflow records or
-objects are seeded. S4-S5 workflow/private-object fixtures require later approval.
+objects are seeded by the identity command. S4-S5 workflow/private-object
+fixtures were separately authorized on 2026-10-29; see 017-demo-workflows.md.
 
 | Username | Role | Profile |
 | --- | --- | --- |

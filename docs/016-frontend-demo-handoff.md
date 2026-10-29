@@ -6,8 +6,10 @@ Backend develop provides a guarded account-only seed command, migration 000013
 for provenance and real HTTP verification. It reuses existing Argon2id, opaque
 Bearer sessions and permissions. A later opt-in password-free endpoint is
 documented below; normal login remains unchanged.
-No workflows, attachments, stock, invoices or payments are seeded. Empty lists
-after first login are expected, not a reason to switch to mock data.
+The account command alone leaves business lists empty. Separately authorized
+workflow data is available through the guarded command in 017-demo-workflows.md:
+DEMO-labelled requests, POs, jobs, stock, orders, invoices/payments and private
+TXT documents. Never fall back to browser mocks for empty/error responses.
 
 The six usernames are pim.admin (Admin), anan.staff / kittipong.staff (Worker),
 nida.company (company owner), ploy.company (same-company member) and somchai
@@ -57,7 +59,8 @@ Old AUTH.md/SETUP.md/UC*.md paths were consolidated into numbered docs.
 No additional backend endpoints or dependency upgrades are needed. Do not run seeds,
 migrations, deploy, or change backend rules as part of the frontend handoff
 without separate authority. Use the existing UC1-UC9 screens to create real
-test data after account login; persistent workflow fixtures remain deferred.
+test data after account login, or use the operator-seeded scenarios documented
+in 017-demo-workflows.md. Do not run a seed from frontend startup or a UI button.
 
 ## Acceptance
 

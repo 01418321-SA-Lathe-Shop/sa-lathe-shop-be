@@ -10,6 +10,13 @@ retries and preserve tester edits on completed reruns. This supersedes prior
 S4-S5-unapproved notes only for this local demo fixture work. Develop-first
 logical buildable commits/push remain mandatory.
 
+Workflow follow-up is implemented: migration14 adds only durable operation
+provenance; account seed guards support clean13/14. Explicit local demo execution
+completed141 steps with 20 private test TXT documents; completed reruns preserve
+tester progress. Disposable real workflow verification passed. Do not infer
+permission to reset/delete fixtures, seed production, change frontend or resume
+remediation18-21. See docs/017-demo-workflows.md and PLAN.md.
+
 Current follow-up authorization (2026-10-29): add password-free login only for
 the six provenance-owned demo accounts when LOCAL_TEST_ACCOUNT_ENABLE=true.
 Default OFF; dedicated sa_lathe_shop_demo/sa_lathe_shop_seed_test databases only.
