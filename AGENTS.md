@@ -1,5 +1,15 @@
 # SA-Lathe-Shop-BE
 
+Current authorization (2026-10-29): owner requested representative PO, job,
+request and related test data linked to demo accounts. Implement explicit
+guarded workflow/private-object fixtures and run them only on the local demo
+DB after disposable verification. Reuse real HTTP/domain transitions; no SQL
+business inserts, unrelated adoption/reset, production data, real LINE or
+frontend changes. Add durable provenance/checkpoints, refuse uncertain unsafe
+retries and preserve tester edits on completed reruns. This supersedes prior
+S4-S5-unapproved notes only for this local demo fixture work. Develop-first
+logical buildable commits/push remain mandatory.
+
 Current follow-up authorization (2026-10-29): add password-free login only for
 the six provenance-owned demo accounts when LOCAL_TEST_ACCOUNT_ENABLE=true.
 Default OFF; dedicated sa_lathe_shop_demo/sa_lathe_shop_seed_test databases only.

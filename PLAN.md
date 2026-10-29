@@ -88,9 +88,18 @@ run, shared/hosted DB provisioning, deployment, existing DB migration, real
 LINE delivery or S4-S5 fixtures occurred. See docs/015-demo-seed.md and
 docs/016-frontend-demo-handoff.md. Stop after this handoff.
 
-### S4-S5 workflow fixtures/private objects — todo (not authorized)
-- [ ] Rebuild R1-R10/O1-O3 through domain services, with durable recovery.
-- [ ] Provision real private objects; verify stock/financial/state consistency.
+### S4-S5 workflow fixtures/private objects — in progress (authorized 2026-10-29)
+- [x] Owner requested related test data for the seeded demo identities.
+- [ ] Add guarded command and DB-backed workflow checkpoints/ownership roots.
+- [ ] Build requests/quotes/PO/deposit/jobs/stock/orders through real HTTP APIs.
+- [ ] Provision clearly marked private test documents, never fake ready URLs.
+- [ ] Verify disposable real workflow, rerun/failure/isolation/financial/stock behavior.
+- [ ] Seed local demo only, preserve existing tester data, document and push develop.
+
+Account identity provenance remains separate. Completed reruns never restore
+fixture states over tester actions. Partial non-idempotent uncertain writes
+must stop for reconciliation rather than create duplicates. No destructive
+workflow reset/cleanup is offered; immutable business audit remains intact.
 
 No existing DB is targeted. Never run automatically, TRUNCATE, reset a DB,
 disable triggers or remove immutable audits. Passwords/tokens/hashes stay out
