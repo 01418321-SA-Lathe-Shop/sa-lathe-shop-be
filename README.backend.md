@@ -25,6 +25,8 @@ The existing README.md has been preserved exactly.
 - [Guarded demo accounts and password-free local login](docs/015-demo-seed.md)
 - [Frontend demo integration handoff](docs/016-frontend-demo-handoff.md)
 - [PO/job/request workflow testing dataset](docs/017-demo-workflows.md)
+- [System analysis digest](docs/018-system-analysis.md)
+- [Source report to backend traceability](docs/019-source-traceability.md)
 - [Architecture and open questions](AGENTS.md)
 - [Phased plan](PLAN.md)
 

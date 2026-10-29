@@ -109,6 +109,10 @@ internal/config: environment config. internal/platform/httpserver: shared HTTP s
 
 Use gofmt, explicit errors, contexts and cancellation. No global DB handles. snake_case SQL and JSON names. timestamptz for instants; durations are not timestamps. Monetary arithmetic must be exact. Private file access requires authorization before signing. No credentials in logs. Transactions must atomically persist stock/payment changes and associated events. Use parameterized SQL, consistent JSON errors and idempotency for later financial/stock commands.
 
+## Documentation filenames
+
+New Markdown files under `docs/` use a zero-padded three-digit ordering prefix plus a descriptive text slug (for example `018-system-analysis.md` or `020-USECASE10.md`). Use the next unused number and update the documentation index. Keep existing names such as `001-UC1.md` stable; do not rename existing docs or break links as part of a documentation task.
+
 ## Run and verify
 
 See docs/000-setup.md. PowerShell: ./tasks.ps1 test; ./tasks.ps1 lint; ./tasks.ps1 run; ./tasks.ps1 migrate-up. Build: go build ./...; vet: go vet ./.... Docker Compose requires private values from a local .env. Do not commit .env or local data.

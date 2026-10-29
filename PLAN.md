@@ -449,3 +449,13 @@ no production restart, existing database mutation or deployment was performed.
 - [x] Updated cross-references in `README.backend.md`, `AGENTS.md`, and `docs/openapi.yaml`.
 - [x] Verified `go build ./...`, `go vet ./...`, `go test ./...`, and lint checks pass cleanly.
 
+## Source report documentation alignment — done (2026-10-29)
+
+- [x] Read the supplied Systems Analysis and Design Markdown and compare it with current backend requirements, auth rules, UC1–UC9 contracts, migrations, and demo fixture documentation.
+- [x] Add a numbered system-analysis digest and a source-to-contract traceability map without changing API behavior or database schema.
+- [x] Record source-only UC10–UC12 and legacy ER/query assumptions as reconciliation notes rather than implemented features.
+- [x] State the numbered filename rule and add the new docs to `README.backend.md`.
+- [x] Check cross-references, numbering, whitespace, and the staged diff; verify the documentation-only commit builds with `go build ./...`.
+
+Decision: current owner-confirmed rules, backend UC/API documents, and migrations remain authoritative. The academic report's SQL/ER are historical and not executable PostgreSQL contracts. Existing filenames and links are preserved. No schema, API, seed data, or environment was changed.
+
