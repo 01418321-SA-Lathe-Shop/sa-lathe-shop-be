@@ -173,7 +173,7 @@ func (r *Runner) verify(ctx context.Context, initial bool) error {
 			if key == "o2" && str(financial, "status") != "partially_received" {
 				return fmt.Errorf("partial receipt mismatch")
 			}
-			if key == "o3" && (str(financial, "status") != "received" || str(obj(financial["finance"]), "payment_status") != "unpaid") {
+			if key == "o3" && (str(financial, "status") != "received" || str(obj(financial["finance"]), "payment_status") != "pending") {
 				return fmt.Errorf("full receipt credit fixture mismatch")
 			}
 		}

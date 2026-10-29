@@ -70,3 +70,6 @@ jobs:
       - name: Guarded demo accounts and real API verification
         shell: pwsh
         run: ./scripts/verify-demo-seed.ps1
+      - name: Guarded demo workflows with private documents and rerun checks
+        shell: pwsh
+        run: ./scripts/verify-demo-workflows.ps1
