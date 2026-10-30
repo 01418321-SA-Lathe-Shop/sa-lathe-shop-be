@@ -459,3 +459,39 @@ no production restart, existing database mutation or deployment was performed.
 
 Decision: current owner-confirmed rules, backend UC/API documents, and migrations remain authoritative. The academic report's SQL/ER are historical and not executable PostgreSQL contracts. Existing filenames and links are preserved. No schema, API, seed data, or environment was changed.
 
+
+## Per-material unit conversion — planned, not started (2026-10-30)
+
+Status: proposal awaiting owner approval. Until approved, `docs/005-UC5.md`, `docs/019-source-traceability.md` and frontend `docs/024-USECASE10-12.md` remain authoritative: unit conversion is not supported. No code, migration or contract has changed.
+
+Design: stock stays in each material's one immutable base unit. Conversion happens only when a quantity is entered, so balances, reservations, average cost and the movement ledger keep their meaning.
+
+Rules:
+- Conversions are per material, for example `1 sheet = 12.5 kg` for one material. No global or chained conversions, and no density or size calculations.
+- `quantity × factor` must fit NUMERIC(18,6) exactly; otherwise the request is rejected, never rounded.
+- The server converts. Clients send `{unit_id, quantity}` and display the result. Omitting `unit_id` means base unit, so existing callers keep working.
+- A factor is immutable once used. To correct one, deactivate it and add a new one; past records keep the factor they used.
+- Average cost, cost reports and the usage chart stay per base unit.
+
+### Phase A conversion list and page — todo
+- [ ] Add a `unit_conversion` table: `material_id`, `unit_id`, `factor > 0`, `is_active`, creator and timestamp; one active row per material and unit; never the base unit.
+- [ ] Add `GET /materials/{id}/conversions` for staff, and create and deactivate for Admin only, audited in `material_catalog_audit`.
+- [ ] Frontend: Unit Conversion page, supported units on material details, and read-only converted balances.
+
+### Phase B entry in other units for stock and production — todo
+- [ ] Accept the optional unit on stock adjustment, job material plans and production usage.
+- [ ] Add nullable `entered_qty`, `entered_unit_name` and `factor_used` to `stock_movement`, `job_material_requirement`, `material_reservation` and `job_material_usage`.
+- [ ] Include entered values in idempotency payloads so a retry cannot convert differently.
+- [ ] Frontend: unit selection on the `features/inventory` and `features/production` screens.
+
+### Phase C purchasing and receiving — todo, separate decision
+- [ ] Decide the money rule first: `material_order_item.total_amount` is `round(qty_ordered × unit_cost, 2)`, and dividing a supplier price by a factor may not fit 6 decimals, so totals could differ from the supplier bill.
+- [ ] Likely approach: store the supplier's entered quantity and price on the order line, bill from those, and convert only when stock is received.
+- [ ] Apply over-delivery and damaged-goods checks in one unit; update `features/procurement` and `features/receiving`.
+
+Each phase also needs:
+- [ ] One migration per phase, with nullable new columns so old rows stay valid.
+- [ ] Update `docs/005-UC5.md`, `docs/019-source-traceability.md`, `docs/openapi.yaml` and frontend `docs/024-USECASE10-12.md`, which currently say conversion is unsupported.
+- [ ] Integration tests covering rejected rounding and retries; update `scripts/verify-uc5.ps1` and `verify-uc8.ps1`, plus `verify-uc6.ps1` and `verify-uc7.ps1` in Phase C.
+
+Known gap: based on the schema, routes and docs; not every write path was read, so the Phase B file list may grow.
