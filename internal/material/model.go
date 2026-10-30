@@ -82,6 +82,24 @@ type Plan struct {
 	Ready   bool       `json:"ready"`
 	Lines   []PlanLine `json:"lines"`
 }
+
+// Conversion means 1 unit = Factor base units of one material.
+type Conversion struct {
+	ID            string     `json:"id"`
+	MaterialID    string     `json:"material_id"`
+	UnitID        string     `json:"unit_id"`
+	UnitName      string     `json:"unit_name"`
+	Factor        Decimal    `json:"factor"`
+	Active        bool       `json:"is_active"`
+	CreatedBy     string     `json:"created_by"`
+	CreatedAt     time.Time  `json:"created_at"`
+	DeactivatedBy *string    `json:"deactivated_by,omitempty"`
+	DeactivatedAt *time.Time `json:"deactivated_at,omitempty"`
+}
+type ConversionInput struct {
+	UnitID string   `json:"unit_id"`
+	Factor *Decimal `json:"factor"`
+}
 type Repository interface {
 	CreateUnit(context.Context, string, UnitInput) (Unit, error)
 	ListUnits(context.Context, string) ([]Unit, error)
@@ -92,4 +110,7 @@ type Repository interface {
 	ListMovements(context.Context, string, string, int, int) ([]Movement, error)
 	ApplyPlan(context.Context, string, string, PlanInput, bool) (Plan, error)
 	GetPlan(context.Context, string, string) (Plan, error)
+	ListConversions(context.Context, string, string) ([]Conversion, error)
+	CreateConversion(context.Context, string, string, ConversionInput) (Conversion, error)
+	DeactivateConversion(context.Context, string, string, string) (Conversion, error)
 }

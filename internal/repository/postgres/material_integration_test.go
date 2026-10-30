@@ -90,6 +90,57 @@ func TestMaterialIntegration(t *testing.T) {
 		}
 		return &v
 	}
+	t.Run("unit conversions", func(t *testing.T) {
+		service := m.NewService(db)
+		base, e := service.CreateUnit(ctx, admin, m.UnitInput{Name: "conversion-kg"})
+		if e != nil {
+			t.Fatal(e)
+		}
+		sheet, e := service.CreateUnit(ctx, admin, m.UnitInput{Name: "conversion-sheet"})
+		if e != nil {
+			t.Fatal(e)
+		}
+		material, e := service.Create(ctx, admin, m.MaterialInput{Name: "Conversion steel", UnitID: base.ID})
+		if e != nil {
+			t.Fatal(e)
+		}
+		if _, e = service.CreateConversion(ctx, admin, material.ID, m.ConversionInput{UnitID: base.ID, Factor: qty("2")}); !errors.Is(e, req.ErrInvalidInput) {
+			t.Fatal("base unit accepted", e)
+		}
+		if _, e = service.CreateConversion(ctx, admin, uuid.NewString(), m.ConversionInput{UnitID: sheet.ID, Factor: qty("2")}); !errors.Is(e, req.ErrNotFound) {
+			t.Fatal("unknown material accepted", e)
+		}
+		first, e := service.CreateConversion(ctx, admin, material.ID, m.ConversionInput{UnitID: sheet.ID, Factor: qty("12.5")})
+		if e != nil || first.UnitName != sheet.Name || first.Factor.String() != "12.500000" || !first.Active {
+			t.Fatal(first, e)
+		}
+		if _, e = service.CreateConversion(ctx, admin, material.ID, m.ConversionInput{UnitID: sheet.ID, Factor: qty("13")}); !errors.Is(e, m.ErrConflict) {
+			t.Fatal("second active conversion accepted", e)
+		}
+		if _, e = service.DeactivateConversion(ctx, admin, uuid.NewString(), first.ID); !errors.Is(e, req.ErrNotFound) {
+			t.Fatal("conversion reached through another material", e)
+		}
+		gone, e := service.DeactivateConversion(ctx, admin, material.ID, first.ID)
+		if e != nil || gone.Active || gone.DeactivatedAt == nil || gone.DeactivatedBy == nil || *gone.DeactivatedBy != admin.ID {
+			t.Fatal(gone, e)
+		}
+		retried, e := service.DeactivateConversion(ctx, admin, material.ID, first.ID)
+		if e != nil || !retried.DeactivatedAt.Equal(*gone.DeactivatedAt) {
+			t.Fatal("deactivate retry changed the record", e)
+		}
+		if _, e = service.CreateConversion(ctx, admin, material.ID, m.ConversionInput{UnitID: sheet.ID, Factor: qty("13")}); e != nil {
+			t.Fatal(e)
+		}
+		values, e := service.Conversions(ctx, worker.Account, material.ID)
+		if e != nil || len(values) != 2 || values[0].ID != first.ID || values[0].Active || !values[1].Active {
+			t.Fatal(values, e)
+		}
+		for _, statement := range []string{`UPDATE unit_conversion SET factor=99 WHERE id=$1`, `UPDATE unit_conversion SET is_active=true,deactivated_by=NULL,deactivated_at=NULL WHERE id=$1`, `DELETE FROM unit_conversion WHERE id=$1`} {
+			if _, e = db.pool.Exec(ctx, statement, first.ID); e == nil {
+				t.Fatal("retained conversion changed: " + statement)
+			}
+		}
+	})
 	job := func() string {
 		t.Helper()
 		r, e := requests.Submit(ctx, req.Principal{AccountID: customer.ID, Role: customer.Role, Active: true}, req.Input{CustomerID: profiles[0].ID, Description: "Inventory test mould", Quantity: 1})

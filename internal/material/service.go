@@ -166,6 +166,33 @@ func (s *Service) Reserve(ctx context.Context, a auth.Account, id string, in Res
 	}
 	return s.repo.ApplyPlan(ctx, a.ID, id, PlanInput{IdempotencyKey: in.IdempotencyKey, ExpectedVersion: in.ExpectedVersion}, true)
 }
+func (s *Service) Conversions(ctx context.Context, a auth.Account, id string) ([]Conversion, error) {
+	if !allowed(a, "staff") {
+		return nil, req.ErrForbidden
+	}
+	if !validID(id) {
+		return nil, req.ErrInvalidInput
+	}
+	return s.repo.ListConversions(ctx, a.ID, id)
+}
+func (s *Service) CreateConversion(ctx context.Context, a auth.Account, id string, in ConversionInput) (Conversion, error) {
+	if !allowed(a, auth.RoleAdmin) {
+		return Conversion{}, req.ErrForbidden
+	}
+	if !validID(id) || !validID(in.UnitID) || in.Factor == nil || in.Factor.IsZero() {
+		return Conversion{}, req.ErrInvalidInput
+	}
+	return s.repo.CreateConversion(ctx, a.ID, id, in)
+}
+func (s *Service) DeactivateConversion(ctx context.Context, a auth.Account, id, conversionID string) (Conversion, error) {
+	if !allowed(a, auth.RoleAdmin) {
+		return Conversion{}, req.ErrForbidden
+	}
+	if !validID(id) || !validID(conversionID) {
+		return Conversion{}, req.ErrInvalidInput
+	}
+	return s.repo.DeactivateConversion(ctx, a.ID, id, conversionID)
+}
 func (s *Service) Get(ctx context.Context, a auth.Account, id string) (Plan, error) {
 	if !allowed(a, "staff") {
 		return Plan{}, req.ErrForbidden

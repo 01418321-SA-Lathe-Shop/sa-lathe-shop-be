@@ -88,6 +88,23 @@ func (h *Handler) Routes(r chi.Router, authenticate func(http.Handler) http.Hand
 			v, err := h.service.Movements(r.Context(), actor(r), chi.URLParam(r, "material_id"), limit, offset)
 			respond(w, r, map[string]any{"items": MovementViews(actor(r), v)}, err)
 		})
+		r.Get("/materials/{material_id}/conversions", func(w http.ResponseWriter, r *http.Request) {
+			v, err := h.service.Conversions(r.Context(), actor(r), chi.URLParam(r, "material_id"))
+			respond(w, r, map[string]any{"items": v}, err)
+		})
+		r.Post("/materials/{material_id}/conversions", func(w http.ResponseWriter, r *http.Request) {
+			var in ConversionInput
+			if err := req.Decode(w, r, &in); err != nil {
+				writeError(w, r, err)
+				return
+			}
+			v, err := h.service.CreateConversion(r.Context(), actor(r), chi.URLParam(r, "material_id"), in)
+			respond(w, r, v, err)
+		})
+		r.Post("/materials/{material_id}/conversions/{conversion_id}/deactivate", func(w http.ResponseWriter, r *http.Request) {
+			v, err := h.service.DeactivateConversion(r.Context(), actor(r), chi.URLParam(r, "material_id"), chi.URLParam(r, "conversion_id"))
+			respond(w, r, v, err)
+		})
 		r.Put("/jobs/{job_id}/materials", func(w http.ResponseWriter, r *http.Request) {
 			var in PlanInput
 			if err := req.Decode(w, r, &in); err != nil {

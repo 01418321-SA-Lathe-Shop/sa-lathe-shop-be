@@ -36,6 +36,47 @@ func TestPermissionsAndInvalidPlans(t *testing.T) {
 		}
 	}
 }
+func TestConversionPermissionsAndInput(t *testing.T) {
+	s := NewService(nil)
+	ctx := context.Background()
+	worker := auth.Account{Role: auth.RoleWorker, Active: true}
+	admin := auth.Account{Role: auth.RoleAdmin, Active: true}
+	customer := auth.Account{Role: auth.RoleCustomer, Active: true}
+	id := uuid.NewString()
+	factor, zero := decimal(t, "12.5"), decimal(t, "0")
+	if _, err := s.Conversions(ctx, customer, id); !errors.Is(err, req.ErrForbidden) {
+		t.Fatal(err)
+	}
+	if _, err := s.CreateConversion(ctx, worker, id, ConversionInput{UnitID: id, Factor: &factor}); !errors.Is(err, req.ErrForbidden) {
+		t.Fatal(err)
+	}
+	if _, err := s.DeactivateConversion(ctx, worker, id, id); !errors.Is(err, req.ErrForbidden) {
+		t.Fatal(err)
+	}
+	for _, in := range []ConversionInput{{UnitID: id}, {UnitID: id, Factor: &zero}, {UnitID: "kg", Factor: &factor}} {
+		if _, err := s.CreateConversion(ctx, admin, id, in); !errors.Is(err, req.ErrInvalidInput) {
+			t.Fatal("bad conversion accepted", err)
+		}
+	}
+}
+func TestConversionRoutesRequireStaff(t *testing.T) {
+	router := chi.NewRouter()
+	NewHandler(NewService(nil)).Routes(router, func(next http.Handler) http.Handler { return next })
+	id := uuid.NewString()
+	for _, c := range []struct{ method, path, body string }{
+		{"GET", "/materials/" + id + "/conversions", ""},
+		{"POST", "/materials/" + id + "/conversions", `{"unit_id":"` + id + `","factor":"12.5"}`},
+		{"POST", "/materials/" + id + "/conversions/" + id + "/deactivate", ""},
+	} {
+		r := httptest.NewRequest(c.method, c.path, strings.NewReader(c.body))
+		r.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, r)
+		if w.Code != 403 {
+			t.Fatal(c.path, w.Code)
+		}
+	}
+}
 func TestStrictInventoryJSON(t *testing.T) {
 	router := chi.NewRouter()
 	NewHandler(NewService(nil)).Routes(router, func(next http.Handler) http.Handler { return next })
