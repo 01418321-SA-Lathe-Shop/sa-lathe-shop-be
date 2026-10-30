@@ -9,15 +9,18 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-const movementFields = `id::text,material_id::text,actor_id::text,idempotency_key::text,mode,quantity::text,unit_cost::text,reason,expected_version,version,before_quantity::text,after_quantity::text,before_cost::text,after_cost::text,created_at`
+const movementFields = `id::text,material_id::text,actor_id::text,idempotency_key::text,mode,quantity::text,unit_cost::text,reason,expected_version,version,before_quantity::text,after_quantity::text,before_cost::text,after_cost::text,created_at,entered_qty::text,entered_unit_name,factor_used::text`
 
 func movementRow(row pgx.Row) (m.Movement, error) {
 	var v m.Movement
 	var qty, before, after, oldCost, newCost string
-	var cost *string
-	err := row.Scan(&v.ID, &v.MaterialID, &v.ActorID, &v.IdempotencyKey, &v.Mode, &qty, &cost, &v.Reason, &v.ExpectedVersion, &v.Version, &before, &after, &oldCost, &newCost, &v.CreatedAt)
+	var cost, enteredQty, enteredFactor *string
+	err := row.Scan(&v.ID, &v.MaterialID, &v.ActorID, &v.IdempotencyKey, &v.Mode, &qty, &cost, &v.Reason, &v.ExpectedVersion, &v.Version, &before, &after, &oldCost, &newCost, &v.CreatedAt, &enteredQty, &v.EnteredUnit, &enteredFactor)
 	if err != nil {
 		return v, inventoryError(err)
+	}
+	if v.Entered, err = parseEntered(enteredQty, v.EnteredUnit, enteredFactor); err != nil {
+		return v, err
 	}
 	parsed, err := m.ParseDecimal(qty)
 	if err != nil {
@@ -82,6 +85,12 @@ func (d *Database) ChangeStock(ctx context.Context, actor, id string, in m.Stock
 	if material.Version != in.ExpectedVersion || (!material.Active && in.Mode == "addition") {
 		return m.Movement{}, m.ErrConflict
 	}
+	// Convert only now: an exact retry above must not depend on today's factors.
+	base, entered, err := convertEntered(ctx, tx, material, in.UnitID, *in.Quantity)
+	if err != nil {
+		return m.Movement{}, err
+	}
+	in.Quantity = &base
 	qty, cost, err := m.StockEffect(material, in)
 	if err != nil {
 		return m.Movement{}, err
@@ -90,7 +99,8 @@ func (d *Database) ChangeStock(ctx context.Context, actor, id string, in m.Stock
 	if in.UnitCost != nil {
 		unitCost = in.UnitCost.String()
 	}
-	value, err := movementRow(tx.QueryRow(ctx, `INSERT INTO stock_movement(id,material_id,actor_id,idempotency_key,mode,quantity,unit_cost,reason,expected_version,version,before_quantity,after_quantity,before_cost,after_cost,payload) VALUES($1,$2,$3,$4,$5,$6::numeric,$7::numeric,$8,$9,$10,$11::numeric,$12::numeric,$13::numeric,$14::numeric,$15::jsonb) RETURNING `+movementFields, uuid.NewString(), id, actor, in.IdempotencyKey, in.Mode, in.Quantity.String(), unitCost, in.Reason, material.Version, material.Version+1, material.OnHand.String(), qty.String(), material.AverageCost.String(), cost.String(), payload))
+	enteredQty, enteredUnit, factor := enteredArgs(entered)
+	value, err := movementRow(tx.QueryRow(ctx, `INSERT INTO stock_movement(id,material_id,actor_id,idempotency_key,mode,quantity,unit_cost,reason,expected_version,version,before_quantity,after_quantity,before_cost,after_cost,payload,entered_qty,entered_unit_name,factor_used) VALUES($1,$2,$3,$4,$5,$6::numeric,$7::numeric,$8,$9,$10,$11::numeric,$12::numeric,$13::numeric,$14::numeric,$15::jsonb,$16::numeric,$17,$18::numeric) RETURNING `+movementFields, uuid.NewString(), id, actor, in.IdempotencyKey, in.Mode, in.Quantity.String(), unitCost, in.Reason, material.Version, material.Version+1, material.OnHand.String(), qty.String(), material.AverageCost.String(), cost.String(), payload, enteredQty, enteredUnit, factor))
 	if err != nil {
 		return value, inventoryError(err)
 	}

@@ -36,10 +36,20 @@ type MaterialUpdate struct {
 	Active          *bool   `json:"is_active,omitempty"`
 	ExpectedVersion int64   `json:"expected_version"`
 }
+
+// Entered records what a person typed when it was not the base unit.
+type Entered struct {
+	EnteredQuantity *Decimal `json:"entered_quantity,omitempty"`
+	EnteredUnit     *string  `json:"entered_unit_name,omitempty"`
+	FactorUsed      *Decimal `json:"factor_used,omitempty"`
+}
+
+// Quantity is in UnitID when set, else the base unit. UnitCost is always per base unit.
 type StockInput struct {
 	IdempotencyKey  string   `json:"idempotency_key"`
 	Mode            string   `json:"mode"`
 	Quantity        *Decimal `json:"quantity"`
+	UnitID          string   `json:"unit_id,omitempty"`
 	UnitCost        *Decimal `json:"unit_cost,omitempty"`
 	Reason          string   `json:"reason"`
 	ExpectedVersion int64    `json:"expected_version"`
@@ -49,6 +59,7 @@ type Movement struct {
 	MaterialID string `json:"material_id"`
 	ActorID    string `json:"actor_id"`
 	StockInput
+	Entered
 	BeforeQuantity Decimal   `json:"before_quantity"`
 	AfterQuantity  Decimal   `json:"after_quantity"`
 	BeforeCost     Decimal   `json:"before_cost"`
@@ -59,6 +70,7 @@ type Movement struct {
 type Requirement struct {
 	MaterialID string   `json:"material_id"`
 	Quantity   *Decimal `json:"quantity"`
+	UnitID     string   `json:"unit_id,omitempty"`
 }
 type PlanInput struct {
 	IdempotencyKey  string        `json:"idempotency_key"`
@@ -75,6 +87,7 @@ type PlanLine struct {
 	Reserved   Decimal `json:"reserved"`
 	Consumed   Decimal `json:"consumed"`
 	Shortage   Decimal `json:"shortage"`
+	Entered
 }
 type Plan struct {
 	JobID   string     `json:"job_id"`

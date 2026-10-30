@@ -19,7 +19,11 @@ func MovementViews(a auth.Account, values []Movement) any {
 	}
 	result := make([]map[string]any, 0, len(values))
 	for _, v := range values {
-		result = append(result, map[string]any{"id": v.ID, "material_id": v.MaterialID, "actor_id": v.ActorID, "mode": v.Mode, "quantity": v.Quantity, "before_quantity": v.BeforeQuantity, "after_quantity": v.AfterQuantity, "version": v.Version, "created_at": v.CreatedAt})
+		view := map[string]any{"id": v.ID, "material_id": v.MaterialID, "actor_id": v.ActorID, "mode": v.Mode, "quantity": v.Quantity, "before_quantity": v.BeforeQuantity, "after_quantity": v.AfterQuantity, "version": v.Version, "created_at": v.CreatedAt}
+		if v.EnteredQuantity != nil {
+			view["entered_quantity"], view["entered_unit_name"], view["factor_used"] = v.EnteredQuantity, v.EnteredUnit, v.FactorUsed
+		}
+		result = append(result, view)
 	}
 	return result
 }

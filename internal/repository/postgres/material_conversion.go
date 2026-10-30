@@ -2,7 +2,9 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	m "github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/material"
+	req "github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/request"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
@@ -21,6 +23,50 @@ func conversionRow(row pgx.Row) (m.Conversion, error) {
 }
 func readConversion(ctx context.Context, tx pgx.Tx, material, id string) (m.Conversion, error) {
 	return conversionRow(tx.QueryRow(ctx, `SELECT `+conversionFields+` FROM unit_conversion c JOIN unit u ON u.id=c.unit_id WHERE c.material_id=$1 AND c.id=$2`, material, id))
+}
+
+// convertEntered returns the base quantity. An empty or base unit records nothing extra.
+func convertEntered(ctx context.Context, tx pgx.Tx, material m.Material, unitID string, quantity m.Decimal) (m.Decimal, m.Entered, error) {
+	if unitID == "" || unitID == material.UnitID {
+		return quantity, m.Entered{}, nil
+	}
+	var name, text string
+	err := tx.QueryRow(ctx, `SELECT u.name,c.factor::text FROM unit_conversion c JOIN unit u ON u.id=c.unit_id WHERE c.material_id=$1 AND c.unit_id=$2 AND c.is_active`, material.ID, unitID).Scan(&name, &text)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return quantity, m.Entered{}, req.ErrInvalidInput
+	}
+	if err != nil {
+		return quantity, m.Entered{}, err
+	}
+	factor, err := m.ParseDecimal(text)
+	if err != nil {
+		return quantity, m.Entered{}, err
+	}
+	base, err := quantity.Convert(factor)
+	if err != nil {
+		return quantity, m.Entered{}, err
+	}
+	return base, m.Entered{EnteredQuantity: &quantity, EnteredUnit: &name, FactorUsed: &factor}, nil
+}
+func enteredArgs(e m.Entered) (any, any, any) {
+	if e.EnteredQuantity == nil {
+		return nil, nil, nil
+	}
+	return e.EnteredQuantity.String(), *e.EnteredUnit, e.FactorUsed.String()
+}
+func parseEntered(quantity, unit, factor *string) (m.Entered, error) {
+	if quantity == nil || unit == nil || factor == nil {
+		return m.Entered{}, nil
+	}
+	q, err := m.ParseDecimal(*quantity)
+	if err != nil {
+		return m.Entered{}, err
+	}
+	f, err := m.ParseDecimal(*factor)
+	if err != nil {
+		return m.Entered{}, err
+	}
+	return m.Entered{EnteredQuantity: &q, EnteredUnit: unit, FactorUsed: &f}, nil
 }
 func (d *Database) ListConversions(ctx context.Context, actor, material string) ([]m.Conversion, error) {
 	tx, err := d.pool.Begin(ctx)

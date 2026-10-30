@@ -17,7 +17,7 @@ func loadPlan(ctx context.Context, tx pgx.Tx, jobID string) (m.Plan, error) {
 	if err := tx.QueryRow(ctx, `SELECT material_plan_version,status FROM job WHERE id=$1`, jobID).Scan(&value.Version, &jobStatus); err != nil {
 		return value, inventoryError(err)
 	}
-	rows, err := tx.Query(ctx, `SELECT r.material_id::text,r.required_qty::text,COALESCE(s.qty_reserved,0)::text,COALESCE(s.qty_consumed,0)::text FROM job_material_requirement r LEFT JOIN material_reservation s USING(job_id,material_id) WHERE r.job_id=$1 AND r.required_qty>0 ORDER BY r.material_id`, jobID)
+	rows, err := tx.Query(ctx, `SELECT r.material_id::text,r.required_qty::text,COALESCE(s.qty_reserved,0)::text,COALESCE(s.qty_consumed,0)::text,r.entered_qty::text,r.entered_unit_name,r.factor_used::text FROM job_material_requirement r LEFT JOIN material_reservation s USING(job_id,material_id) WHERE r.job_id=$1 AND r.required_qty>0 ORDER BY r.material_id`, jobID)
 	if err != nil {
 		return value, err
 	}
@@ -25,7 +25,13 @@ func loadPlan(ctx context.Context, tx pgx.Tx, jobID string) (m.Plan, error) {
 	for rows.Next() {
 		var line m.PlanLine
 		var required, reserved, consumed string
-		if err = rows.Scan(&line.MaterialID, &required, &reserved, &consumed); err != nil {
+		var enteredQty, enteredUnit, enteredFactor *string
+		if err = rows.Scan(&line.MaterialID, &required, &reserved, &consumed, &enteredQty, &enteredUnit, &enteredFactor); err != nil {
+			rows.Close()
+			return value, err
+		}
+		line.Entered, err = parseEntered(enteredQty, enteredUnit, enteredFactor)
+		if err != nil {
 			rows.Close()
 			return value, err
 		}
@@ -137,6 +143,7 @@ func (d *Database) ApplyPlan(ctx context.Context, actor, id string, in m.PlanInp
 	}
 	prior := map[string]m.PlanLine{}
 	targets := map[string]m.Decimal{}
+	entered := map[string]m.Entered{}
 	for _, line := range old.Lines {
 		prior[line.MaterialID] = line
 		targets[line.MaterialID] = m.Decimal{}
@@ -144,6 +151,7 @@ func (d *Database) ApplyPlan(ctx context.Context, actor, id string, in m.PlanInp
 	if reserveOnly {
 		for _, line := range old.Lines {
 			targets[line.MaterialID] = line.Required
+			entered[line.MaterialID] = line.Entered
 		}
 	} else {
 		for _, line := range in.Lines {
@@ -181,6 +189,15 @@ func (d *Database) ApplyPlan(ctx context.Context, actor, id string, in m.PlanInp
 			return m.Plan{}, req.ErrNotFound
 		}
 	}
+	if !reserveOnly {
+		for _, line := range in.Lines {
+			base, typed, err := convertEntered(ctx, tx, materials[line.MaterialID], line.UnitID, *line.Quantity)
+			if err != nil {
+				return m.Plan{}, err
+			}
+			targets[line.MaterialID], entered[line.MaterialID] = base, typed
+		}
+	}
 	for _, key := range keys {
 		material := materials[key]
 		previous := prior[key]
@@ -202,7 +219,8 @@ func (d *Database) ApplyPlan(ctx context.Context, actor, id string, in m.PlanInp
 				return m.Plan{}, inventoryError(err)
 			}
 		}
-		_, err = tx.Exec(ctx, `INSERT INTO job_material_requirement(job_id,material_id,required_qty) VALUES($1,$2,$3::numeric) ON CONFLICT(job_id,material_id) DO UPDATE SET required_qty=EXCLUDED.required_qty`, id, key, target.String())
+		enteredQty, enteredUnit, factor := enteredArgs(entered[key])
+		_, err = tx.Exec(ctx, `INSERT INTO job_material_requirement(job_id,material_id,required_qty,entered_qty,entered_unit_name,factor_used) VALUES($1,$2,$3::numeric,$4::numeric,$5,$6::numeric) ON CONFLICT(job_id,material_id) DO UPDATE SET required_qty=EXCLUDED.required_qty,entered_qty=EXCLUDED.entered_qty,entered_unit_name=EXCLUDED.entered_unit_name,factor_used=EXCLUDED.factor_used`, id, key, target.String(), enteredQty, enteredUnit, factor)
 		if err != nil {
 			return m.Plan{}, inventoryError(err)
 		}

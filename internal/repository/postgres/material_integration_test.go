@@ -238,6 +238,98 @@ func TestMaterialIntegration(t *testing.T) {
 		}
 		return movement
 	}
+	t.Run("entry in other units", func(t *testing.T) {
+		base, e := inventory.CreateUnit(ctx, admin, m.UnitInput{Name: "entry-kg"})
+		if e != nil {
+			t.Fatal(e)
+		}
+		sheet, e := inventory.CreateUnit(ctx, admin, m.UnitInput{Name: "entry-sheet"})
+		if e != nil {
+			t.Fatal(e)
+		}
+		material, e := inventory.Create(ctx, admin, m.MaterialInput{Name: "Entry steel", UnitID: base.ID})
+		if e != nil {
+			t.Fatal(e)
+		}
+		factor := func(value string) m.Conversion {
+			t.Helper()
+			c, e := inventory.CreateConversion(ctx, admin, material.ID, m.ConversionInput{UnitID: sheet.ID, Factor: qty(value)})
+			if e != nil {
+				t.Fatal(e)
+			}
+			return c
+		}
+		stock := func(quantity, unit string) m.StockInput {
+			return m.StockInput{IdempotencyKey: uuid.NewString(), Mode: "addition", Quantity: qty(quantity), UnitID: unit, UnitCost: qty("10"), Reason: "Entered in sheets", ExpectedVersion: current(material.ID).Version}
+		}
+		if _, e = inventory.Stock(ctx, admin, material.ID, stock("1", sheet.ID)); !errors.Is(e, req.ErrInvalidInput) {
+			t.Fatal("unit without a conversion accepted", e)
+		}
+		inexact := factor("0.333333")
+		if _, e = inventory.Stock(ctx, admin, material.ID, stock("0.5", sheet.ID)); !errors.Is(e, req.ErrInvalidInput) {
+			t.Fatal("rounded conversion accepted", e)
+		}
+		if _, e = inventory.DeactivateConversion(ctx, admin, material.ID, inexact.ID); e != nil {
+			t.Fatal(e)
+		}
+		first := factor("12.5")
+		in := stock("2", sheet.ID)
+		move, e := inventory.Stock(ctx, admin, material.ID, in)
+		if e != nil || move.Quantity.String() != "25.000000" || move.AfterQuantity.String() != "25.000000" || move.EnteredQuantity.String() != "2.000000" || *move.EnteredUnit != sheet.Name || move.FactorUsed.String() != "12.500000" {
+			t.Fatal(move, e)
+		}
+		if got := current(material.ID); got.OnHand.String() != "25.000000" || got.AverageCost.String() != "10.000000" {
+			t.Fatal("stock must stay in the base unit", got)
+		}
+		if _, e = inventory.DeactivateConversion(ctx, admin, material.ID, first.ID); e != nil {
+			t.Fatal(e)
+		}
+		// A new factor must not change the outcome of an exact retry.
+		factor("13")
+		retry, e := inventory.Stock(ctx, admin, material.ID, in)
+		if e != nil || retry.ID != move.ID || retry.Quantity.String() != "25.000000" || retry.FactorUsed.String() != "12.500000" {
+			t.Fatal("retry converted differently", retry, e)
+		}
+		different := in
+		different.UnitID = ""
+		if _, e = inventory.Stock(ctx, admin, material.ID, different); !errors.Is(e, m.ErrConflict) {
+			t.Fatal("same key with a different unit accepted", e)
+		}
+		same, e := inventory.Stock(ctx, admin, material.ID, stock("1", base.ID))
+		if e != nil || same.Quantity.String() != "1.000000" || same.EnteredQuantity != nil {
+			t.Fatal("base unit should record nothing extra", same, e)
+		}
+		jobID := job()
+		saved, e := inventory.Save(ctx, worker.Account, jobID, m.PlanInput{IdempotencyKey: uuid.NewString(), ExpectedVersion: 0, Lines: []m.Requirement{{MaterialID: material.ID, Quantity: qty("1"), UnitID: sheet.ID}}})
+		if e != nil || saved.Lines[0].Required.String() != "13.000000" || saved.Lines[0].Reserved.String() != "13.000000" || saved.Lines[0].EnteredQuantity.String() != "1.000000" {
+			t.Fatal(saved, e)
+		}
+		rechecked, e := inventory.Reserve(ctx, worker.Account, jobID, m.ReserveInput{IdempotencyKey: uuid.NewString(), ExpectedVersion: saved.Version})
+		if e != nil || rechecked.Lines[0].EnteredQuantity == nil || rechecked.Lines[0].FactorUsed.String() != "13.000000" {
+			t.Fatal("reservation lost the entered values", rechecked, e)
+		}
+		work := production.NewService(db)
+		started, e := work.Start(ctx, worker.Account, jobID, production.StartInput{Command: production.Command{IdempotencyKey: uuid.NewString(), ExpectedVersion: 0}, ExpectedPlanVersion: &rechecked.Version})
+		if e != nil {
+			t.Fatal(e)
+		}
+		use := production.UsageInput{Command: production.Command{IdempotencyKey: uuid.NewString(), ExpectedVersion: started.Version}, Lines: []production.UsageLine{{MaterialID: material.ID, Quantity: qty("0.5"), UnitID: sheet.ID}}}
+		used, e := work.Use(ctx, worker.Account, jobID, use)
+		if e != nil || len(used.Usage) != 1 || used.Usage[0].Quantity.String() != "6.500000" || used.Usage[0].EnteredQuantity.String() != "0.500000" || *used.Usage[0].EnteredUnit != sheet.Name {
+			t.Fatal(used, e)
+		}
+		repeat, e := work.Use(ctx, worker.Account, jobID, use)
+		if e != nil || repeat.Usage[0].ID != used.Usage[0].ID || repeat.Usage[0].FactorUsed.String() != "13.000000" {
+			t.Fatal("usage retry changed", repeat, e)
+		}
+		history, e := inventory.Movements(ctx, worker.Account, material.ID, 1, 0)
+		if e != nil || history[0].Mode != "job_issue" || history[0].Quantity.String() != "6.500000" || history[0].EnteredQuantity.String() != "0.500000" {
+			t.Fatal("ledger lost the entered values", history, e)
+		}
+		if got := current(material.ID); got.OnHand.String() != "19.500000" || got.Reserved.String() != "6.500000" {
+			t.Fatal("wrong balance after usage", got)
+		}
+	})
 	opening := m.StockInput{IdempotencyKey: uuid.NewString(), Mode: "addition", Quantity: qty("10"), UnitCost: qty("10"), ExpectedVersion: steel.Version, Reason: "Opening inventory"}
 	var wg sync.WaitGroup
 	results := make(chan error, 2)

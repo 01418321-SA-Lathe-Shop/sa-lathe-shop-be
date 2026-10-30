@@ -18,7 +18,7 @@ func allowed(a auth.Account, role string) bool {
 	return a.Active && (a.Role == role || (role == "staff" && (a.Role == auth.RoleAdmin || a.Role == auth.RoleWorker)))
 }
 func ValidateStock(in StockInput) error {
-	if !validID(in.IdempotencyKey) || in.ExpectedVersion < 1 || in.Quantity == nil || !validText(in.Reason, 2000) {
+	if !validID(in.IdempotencyKey) || in.ExpectedVersion < 1 || in.Quantity == nil || !validText(in.Reason, 2000) || (in.UnitID != "" && !validID(in.UnitID)) {
 		return req.ErrInvalidInput
 	}
 	switch in.Mode {
@@ -118,6 +118,7 @@ func (s *Service) Stock(ctx context.Context, a auth.Account, id string, in Stock
 		return Movement{}, req.ErrForbidden
 	}
 	in.Reason = strings.TrimSpace(in.Reason)
+	in.UnitID = strings.ToLower(in.UnitID)
 	if !validID(id) {
 		return Movement{}, req.ErrInvalidInput
 	}
@@ -148,11 +149,12 @@ func (s *Service) Save(ctx context.Context, a auth.Account, id string, in PlanIn
 	seen := map[string]bool{}
 	for i, line := range in.Lines {
 		key := strings.ToLower(line.MaterialID)
-		if !validID(key) || line.Quantity == nil || line.Quantity.IsZero() || seen[key] {
+		if !validID(key) || line.Quantity == nil || line.Quantity.IsZero() || seen[key] || (line.UnitID != "" && !validID(line.UnitID)) {
 			return Plan{}, req.ErrInvalidInput
 		}
 		seen[key] = true
 		in.Lines[i].MaterialID = key
+		in.Lines[i].UnitID = strings.ToLower(line.UnitID)
 	}
 	sort.Slice(in.Lines, func(i, j int) bool { return in.Lines[i].MaterialID < in.Lines[j].MaterialID })
 	return s.repo.ApplyPlan(ctx, a.ID, id, in, false)

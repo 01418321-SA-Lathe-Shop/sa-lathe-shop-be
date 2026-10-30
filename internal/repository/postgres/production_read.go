@@ -48,7 +48,8 @@ const productionDocument = `jsonb_build_object('job_id',j.id,'request_id',j.requ
  FROM material m JOIN unit u ON u.id=m.unit_id LEFT JOIN job_material_requirement q ON q.job_id=j.id AND q.material_id=m.id LEFT JOIN material_reservation r ON r.job_id=j.id AND r.material_id=m.id
  WHERE q.required_qty>0 OR EXISTS(SELECT 1 FROM job_material_usage x WHERE x.job_id=j.id AND x.material_id=m.id)),'[]'::jsonb),
  'usage',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',x.id,'material_id',x.material_id,'material_name',x.material_name,'unit_name',x.unit_name,'quantity',x.quantity::text,'reservation_used',x.reservation_used::text,'actor_id',x.actor_id,'created_at',x.created_at)
- ||CASE WHEN $2::boolean THEN jsonb_build_object('unit_cost',x.unit_cost::text,'total_amount',x.total_amount::text) ELSE '{}'::jsonb END ORDER BY x.created_at,x.id) FROM job_material_usage x WHERE x.job_id=j.id),'[]'::jsonb),
+ ||CASE WHEN $2::boolean THEN jsonb_build_object('unit_cost',x.unit_cost::text,'total_amount',x.total_amount::text) ELSE '{}'::jsonb END
+ ||CASE WHEN x.entered_qty IS NOT NULL THEN jsonb_build_object('entered_quantity',x.entered_qty::text,'entered_unit_name',x.entered_unit_name,'factor_used',x.factor_used::text) ELSE '{}'::jsonb END ORDER BY x.created_at,x.id) FROM job_material_usage x WHERE x.job_id=j.id),'[]'::jsonb),
  'time_entries',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',t.id,'actor_id',t.actor_id,'minutes',t.minutes,'note',t.note,'created_at',t.created_at) ORDER BY t.created_at,t.id) FROM job_time_entry t WHERE t.job_id=j.id),'[]'::jsonb),
  'labor_minutes',COALESCE((SELECT sum(minutes) FROM job_time_entry WHERE job_id=j.id),0),
  'events',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',e.id,'actor_id',e.actor_id,'action',e.action,'version',e.version,'created_at',e.created_at) ORDER BY e.version) FROM production_event e WHERE e.job_id=j.id),'[]'::jsonb),

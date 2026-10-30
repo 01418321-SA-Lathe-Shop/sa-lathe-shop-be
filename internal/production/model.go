@@ -22,6 +22,7 @@ type StartInput struct {
 type UsageLine struct {
 	MaterialID string     `json:"material_id"`
 	Quantity   *m.Decimal `json:"quantity"`
+	UnitID     string     `json:"unit_id,omitempty"`
 }
 type UsageInput struct {
 	Command
@@ -79,6 +80,7 @@ type Usage struct {
 	CreatedAt       time.Time  `json:"created_at"`
 	UnitCost        *m.Decimal `json:"unit_cost,omitempty"`
 	Total           *q.Amount  `json:"total_amount,omitempty"`
+	m.Entered
 }
 type TimeEntry struct {
 	ID        string    `json:"id"`

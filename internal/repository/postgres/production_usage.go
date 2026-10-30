@@ -83,15 +83,22 @@ func writeProductionUsage(ctx context.Context, tx pgx.Tx, actor, id string, in p
 	}
 	usageIDs := make([]string, len(in.Lines))
 	nextQuantities := make([]m.Decimal, len(in.Lines))
+	baseQuantities := make([]m.Decimal, len(in.Lines))
+	entered := make([]m.Entered, len(in.Lines))
 	usageBatch := &pgx.Batch{}
 	for i, line := range in.Lines {
 		current := materials[line.MaterialID]
-		used, next, err := p.IssueEffect(current, reserved[line.MaterialID], *line.Quantity)
+		baseQuantities[i], entered[i], err = convertEntered(ctx, tx, current, line.UnitID, *line.Quantity)
+		if err != nil {
+			return err
+		}
+		used, next, err := p.IssueEffect(current, reserved[line.MaterialID], baseQuantities[i])
 		if err != nil {
 			return err
 		}
 		usageIDs[i], nextQuantities[i] = uuid.NewString(), next
-		usageBatch.Queue(`INSERT INTO job_material_usage(id,event_id,job_id,material_id,actor_id,material_name,unit_name,quantity,reservation_used,unit_cost) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`, usageIDs[i], in.IdempotencyKey, id, line.MaterialID, actor, current.Name, current.UnitName, line.Quantity.String(), used.String(), current.AverageCost.String())
+		enteredQty, enteredUnit, factor := enteredArgs(entered[i])
+		usageBatch.Queue(`INSERT INTO job_material_usage(id,event_id,job_id,material_id,actor_id,material_name,unit_name,quantity,reservation_used,unit_cost,entered_qty,entered_unit_name,factor_used) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::numeric,$12,$13::numeric)`, usageIDs[i], in.IdempotencyKey, id, line.MaterialID, actor, current.Name, current.UnitName, baseQuantities[i].String(), used.String(), current.AverageCost.String(), enteredQty, enteredUnit, factor)
 	}
 	if err = productionBatch(ctx, tx, usageBatch); err != nil {
 		return err
@@ -104,11 +111,12 @@ func writeProductionUsage(ctx context.Context, tx pgx.Tx, actor, id string, in p
 	ledgerBatch := &pgx.Batch{}
 	for i, line := range in.Lines {
 		current, version := materials[line.MaterialID], after[line.MaterialID].Version
+		enteredQty, enteredUnit, factor := enteredArgs(entered[i])
 		payload, err := json.Marshal(map[string]string{"job_id": id, "usage_id": usageIDs[i]})
 		if err != nil {
 			return err
 		}
-		ledgerBatch.Queue(`INSERT INTO stock_movement(id,material_id,actor_id,idempotency_key,mode,quantity,unit_cost,reason,expected_version,version,before_quantity,after_quantity,before_cost,after_cost,payload,job_usage_id) VALUES($1,$2,$3,$1,'job_issue',$4,$5,'Production usage',$6,$7,$8,$9,$5,$5,$10,$1)`, usageIDs[i], line.MaterialID, actor, line.Quantity.String(), current.AverageCost.String(), version, version+1, current.OnHand.String(), nextQuantities[i].String(), payload)
+		ledgerBatch.Queue(`INSERT INTO stock_movement(id,material_id,actor_id,idempotency_key,mode,quantity,unit_cost,reason,expected_version,version,before_quantity,after_quantity,before_cost,after_cost,payload,job_usage_id,entered_qty,entered_unit_name,factor_used) VALUES($1,$2,$3,$1,'job_issue',$4,$5,'Production usage',$6,$7,$8,$9,$5,$5,$10,$1,$11::numeric,$12,$13::numeric)`, usageIDs[i], line.MaterialID, actor, baseQuantities[i].String(), current.AverageCost.String(), version, version+1, current.OnHand.String(), nextQuantities[i].String(), payload, enteredQty, enteredUnit, factor)
 	}
 	return productionBatch(ctx, tx, ledgerBatch)
 }

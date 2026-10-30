@@ -68,7 +68,8 @@ func (s *Service) Use(ctx context.Context, a auth.Account, id string, in UsageIn
 	seen := map[string]bool{}
 	for i, line := range in.Lines {
 		line.MaterialID = strings.ToLower(line.MaterialID)
-		if !validID(line.MaterialID) || line.Quantity == nil || line.Quantity.IsZero() || seen[line.MaterialID] {
+		line.UnitID = strings.ToLower(line.UnitID)
+		if !validID(line.MaterialID) || line.Quantity == nil || line.Quantity.IsZero() || seen[line.MaterialID] || (line.UnitID != "" && !validID(line.UnitID)) {
 			return State{}, req.ErrInvalidInput
 		}
 		seen[line.MaterialID] = true
