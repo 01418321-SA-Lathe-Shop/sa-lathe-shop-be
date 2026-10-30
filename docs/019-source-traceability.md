@@ -10,12 +10,12 @@ This index connects the supplied Systems Analysis and Design report to the curre
 | UC2 | Request review and quotation | [002-UC2.md](002-UC2.md) | Worker quotation actions; Admin reads are role-limited; internal cost is redacted from Customers. |
 | UC3 | Customer quotation decision and terms | [003-UC3.md](003-UC3.md) | Five rejections permit revision; the sixth cancels; accepted terms are immutable. |
 | UC4 | Deposit/PO evidence and job creation | [004-UC4.md](004-UC4.md) | Private evidence, staff review, immutable deadline, and one queued job after all required approvals. |
-| UC5 | Stock, material plans, reservations | [005-UC5.md](005-UC5.md) | Exact stock and reservation rules; no inferred unit conversion. |
+| UC5 | Stock, material plans, reservations | [005-UC5.md](005-UC5.md) | Exact stock and reservation rules; explicit per-material conversion factors only. |
 | UC6 | Supplier procurement order | [006-UC6.md](006-UC6.md) | Admin-only; order/job references are flexible; no physical stock effect. |
 | UC7 | Receiving, defects, supplier settlement | [007-UC7.md](007-UC7.md) | Partial good/damaged receipts, replacement-only claims, explicit credit terms, one full settlement. |
 | UC8 | Production and material usage | [008-UC8.md](008-UC8.md) | Worker execution, Admin cost, actual usage/time, and unused-reservation release. |
 | UC9 | Delivery, invoice, payment, rework | [009-UC9.md](009-UC9.md) | Customer inspection and bank evidence; Admin review/cash; accepted plus fully paid closes. |
-| UC10 | Unit and unit-conversion maintenance | [005-UC5.md](005-UC5.md) | Unit management exists within UC5; unit-conversion factors are not part of the current contract. |
+| UC10 | Unit and unit-conversion maintenance | [005-UC5.md](005-UC5.md) | Unit management and per-material conversion factors exist within UC5; entering quantities in other units is not yet supported. |
 | UC11 | Worker registration | [000-auth.md](000-auth.md) | Admin staff management exists with current required-contact rules; do not use the report's SQL or duplicate-matching behavior. |
 | UC12 | Admin registration through a super-admin | [000-auth.md](000-auth.md) | No public Admin-registration use case or super-admin hierarchy. First Admin is provisioned by the private bootstrap command. |
 
@@ -43,7 +43,7 @@ The report lists these conceptual entities. This is a glossary for tracing repor
 | `QUOTATION`, `QUOTATION_COST` | Quote lifecycle and customer-safe snapshots (`002-UC2.md`, `003-UC3.md`). |
 | `PURCHASE_ORDER`, `DEPOSIT` | PO/deposit term evidence and approval (`004-UC4.md`). |
 | `JOB`, `JOB_PHOTO`, `JOB_MATERIAL_USAGE`, `MATERIAL_RESERVATION` | Job opening, plans/reservations, production usage, and private photos (`004-UC4.md`, `005-UC5.md`, `008-UC8.md`). |
-| `MATERIAL`, `UNIT`, `UNIT_CONVERSION`, `STOCK_MOVEMENT` | Catalog, stock ledger, and reservation/usage rules (`005-UC5.md`, `007-UC7.md`, `008-UC8.md`). Unit conversion is not supported. |
+| `MATERIAL`, `UNIT`, `UNIT_CONVERSION`, `STOCK_MOVEMENT` | Catalog, stock ledger, and reservation/usage rules (`005-UC5.md`, `007-UC7.md`, `008-UC8.md`). Per-material conversion factors are stored; stock stays in the base unit. |
 | `SUPPLIER`, `MATERIAL_ORDER`, `MATERIAL_ORDER_ITEM`, `MATERIAL_DEFECT_LOG` | Supplier orders, receiving, replacement claims, and settlement (`006-UC6.md`, `007-UC7.md`). |
 | `DELIVERY`, `INVOICE`, `PAYMENT`, `PAYMENT_ALLOCATION` | Delivery/inspection, invoices, customer payment evidence, allocations, and closure (`009-UC9.md`). |
 

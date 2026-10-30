@@ -374,6 +374,39 @@ paths:
       parameters: [{$ref: '#/components/parameters/MaterialID'}]
       requestBody: {$ref: '#/components/requestBodies/JsonObject'}
       responses: {'200': {$ref: '#/components/responses/Json'}, '409': {$ref: '#/components/responses/Error'}}
+  /materials/{material_id}/conversions:
+    get:
+      tags: [Materials and stock]
+      summary: List a material's unit conversions, including deactivated ones
+      x-allowed-roles: [admin, worker]
+      parameters: [{$ref: '#/components/parameters/MaterialID'}]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '403': {$ref: '#/components/responses/Error'}, '404': {$ref: '#/components/responses/Error'}}
+    post:
+      tags: [Materials and stock]
+      summary: Add a conversion where 1 unit equals factor base units
+      x-allowed-roles: [admin]
+      parameters: [{$ref: '#/components/parameters/MaterialID'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [unit_id, factor]
+              additionalProperties: false
+              properties:
+                unit_id: {type: string, format: uuid}
+                factor: {type: string, description: 'Positive NUMERIC(18,6) decimal string'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '400': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}, '404': {$ref: '#/components/responses/Error'}, '409': {$ref: '#/components/responses/Error'}}
+  /materials/{material_id}/conversions/{conversion_id}/deactivate:
+    post:
+      tags: [Materials and stock]
+      summary: Deactivate a conversion; repeating it returns the original record
+      x-allowed-roles: [admin]
+      parameters:
+        - {$ref: '#/components/parameters/MaterialID'}
+        - {name: conversion_id, in: path, required: true, schema: {type: string, format: uuid}}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '403': {$ref: '#/components/responses/Error'}, '404': {$ref: '#/components/responses/Error'}}
   /materials/{material_id}/movements:
     get:
       tags: [Materials and stock]

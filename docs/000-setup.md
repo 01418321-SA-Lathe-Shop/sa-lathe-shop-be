@@ -13,7 +13,8 @@ in [016-frontend-demo-handoff.md](016-frontend-demo-handoff.md).
 For optional representative PO/job/request/inventory/payment fixtures, migrate
 only the dedicated local demo DB through000014 and use the explicitly enabled
 operator command in [017-demo-workflows.md](017-demo-workflows.md). No automatic
-seeding/reset occurs. Identity-only seeding supports clean000013 or000014.
+seeding/reset occurs. Identity-only seeding supports clean 000013, 000014 or
+000015; workflow fixtures support 000014 or 000015.
 
 ### Prerequisites
 - Go 1.27.3 (security baseline; module, CI and Docker builders use the same version)

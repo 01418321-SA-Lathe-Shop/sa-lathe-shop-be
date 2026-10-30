@@ -460,9 +460,9 @@ no production restart, existing database mutation or deployment was performed.
 Decision: current owner-confirmed rules, backend UC/API documents, and migrations remain authoritative. The academic report's SQL/ER are historical and not executable PostgreSQL contracts. Existing filenames and links are preserved. No schema, API, seed data, or environment was changed.
 
 
-## Per-material unit conversion — planned, not started (2026-10-30)
+## Per-material unit conversion — Phase A backend done (2026-10-30)
 
-Status: proposal awaiting owner approval. Until approved, `docs/005-UC5.md`, `docs/019-source-traceability.md` and frontend `docs/024-USECASE10-12.md` remain authoritative: unit conversion is not supported. No code, migration or contract has changed.
+Status: owner asked to start this work on 2026-10-30, ahead of remediation phases 18-21. Phase A backend is implemented; the frontend, Phase B and Phase C are not. Frontend `docs/024-USECASE10-12.md` still says conversion is unsupported.
 
 Design: stock stays in each material's one immutable base unit. Conversion happens only when a quantity is entered, so balances, reservations, average cost and the movement ledger keep their meaning.
 
@@ -473,10 +473,14 @@ Rules:
 - A factor is immutable once used. To correct one, deactivate it and add a new one; past records keep the factor they used.
 - Average cost, cost reports and the usage chart stay per base unit.
 
-### Phase A conversion list and page — todo
-- [ ] Add a `unit_conversion` table: `material_id`, `unit_id`, `factor > 0`, `is_active`, creator and timestamp; one active row per material and unit; never the base unit.
-- [ ] Add `GET /materials/{id}/conversions` for staff, and create and deactivate for Admin only, audited in `material_catalog_audit`.
+### Phase A conversion list and page — backend done, frontend todo
+- [x] Add migration 000015 `unit_conversion`: `material_id`, `unit_id`, `factor > 0`, `is_active`, creator and timestamp; one active row per material and unit; never the base unit.
+- [x] Add `GET /materials/{id}/conversions` for staff, and create and deactivate for Admin only.
 - [ ] Frontend: Unit Conversion page, supported units on material details, and read-only converted balances.
+
+Decision: the conversion row is its own audit, not `material_catalog_audit`. That table records name and active changes with a material version bump, which would make conversion edits conflict with concurrent stock commands. A trigger keeps factors immutable and rows undeletable. Seed guards now also accept version 15.
+
+Verification: `go build`, `go vet` and the default test suite pass. A disposable Compose project ran 000015 up, down and up, then `TestMaterialIntegration` and `TestDemoSeedIntegration`, against real PostgreSQL and S3, and was removed. `scripts/verify-*.ps1` were not run because they need PowerShell 7, which is not installed here (5.1 strips their Docker arguments), so the Docker HTTP flows and the workflow fixture guard at version 15 are unverified. No existing database was migrated.
 
 ### Phase B entry in other units for stock and production — todo
 - [ ] Accept the optional unit on stock adjustment, job material plans and production usage.
