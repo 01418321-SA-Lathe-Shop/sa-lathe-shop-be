@@ -6,6 +6,20 @@ import (
 	"testing"
 )
 
+func TestConvertIsExact(t *testing.T) {
+	v, err := decimal(t, "2").Convert(decimal(t, "12.5"))
+	if err != nil || v.String() != "25.000000" {
+		t.Fatal(v, err)
+	}
+	if v, err = decimal(t, "0").Convert(decimal(t, "12.5")); err != nil || !v.IsZero() {
+		t.Fatal(v, err)
+	}
+	for _, c := range [][2]string{{"0.5", "0.333333"}, {"0.000001", "0.000001"}, {"999999999999", "2"}} {
+		if v, err := decimal(t, c[0]).Convert(decimal(t, c[1])); err == nil {
+			t.Fatal("inexact or oversized conversion accepted", c, v)
+		}
+	}
+}
 func decimal(t *testing.T, s string) Decimal {
 	t.Helper()
 	v, err := ParseDecimal(s)

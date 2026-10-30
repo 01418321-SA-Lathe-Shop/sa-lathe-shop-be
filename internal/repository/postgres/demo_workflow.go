@@ -62,7 +62,7 @@ func (r *WorkflowRepository) Within(ctx context.Context, c wf.Config, create boo
 	}
 	var version int
 	var dirty bool
-	if e = conn.QueryRow(ctx, `SELECT version,dirty FROM public.schema_migrations`).Scan(&version, &dirty); e != nil || (version != 14 && version != 15) || dirty {
+	if e = conn.QueryRow(ctx, `SELECT version,dirty FROM public.schema_migrations`).Scan(&version, &dirty); e != nil || (version != 14 && version != 15 && version != 16) || dirty {
 		return wf.ErrGuard
 	}
 	if create {

@@ -65,6 +65,17 @@ func (d Decimal) Subtract(v Decimal) (Decimal, error) {
 	}
 	return Decimal{d.units - v.units}, nil
 }
+
+// Convert is exact: a result that does not fit NUMERIC(18,6) is rejected, never rounded.
+func (d Decimal) Convert(factor Decimal) (Decimal, error) {
+	scale := big.NewInt(1000000)
+	product := new(big.Int).Mul(big.NewInt(d.units), big.NewInt(factor.units))
+	quotient, remainder := new(big.Int).QuoRem(product, scale, new(big.Int))
+	if remainder.Sign() != 0 || !quotient.IsInt64() || quotient.Int64() > MaxUnits {
+		return Decimal{}, req.ErrInvalidInput
+	}
+	return Decimal{quotient.Int64()}, nil
+}
 func Allocate(required, previous, available Decimal) (Decimal, Decimal, error) {
 	capacity, err := previous.Add(available)
 	if err != nil {
