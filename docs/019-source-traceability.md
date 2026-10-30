@@ -15,7 +15,7 @@ This index connects the supplied Systems Analysis and Design report to the curre
 | UC7 | Receiving, defects, supplier settlement | [007-UC7.md](007-UC7.md) | Partial good/damaged receipts, replacement-only claims, explicit credit terms, one full settlement. |
 | UC8 | Production and material usage | [008-UC8.md](008-UC8.md) | Worker execution, Admin cost, actual usage/time, and unused-reservation release. |
 | UC9 | Delivery, invoice, payment, rework | [009-UC9.md](009-UC9.md) | Customer inspection and bank evidence; Admin review/cash; accepted plus fully paid closes. |
-| UC10 | Unit and unit-conversion maintenance | [005-UC5.md](005-UC5.md) | Unit management and per-material conversion factors exist within UC5; entering quantities in other units is not yet supported. |
+| UC10 | Unit and unit-conversion maintenance | [005-UC5.md](005-UC5.md) | Unit management and per-material conversion factors exist within UC5; stock, job plans and production usage accept other units; purchasing and receiving do not. |
 | UC11 | Worker registration | [000-auth.md](000-auth.md) | Admin staff management exists with current required-contact rules; do not use the report's SQL or duplicate-matching behavior. |
 | UC12 | Admin registration through a super-admin | [000-auth.md](000-auth.md) | No public Admin-registration use case or super-admin hierarchy. First Admin is provisioned by the private bootstrap command. |
 

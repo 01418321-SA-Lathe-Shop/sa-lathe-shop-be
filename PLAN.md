@@ -460,9 +460,9 @@ no production restart, existing database mutation or deployment was performed.
 Decision: current owner-confirmed rules, backend UC/API documents, and migrations remain authoritative. The academic report's SQL/ER are historical and not executable PostgreSQL contracts. Existing filenames and links are preserved. No schema, API, seed data, or environment was changed.
 
 
-## Per-material unit conversion — Phase A backend done (2026-10-30)
+## Per-material unit conversion — Phases A and B backend done (2026-10-30)
 
-Status: owner asked to start this work on 2026-10-30, ahead of remediation phases 18-21. Phase A backend is implemented; the frontend, Phase B and Phase C are not. Frontend `docs/024-USECASE10-12.md` still says conversion is unsupported.
+Status: owner asked to start this work on 2026-10-30, ahead of remediation phases 18-21. The Phase A and B backends are implemented; the frontend and Phase C are not. Frontend `docs/024-USECASE10-12.md` still says conversion is unsupported.
 
 Design: stock stays in each material's one immutable base unit. Conversion happens only when a quantity is entered, so balances, reservations, average cost and the movement ledger keep their meaning.
 
@@ -482,11 +482,15 @@ Decision: the conversion row is its own audit, not `material_catalog_audit`. Tha
 
 Verification: `go build`, `go vet` and the default test suite pass. A disposable Compose project ran 000015 up, down and up, then `TestMaterialIntegration` and `TestDemoSeedIntegration`, against real PostgreSQL and S3, and was removed. `scripts/verify-*.ps1` were not run because they need PowerShell 7, which is not installed here (5.1 strips their Docker arguments), so the Docker HTTP flows and the workflow fixture guard at version 15 are unverified. No existing database was migrated.
 
-### Phase B entry in other units for stock and production — todo
-- [ ] Accept the optional unit on stock adjustment, job material plans and production usage.
-- [ ] Add nullable `entered_qty`, `entered_unit_name` and `factor_used` to `stock_movement`, `job_material_requirement`, `material_reservation` and `job_material_usage`.
-- [ ] Include entered values in idempotency payloads so a retry cannot convert differently.
+### Phase B entry in other units for stock and production — backend done, frontend todo
+- [x] Accept the optional unit on stock adjustment, job material plans and production usage.
+- [x] Add migration 000016: nullable `entered_qty`, `entered_unit_name` and `factor_used` on `stock_movement`, `job_material_requirement` and `job_material_usage`, with a check that entered x factor equals the base quantity.
+- [x] Fingerprint the entered quantity and unit, and convert only after the retry check, so a retry cannot convert differently.
 - [ ] Frontend: unit selection on the `features/inventory` and `features/production` screens.
+
+Decisions: `material_reservation` gets no entered columns because a reservation may be partial and already follows its requirement. `unit_cost` on a stock addition stays per base unit, as the cost rule requires; an Admin entering 2 sheets still types the cost per kg. Sending the base unit's id is accepted and treated as base unit. Requests without `unit_id` keep byte-identical fingerprints and response shapes.
+
+Verification: `go build`, `go vet` and the default suite pass. Disposable Compose projects ran 000016 up, down and up, then every repository integration suite on real PostgreSQL and S3 with no skips, except `TestDashboardIntegration`, which builds its own schema and touches no changed code. A new test covers rejected rounding, missing conversions, retries after deactivation, the same key with a different unit, plan and reservation records, usage and the ledger. `TestIdentityTransactionIntegration` must run before `TestDemoSeedIntegration` on the same DB, as the verifier does. `scripts/verify-*.ps1` still need PowerShell 7, so the Docker HTTP flows and the workflow fixture guard at version 16 are unverified, and `unit_id` is not exercised through HTTP. No existing database was migrated.
 
 ### Phase C purchasing and receiving — todo, separate decision
 - [ ] Decide the money rule first: `material_order_item.total_amount` is `round(qty_ordered × unit_cost, 2)`, and dividing a supplier price by a factor may not fit 6 decimals, so totals could differ from the supplier bill.
