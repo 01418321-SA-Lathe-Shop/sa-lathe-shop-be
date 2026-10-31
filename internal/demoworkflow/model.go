@@ -15,6 +15,8 @@ import (
 var ErrGuard = errors.New("workflow seed target or ownership guard refused")
 var ErrUncertain = errors.New("workflow step outcome uncertain; reconcile recorded operation before retry, never reset")
 
+const FixtureName = "workflows-v2"
+
 type Object = map[string]any
 type Config struct {
 	Seed                     demoseed.Config

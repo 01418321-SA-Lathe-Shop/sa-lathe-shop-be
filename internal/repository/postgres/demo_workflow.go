@@ -62,11 +62,11 @@ func (r *WorkflowRepository) Within(ctx context.Context, c wf.Config, create boo
 	}
 	var version int
 	var dirty bool
-	if e = conn.QueryRow(ctx, `SELECT version,dirty FROM public.schema_migrations`).Scan(&version, &dirty); e != nil || (version != 14 && version != 15 && version != 16) || dirty {
+	if e = conn.QueryRow(ctx, `SELECT version,dirty FROM public.schema_migrations`).Scan(&version, &dirty); e != nil || version != 17 || dirty {
 		return wf.ErrGuard
 	}
 	if create {
-		_, e = conn.Exec(ctx, `INSERT INTO public.demo_workflow_run(id,dataset_id,fixture) SELECT $1,id,'workflows-v1' FROM public.demo_seed_dataset WHERE name=$2 AND status='active' ON CONFLICT(dataset_id,fixture) DO NOTHING`, uuid.NewString(), demoseed.DatasetName)
+		_, e = conn.Exec(ctx, `INSERT INTO public.demo_workflow_run(id,dataset_id,fixture) SELECT $1,id,$3 FROM public.demo_seed_dataset WHERE name=$2 AND status='active' ON CONFLICT(dataset_id,fixture) DO NOTHING`, uuid.NewString(), demoseed.DatasetName, wf.FixtureName)
 		if e != nil {
 			return e
 		}
@@ -74,7 +74,7 @@ func (r *WorkflowRepository) Within(ctx context.Context, c wf.Config, create boo
 	s := &workflowStore{conn: conn}
 	var status string
 	var started time.Time
-	e = conn.QueryRow(ctx, `SELECT r.id::text,r.status,r.created_at FROM public.demo_workflow_run r JOIN public.demo_seed_dataset d ON d.id=r.dataset_id WHERE d.name=$1 AND d.status='active' AND r.fixture='workflows-v1'`, demoseed.DatasetName).Scan(&s.runID, &status, &started)
+	e = conn.QueryRow(ctx, `SELECT r.id::text,r.status,r.created_at FROM public.demo_workflow_run r JOIN public.demo_seed_dataset d ON d.id=r.dataset_id WHERE d.name=$1 AND d.status='active' AND r.fixture=$2`, demoseed.DatasetName, wf.FixtureName).Scan(&s.runID, &status, &started)
 	if errors.Is(e, pgx.ErrNoRows) {
 		return wf.ErrGuard
 	}
