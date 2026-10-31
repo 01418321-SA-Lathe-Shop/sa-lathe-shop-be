@@ -30,7 +30,7 @@ func run() error {
 		return e
 	}
 	if os.Args[1] == "plan" {
-		fmt.Println("workflows-v1: 11 requests, 11 private specifications, quotations/revision, PO/deposit evidence, 6 jobs, 6 materials, 3 supplier orders, receipts/claim, 2 invoices and pending/settled customer payments; no reset")
+		fmt.Println("workflows-v2 / DEMO SET B: adds 11 requests, 11 private specifications, quotations/revision, PO/deposit evidence, 6 jobs, 6 materials, 3 supplier orders, receipts/claim, 2 invoices and pending/settled customer payments; workflows-v1 and tester edits are preserved; no reset")
 		return nil
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

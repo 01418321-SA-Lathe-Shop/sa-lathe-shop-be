@@ -1,12 +1,15 @@
 # Real-backend workflow testing data
 
-Owner authorized representative local workflow data on 2026-10-29. This extends
-the six accounts; it does not replace frontend mock mode, add accounts or alter
-UC1-UC9 rules. No production or original `sa_lathe_shop` data is targeted.
+Owner authorized representative local workflow data on 2026-10-29 and an
+additional populated UI dataset on 2026-10-31. This extends the six accounts;
+it does not restore frontend browser mocks, add accounts or alter UC1-UC9 rules.
+No production or original `sa_lathe_shop` data is targeted.
 
 ## Scenarios
 
-All request descriptions start `[DEMO rN]`; catalog/suppliers use `DEMO` names.
+The current additive fixture is `workflows-v2`; request descriptions start
+`[DEMO SET B rN]` and its catalog/suppliers use `DEMO SET B` names. It can coexist
+with a completed `workflows-v1` run, which remains immutable and is never reset.
 Deadline dates are real future instants relative to the first seed run, not
 backdated audit events. Nida and Ploy share the company; Somchai is isolated.
 
@@ -27,21 +30,33 @@ backdated audit events. Nida and Ploy share the company; Somchai is isolated.
 | o2 | Admin/Worker | S45C20 accepted: good15/damaged5; replacement claim submitted, no payment |
 | o3 | Admin/Worker | AL6061 10 fully received, 14-day credit, unpaid |
 
-Totals: 11 requests, 11 quotations (including the r3 revision), 6 jobs,
+`workflows-v2` adds 11 requests, 11 quotations (including the r3 revision), 6 jobs,
 5 customer PO submissions, 3 deposits, 2 invoices, 2 customer balance payments,
 3 units, 6 materials, 3 suppliers, 3 supplier orders, 2 receipts and 1 claim.
 There are 20 actual private test documents: 11 specifications, 5 POs,
 3 deposit proofs and 1 balance-payment proof. These are supported TXT files,
 clearly labelled DEMO / TEST ONLY, not real bank receipts, production drawings
 or rendered invoice/PO PDFs. Signed downloads open the actual stored files.
+On a local demo database that already contains `workflows-v1`, applying v2 adds
+this entire set without adopting, editing or deleting the earlier fixture or
+tester-created records.
+
+On 2026-10-31 the guarded local `sa_lathe_shop_demo` database was migrated through
+schema17 and `workflows-v2` completed all 141 real API steps. The
+existing incomplete v1 journal remained untouched. This local execution added
+the full totals above; it did not reset any existing business record. A
+read-only verification then passed all 141 recorded steps, private-document
+checks, company isolation, Worker finance redaction, inventory reconciliation,
+receiving states and pending/settled customer-payment states.
 
 ## Safety and ownership
 
 - Explicit CLI only; never called by API/worker startup. No new HTTP endpoint.
 - Requires existing account provenance, an active matching identity manifest,
   loopback API/S3 origins, guarded local/test DB URL/name and opt-ins below.
-- Requires clean migration14. Account seeding accepts clean13 or14; no schema
-  change to business rules or demo login. Migration14 adds only an operation journal.
+- Requires clean migration17. Account seeding accepts clean13 through17; no schema
+  change to business rules or demo login. Migration14 adds the operation journal;
+  migration17 only permits the separately owned `workflows-v2` journal key.
 - Repository validates actual DB, then login checks all six real API account UUIDs
   against that DB; wrong-target/name matches are never adopted.
 - Session advisory lock permits only one workflow seed process per DB. Normal

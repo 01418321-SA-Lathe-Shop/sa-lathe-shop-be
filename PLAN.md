@@ -123,6 +123,21 @@ gates, revocation and default-off endpoint checks. Live demo readback confirmed
 11 requests, 6 jobs, 5 term_evidence POs, 3 deposits and clean schema14.
 Final publication is grouped on develop; remote tip is verified at handoff.
 
+### Additive UI workflow dataset v2 — implemented and locally applied (authorized 2026-10-31)
+- [x] Add a second guarded workflow fixture (`workflows-v2`, labelled `DEMO SET B`)
+  so populated Production, Receiving, Delivery/Payment and Orders screens can be
+  exercised with more rows without resetting the completed v1 fixture.
+- [x] Keep all writes on existing real HTTP/domain paths and preserve v1/tester data.
+- [x] Migrate only the guarded local demo DB through schema17 and apply v2:
+  141 real API steps completed, adding 11 requests, 6 jobs, 3 material orders,
+  receiving/claim states, 2 invoices and pending/settled payment states. The
+  incomplete v1 journal and all existing tester records were preserved.
+- [x] Complete read-only v2 verification after the demo login rate-limit window:
+  all 141 checkpoints, private documents, role isolation, stock, receiving,
+  production and payment states passed against the live local stack.
+- [x] Publish the verified additive fixture as separate migration/fixture commits
+  to `origin/develop`.
+
 No existing DB is targeted. Never run automatically, TRUNCATE, reset a DB,
 disable triggers or remove immutable audits. Passwords/tokens/hashes stay out
 of output and provenance. Seeded accounts use normal live frontend login.

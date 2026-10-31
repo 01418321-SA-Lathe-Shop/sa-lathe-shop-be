@@ -10,6 +10,7 @@ import (
 
 const admin = "pim.admin"
 const worker = "anan.staff"
+const demoLabel = "DEMO SET B"
 
 type scenario struct {
 	key, customer, title, price string
@@ -50,7 +51,7 @@ func (r *Runner) build(ctx context.Context) error {
 		return ErrGuard
 	}
 	unitIDs := []string{}
-	for i, name := range []string{"DEMO piece", "DEMO kg", "DEMO sheet"} {
+	for i, name := range []string{demoLabel + " piece", demoLabel + " kg", demoLabel + " sheet"} {
 		u, e := r.post(ctx, fmt.Sprintf("unit-%d", i), admin, "/units", Object{"name": name})
 		if e != nil {
 			return e
@@ -59,7 +60,7 @@ func (r *Runner) build(ctx context.Context) error {
 	}
 	materialIDs := map[string]string{}
 	for i, m := range []struct{ name, stock, cost string }{{"S45C", "100", "100"}, {"SUS304", "0", "250"}, {"AL6061", "60", "150"}, {"BRONZE", "40", "180"}, {"SS400", "50", "80"}, {"NBR", "20", "60"}} {
-		v, e := r.post(ctx, "material-"+m.name, admin, "/materials", Object{"name": "DEMO " + m.name, "unit_id": unitIDs[i%len(unitIDs)]})
+		v, e := r.post(ctx, "material-"+m.name, admin, "/materials", Object{"name": demoLabel + " " + m.name, "unit_id": unitIDs[i%len(unitIDs)]})
 		if e != nil {
 			return e
 		}
@@ -73,7 +74,7 @@ func (r *Runner) build(ctx context.Context) error {
 	}
 	jobs := map[string]string{}
 	for i, s := range scenarios {
-		request, e := r.post(ctx, s.key+"-request", s.customer, "/requests", Object{"customer_id": profiles[s.customer], "description": "[DEMO " + s.key + "] " + s.title, "qty": int64(2 + i), "material_spec": "TEST ONLY; supplied demonstration drawing; no real manufacturing order", "deadline": r.started.Add(time.Duration(i+3) * 24 * time.Hour).UTC().Format(time.RFC3339Nano)})
+		request, e := r.post(ctx, s.key+"-request", s.customer, "/requests", Object{"customer_id": profiles[s.customer], "description": "[" + demoLabel + " " + s.key + "] " + s.title, "qty": int64(2 + i), "material_spec": "TEST ONLY; supplied demonstration drawing; no real manufacturing order", "deadline": r.started.Add(time.Duration(i+3) * 24 * time.Hour).UTC().Format(time.RFC3339Nano)})
 		if e != nil {
 			return e
 		}
@@ -258,7 +259,7 @@ func (r *Runner) finishCustomer(ctx context.Context, s scenario, jobID string) e
 func (r *Runner) orders(ctx context.Context, materials, jobs map[string]string) error {
 	for i := 1; i <= 3; i++ {
 		key := fmt.Sprintf("o%d", i)
-		supplier, e := r.post(ctx, key+"-supplier", admin, "/suppliers", Object{"name": fmt.Sprintf("DEMO Supplier %d - TEST ONLY", i), "email": fmt.Sprintf("supplier%d@example.com", i), "phone": "02000000" + fmt.Sprint(i)})
+		supplier, e := r.post(ctx, key+"-supplier", admin, "/suppliers", Object{"name": fmt.Sprintf("%s Supplier %d - TEST ONLY", demoLabel, i), "email": fmt.Sprintf("setb-supplier%d@example.com", i), "phone": "02100000" + fmt.Sprint(i)})
 		if e != nil {
 			return e
 		}
