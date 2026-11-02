@@ -317,3 +317,24 @@ func TestBootstrapIsOneTime(t *testing.T) {
 		t.Fatal("second bootstrap accepted")
 	}
 }
+func (f *fakeRepo) ChangePassword(_ context.Context, id, expected, next string, keep []byte) error {
+	for u, a := range f.accounts {
+		if a.ID != id {
+			continue
+		}
+		if !a.Active || a.PasswordHash != expected {
+			return ErrUnauthenticated
+		}
+		a.PasswordHash = next
+		f.accounts[u] = a
+		for k, s := range f.sessions {
+			if s.Account.ID == id && k != string(keep) {
+				now := time.Now()
+				s.RevokedAt = &now
+				f.sessions[k] = s
+			}
+		}
+		return nil
+	}
+	return ErrUnauthenticated
+}

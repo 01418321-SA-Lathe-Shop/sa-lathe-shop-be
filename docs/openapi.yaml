@@ -136,6 +136,17 @@ paths:
       responses:
         '204': {description: Session revoked}
         '401': {$ref: '#/components/responses/Error'}
+  /auth/password:
+    post:
+      tags: [Authentication]
+      summary: Change the current account's own password (rate limited)
+      description: Body {current_password, new_password}. new_password follows the account password rule, must differ from current_password and must not contain the username. Revokes every other session of the account; the calling session stays active.
+      x-allowed-roles: [admin, worker, customer]
+      responses:
+        '204': {description: Password changed}
+        '400': {description: invalid_input, or invalid_current_password when current_password does not match (session stays valid)}
+        '401': {$ref: '#/components/responses/Error'}
+        '429': {$ref: '#/components/responses/Error'}
   /admin/workers:
     get:
       tags: [Authentication]

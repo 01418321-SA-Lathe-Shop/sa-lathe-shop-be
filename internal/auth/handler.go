@@ -16,6 +16,7 @@ func (h *Handler) Routes(r chi.Router) {
 		r.Use(h.Authenticate)
 		r.Get("/auth/me", h.me)
 		r.Post("/auth/logout", h.logout)
+		r.With(NewLoginLimiter().Middleware).Post("/auth/password", h.changePassword)
 		r.Route("/admin/workers", func(r chi.Router) {
 			r.Use(RequireRole(RoleAdmin))
 			r.Get("/", h.listWorkers)
@@ -34,6 +35,8 @@ func decode(w http.ResponseWriter, r *http.Request, v any) error {
 func writeAuthError(w http.ResponseWriter, r *http.Request, err error) {
 	status, code, message := 500, "internal_error", "An unexpected error occurred"
 	switch {
+	case errors.Is(err, ErrCurrentPassword):
+		status, code, message = 400, "invalid_current_password", "Current password is incorrect"
 	case errors.Is(err, ErrInvalidInput):
 		status, code, message = 400, "invalid_input", err.Error()
 	case errors.Is(err, ErrUnauthenticated):
@@ -73,6 +76,22 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 }
 func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 	if err := h.service.Logout(r.Context(), bearer(r)); err != nil {
+		writeAuthError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+func (h *Handler) changePassword(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	var input struct {
+		CurrentPassword string `json:"current_password"`
+		NewPassword     string `json:"new_password"`
+	}
+	if err := decode(w, r, &input); err != nil {
+		writeAuthError(w, r, err)
+		return
+	}
+	if err := h.service.ChangePassword(r.Context(), CurrentAccount(r.Context()), bearer(r), input.CurrentPassword, input.NewPassword); err != nil {
 		writeAuthError(w, r, err)
 		return
 	}

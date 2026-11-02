@@ -78,6 +78,30 @@ func (d *Database) RevokeSession(ctx context.Context, hash []byte) error {
 	return err
 }
 
+func (d *Database) ChangePassword(ctx context.Context, id, expectedHash, newHash string, keep []byte) error {
+	tx, err := d.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	var active bool
+	var hash string
+	err = tx.QueryRow(ctx, `SELECT is_active,password_hash FROM account WHERE id=$1 FOR UPDATE`, id).Scan(&active, &hash)
+	// A concurrent change already revoked this session, so report it as signed out.
+	if errors.Is(err, pgx.ErrNoRows) || err == nil && (!active || hash != expectedHash) {
+		return auth.ErrUnauthenticated
+	}
+	if err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, `UPDATE account SET password_hash=$2,edited_at=now() WHERE id=$1`, id, newHash); err != nil {
+		return authError(err)
+	}
+	if _, err = tx.Exec(ctx, `UPDATE auth_session SET revoked_at=now() WHERE account_id=$1 AND revoked_at IS NULL AND token_hash<>$2`, id, keep); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
 func insertStaff(ctx context.Context, tx pgx.Tx, input auth.NewStaff) (auth.Account, error) {
 	a := input.Account
 	_, err := tx.Exec(ctx, `INSERT INTO person(id,name) VALUES($1,$2)`, a.PersonID, a.Name)
