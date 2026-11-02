@@ -1,5 +1,15 @@
 # Implementation plan
 
+## Self-service password change (2026-11-03) — done
+
+- [x] `POST /auth/password` for every active role: verify current password (Argon2id), account password rule plus differs-from-current and no-username, rate limited per IP.
+- [x] Replace hash under an account row lock; revoke every other session, keep the caller's. No migration.
+- [x] Unit/HTTP tests; docs/000-auth.md and openapi.yaml updated; committed `7cf805a` to develop.
+
+Verification: go build ./..., go vet (auth, postgres), full default `go test ./...` pass. Real PostgreSQL check through the
+local Docker API against the demo DB: wrong current password 400, success 204, other session 401, old password rejected,
+new password accepted. Local API container afterwards rebuilt from 77d3568 with its previous demo settings.
+
 ## Password-free local demo login (2026-10-29) — done
 
 - [x] Inspect auth/session composition, seed provenance and current configuration.
