@@ -187,6 +187,21 @@ paths:
       x-allowed-roles: [customer, company owner only]
       parameters: [{$ref: '#/components/parameters/CustomerID'}]
       responses: {'201': {$ref: '#/components/responses/Json'}, '403': {$ref: '#/components/responses/Error'}}
+  /customers/{customer_id}/addresses:
+    parameters: [{$ref: '#/components/parameters/CustomerID'}]
+    get:
+      tags: [Authentication]
+      summary: List the customer's addresses, oldest first
+      description: Returns {items:[{id, address, created_at}]}.
+      x-allowed-roles: [customer member]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '400': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}}
+    post:
+      tags: [Authentication]
+      summary: Add another address
+      description: Body {address} (1-500 characters). Returns the new {id, address, created_at}. Addresses cannot be edited or removed yet.
+      x-allowed-roles: [customer owner]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'201': {$ref: '#/components/responses/Json'}, '400': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}}
   /customers/join:
     post:
       tags: [Authentication]
@@ -851,6 +866,7 @@ components:
               customer_type: {type: string, enum: [individual, company]}
               company_name: {type: string, description: Required for a new company account; omit when joining with an invitation.}
               invitation: {type: string, description: One-use company invitation token.}
+              address: {type: string, maxLength: 500, description: Required for a new individual or company customer (1-500 characters, newlines allowed); also fills the billing address. Omit when joining with an invitation.}
     RequestCreate:
       required: true
       content:

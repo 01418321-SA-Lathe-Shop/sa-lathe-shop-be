@@ -523,3 +523,10 @@ Known gap: based on the schema, routes and docs; not every write path was read, 
 - [ ] Shop logo upload: not built; attachments are tied to requests.
 
 Verification: `go build`, `go vet` and `go test ./...` pass. On the local demo DB, 000017 ran up, down and up, and every new endpoint was exercised over real HTTP. Repository integration suites were not run. See `docs/020-printed-documents.md`.
+
+### Customer addresses at sign-up — done
+- [x] Migration 000018: `customer_address` (one or more per customer); existing non-empty billing addresses are copied.
+- [x] `POST /auth/register` requires `address` for a new individual or company customer and rejects it with an invitation; the address also fills `billing_address`. Seed and service callers may still omit it.
+- [x] `GET` / `POST /customers/{customer_id}/addresses`: members read, owner adds.
+- [x] Demo seed and workflow guards accept schema version 18.
+- [ ] Editing, removing or labelling addresses, and choosing one on documents or deliveries: to be defined.
