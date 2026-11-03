@@ -8,6 +8,7 @@ import (
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/config"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/dashboard"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/delivery"
+	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/document"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/file"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/health"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/material"
@@ -92,6 +93,7 @@ func main() {
 		dashboard.NewHandler(dashboard.NewService(db)).Routes(r, authHandler.Authenticate)
 		quotation.NewHandler(quotation.NewService(db)).Routes(r, authHandler.Authenticate)
 		quotation.NewDecisionHandler(quotation.NewDecisionService(db)).Routes(r, authHandler.Authenticate)
+		document.NewHandler(document.NewService(db)).Routes(r, authHandler.Authenticate)
 		payment.NewHandler(payment.NewService(db)).Routes(r, authHandler.Authenticate)
 		material.NewHandler(material.NewService(db)).Routes(r, authHandler.Authenticate)
 		procurement.NewHandler(procurement.NewService(db)).Routes(r, authHandler.Authenticate)
