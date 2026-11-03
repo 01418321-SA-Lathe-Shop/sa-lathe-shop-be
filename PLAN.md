@@ -515,3 +515,11 @@ Each phase also needs:
 - [ ] Integration tests covering rejected rounding and retries; update `scripts/verify-uc5.ps1` and `verify-uc8.ps1`, plus `verify-uc6.ps1` and `verify-uc7.ps1` in Phase C.
 
 Known gap: based on the schema, routes and docs; not every write path was read, so the Phase B file list may grow.
+
+### Printed document details (shop profile, billing, quotation notes, customer PO) — done
+- [x] Migration 000017: `shop_profile` (created on first Admin save), customer billing columns, quotation `valid_until`/`notes`, `customer_po`.
+- [x] `internal/document`: shop profile, billing and customer PO endpoints with optimistic versions; quotation draft fields.
+- [x] Demo seed and workflow guards accept schema version 17.
+- [ ] Shop logo upload: not built; attachments are tied to requests.
+
+Verification: `go build`, `go vet` and `go test ./...` pass. On the local demo DB, 000017 ran up, down and up, and every new endpoint was exercised over real HTTP. Repository integration suites were not run. See `docs/020-printed-documents.md`.
