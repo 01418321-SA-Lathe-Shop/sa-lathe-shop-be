@@ -28,6 +28,18 @@ func (f *fakeRepository) GetOwned(_ context.Context, owner, id string) (Request,
 	f.id = id
 	return f.result, f.err
 }
+func (f *fakeRepository) DeletePending(_ context.Context, owner, id string) error {
+	f.calls++
+	f.owner = owner
+	f.id = id
+	return f.err
+}
+func (f *fakeRepository) RequestMoreInfo(_ context.Context, _, id, note string) (Request, error) {
+	f.calls++
+	f.id = id
+	f.result.InfoRequestNote = note
+	return f.result, f.err
+}
 func customer() Principal { return Principal{AccountID: accountID, Role: "customer", Active: true} }
 func (f *fakeRepository) ListRequests(_ context.Context, _ string, _, _ int) ([]Request, error) {
 	f.calls++

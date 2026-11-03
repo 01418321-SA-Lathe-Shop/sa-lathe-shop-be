@@ -11,6 +11,7 @@ var (
 	ErrInvalidInput = errors.New("invalid request input")
 	ErrForbidden    = errors.New("customer access required")
 	ErrNotFound     = errors.New("request not found")
+	ErrConflict     = errors.New("request state changed")
 )
 
 // Principal must come from authenticated server context, never a JSON body.
@@ -26,6 +27,7 @@ type Input struct {
 	Quantity     int64      `json:"qty"`
 	MaterialSpec string     `json:"material_spec"`
 	Deadline     *time.Time `json:"deadline,omitempty"`
+	Source       string     `json:"source,omitempty"`
 }
 
 type Request struct {
@@ -33,9 +35,11 @@ type Request struct {
 	ID        string `json:"id"`
 	CreatedBy string `json:"created_by"`
 	Input
-	Source    string    `json:"source"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
+	Source          string     `json:"source"`
+	Status          string     `json:"status"`
+	InfoRequestNote string     `json:"info_request_note,omitempty"`
+	InfoRequestedAt *time.Time `json:"info_requested_at,omitempty"`
+	CreatedAt       time.Time  `json:"created_at"`
 }
 
 // Repository implementations must verify authenticated account membership in
@@ -47,4 +51,9 @@ type Repository interface {
 	Create(context.Context, Request) (Request, error)
 	GetOwned(context.Context, string, string) (Request, error)
 	ListRequests(context.Context, string, int, int) ([]Request, error)
+}
+
+type OptionalRepository interface {
+	DeletePending(ctx context.Context, accountID, id string) error
+	RequestInfo(ctx context.Context, accountID, id, note string) (Request, error)
 }

@@ -75,9 +75,25 @@ func (d *Database) CreateDraft(ctx context.Context, actor string, in q.Draft) (q
 	var previous *string
 	version := int64(1)
 	var previousID, previousStatus string
-	var previousVersion int64
-	err = tx.QueryRow(ctx, `SELECT id::text,status,version FROM quotation WHERE request_id=$1 ORDER BY version DESC LIMIT 1`, in.RequestID).Scan(&previousID, &previousStatus, &previousVersion)
+	var previousVersion, previousLock int64
+	err = tx.QueryRow(ctx, `SELECT id::text,status,version,lock_version FROM quotation WHERE request_id=$1 ORDER BY version DESC LIMIT 1`, in.RequestID).Scan(&previousID, &previousStatus, &previousVersion, &previousLock)
 	if err == nil {
+		// M-03 (UC3 Q3.5): If a draft revision was auto-created upon customer rejection, update it in place.
+		if previousStatus == "draft" && previousVersion > 1 && previousLock == 1 {
+			_, err = tx.Exec(ctx, `UPDATE quotation_cost SET material_cost=$2::numeric,labor_cost=$3::numeric,final_price=$4::numeric WHERE quotation_id=$1`, previousID, in.MaterialCost.String(), in.LaborCost.String(), in.FinalPrice.String())
+			if err != nil {
+				return q.Quotation{}, quoteError(err)
+			}
+			_, err = tx.Exec(ctx, `UPDATE quotation SET edited_by=$2,edited_at=now(),valid_until=$3::date,notes=$4 WHERE id=$1`, previousID, actor, in.ValidUntil, in.Notes)
+			if err != nil {
+				return q.Quotation{}, quoteError(err)
+			}
+			value, err := quoteRow(tx.QueryRow(ctx, `SELECT `+quoteFields+` FROM quotation q JOIN quotation_cost c ON c.quotation_id=q.id WHERE q.id=$1`, previousID))
+			if err != nil {
+				return value, err
+			}
+			return value, tx.Commit(ctx)
+		}
 		if previousStatus != "rejected" {
 			return q.Quotation{}, q.ErrConflict
 		}
@@ -157,6 +173,10 @@ func (d *Database) SendQuotation(ctx context.Context, actor, id string, expected
 	if value.Status != "draft" || value.LockVersion != expected {
 		return q.Quotation{}, q.ErrConflict
 	}
+	// H-03 (UC2 Step 7.1): Ensure both material_cost > 0 and labor_cost > 0 before sending a quotation.
+	if value.MaterialCost.String() == "0.00" || value.LaborCost.String() == "0.00" || value.FinalPrice.String() == "0.00" {
+		return q.Quotation{}, q.ErrInvalidInput
+	}
 	_, err = tx.Exec(ctx, `UPDATE quotation SET status='sent',sent_at=now(),edited_at=now(),edited_by=$2,lock_version=lock_version+1 WHERE id=$1`, id, actor)
 	if err != nil {
 		return value, quoteError(err)
@@ -181,8 +201,19 @@ func (d *Database) RejectRequest(ctx context.Context, actor, requestID, reason s
 	if err != nil {
 		return err
 	}
-	if status != "pending" {
+	// M-02 (UC2 Q2.E1 & Q2.E2): Allow rejecting in 'pending' or 'ongoing' when not yet accepted/opened as a job.
+	if status != "pending" && status != "ongoing" {
 		return q.ErrConflict
+	}
+	var hasApprovedOrJob bool
+	if err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM quotation WHERE request_id=$1 AND status='approved') OR EXISTS(SELECT 1 FROM job WHERE request_id=$1)`, requestID).Scan(&hasApprovedOrJob); err != nil {
+		return err
+	}
+	if hasApprovedOrJob {
+		return q.ErrConflict
+	}
+	if _, err = tx.Exec(ctx, `UPDATE quotation SET status='rejected',edited_by=$2,edited_at=now(),lock_version=lock_version+1 WHERE request_id=$1 AND status IN ('draft','sent')`, requestID, actor); err != nil {
+		return quoteError(err)
 	}
 	_, err = tx.Exec(ctx, `INSERT INTO request_rejection(request_id,rejected_by,reason) VALUES($1,$2,$3)`, requestID, actor, reason)
 	if err != nil {

@@ -11,15 +11,28 @@ import (
 
 func validID(id string) bool { _, err := uuid.Parse(id); return len(id) == 36 && err == nil }
 func inputDraft(in DraftInput) (Draft, error) {
-	if in.MaterialCost == nil || in.LaborCost == nil || in.FinalPrice == nil {
-		return Draft{}, ErrInvalidInput
-	}
-	estimate, err := EstimatePrice(*in.MaterialCost, *in.LaborCost)
-	if err != nil {
-		return Draft{}, err
-	}
-	if in.FinalPrice.satang < estimate.MinimumPrice.satang {
-		return Draft{}, ErrInvalidInput
+	var mat, lab, fin Amount
+	// M-03 (UC2 Q2.8): Allow saving an initial un-priced draft when all cost fields are omitted or zero.
+	allOmitted := in.MaterialCost == nil && in.LaborCost == nil && in.FinalPrice == nil
+	if !allOmitted {
+		if in.MaterialCost == nil || in.LaborCost == nil || in.FinalPrice == nil {
+			return Draft{}, ErrInvalidInput
+		}
+		mat, lab, fin = *in.MaterialCost, *in.LaborCost, *in.FinalPrice
+		allZero := mat.satang == 0 && lab.satang == 0 && fin.satang == 0
+		if !allZero {
+			// H-03 (UC2 Step 7.1): Both material_cost and labor_cost must be strictly positive (> 0).
+			if mat.satang <= 0 || lab.satang <= 0 {
+				return Draft{}, ErrInvalidInput
+			}
+			estimate, err := EstimatePrice(mat, lab)
+			if err != nil {
+				return Draft{}, err
+			}
+			if fin.satang < estimate.MinimumPrice.satang {
+				return Draft{}, ErrInvalidInput
+			}
+		}
 	}
 	notes := strings.TrimSpace(in.Notes)
 	if !utf8.ValidString(notes) || strings.ContainsRune(notes, 0) || utf8.RuneCountInString(notes) > 2000 {
@@ -30,7 +43,7 @@ func inputDraft(in DraftInput) (Draft, error) {
 			return Draft{}, ErrInvalidInput
 		}
 	}
-	return Draft{MaterialCost: *in.MaterialCost, LaborCost: *in.LaborCost, FinalPrice: *in.FinalPrice, ValidUntil: in.ValidUntil, Notes: notes}, nil
+	return Draft{MaterialCost: mat, LaborCost: lab, FinalPrice: fin, ValidUntil: in.ValidUntil, Notes: notes}, nil
 }
 func staffView(q Quotation, role string) (Quotation, error) {
 	q.Costs = nil
@@ -50,7 +63,8 @@ func (s *Service) Estimate(ctx context.Context, a auth.Account, in DraftInput) (
 	if err := ctx.Err(); err != nil {
 		return Estimate{}, err
 	}
-	if in.MaterialCost == nil || in.LaborCost == nil || in.FinalPrice != nil {
+	// H-03 (UC2 Step 7.1): material_cost > 0 and labor_cost > 0 required.
+	if in.MaterialCost == nil || in.LaborCost == nil || in.FinalPrice != nil || in.MaterialCost.satang <= 0 || in.LaborCost.satang <= 0 {
 		return Estimate{}, ErrInvalidInput
 	}
 	return EstimatePrice(*in.MaterialCost, *in.LaborCost)
