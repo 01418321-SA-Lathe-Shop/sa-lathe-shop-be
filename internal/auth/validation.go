@@ -7,6 +7,7 @@ import (
 	"net/mail"
 	"regexp"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -61,6 +62,16 @@ func validatePassword(s string) error {
 func validateName(s string) error {
 	if !validation.Text(s, 1, 200) || strings.TrimSpace(s) == "" {
 		return fmt.Errorf("%w: name must contain 1-200 characters", ErrInvalidInput)
+	}
+	return nil
+}
+func validateAddress(s string) error {
+	valid := validation.Text(s, 1, 500)
+	for _, r := range s {
+		valid = valid && (!unicode.IsControl(r) || r == '\n' || r == '\r' || r == '\t')
+	}
+	if !valid {
+		return fmt.Errorf("%w: address must contain 1-500 characters", ErrInvalidInput)
 	}
 	return nil
 }
