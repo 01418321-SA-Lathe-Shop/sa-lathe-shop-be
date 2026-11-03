@@ -38,16 +38,22 @@ func TestExactTotals(t *testing.T) {
 		t.Fatal("zero quantity accepted")
 	}
 }
-func TestOnlyAdmin(t *testing.T) {
+func TestOnlyStaff(t *testing.T) {
 	s := NewService(nil)
 	ctx := context.Background()
-	for _, role := range []string{auth.RoleWorker, auth.RoleCustomer, ""} {
+	for _, role := range []string{auth.RoleCustomer, ""} {
 		a := auth.Account{Role: role, Active: true}
 		checks := []func() error{func() error { _, e := s.Place(ctx, a, OrderInput{}); return e }, func() error { _, e := s.Act(ctx, a, "", ActionInput{}); return e }, func() error { _, e := s.Get(ctx, a, ""); return e }, func() error { _, e := s.Orders(ctx, a, "", 1, 0); return e }, func() error { _, e := s.Suppliers(ctx, a, "", 1, 0); return e }, func() error { _, e := s.CreateSupplier(ctx, a, SupplierInput{}); return e }, func() error { _, e := s.UpdateSupplier(ctx, a, "", SupplierUpdate{}); return e }}
 		for _, check := range checks {
 			if !errors.Is(check(), req.ErrForbidden) {
-				t.Fatal("non-admin allowed", role)
+				t.Fatal("non-staff allowed", role)
 			}
+		}
+	}
+	for _, role := range []string{auth.RoleAdmin, auth.RoleWorker} {
+		a := auth.Account{Role: role, Active: true}
+		if _, err := s.Place(ctx, a, OrderInput{}); !errors.Is(err, req.ErrInvalidInput) {
+			t.Fatal("staff should pass role gate", role, err)
 		}
 	}
 }

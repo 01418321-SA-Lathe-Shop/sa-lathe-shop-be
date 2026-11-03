@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	m "github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/material"
 	p "github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/procurement"
 	req "github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/request"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"time"
 )
 
 var _ p.Repository = (*Database)(nil)
@@ -42,7 +44,7 @@ func (d *Database) CreateSupplier(ctx context.Context, actor string, in p.Suppli
 		return p.Supplier{}, err
 	}
 	defer tx.Rollback(ctx)
-	if err = inventoryActor(ctx, tx, actor, "admin"); err != nil {
+	if err = inventoryActor(ctx, tx, actor, "staff"); err != nil {
 		return p.Supplier{}, err
 	}
 	v, err := supplierRow(tx.QueryRow(ctx, `INSERT INTO supplier(id,name,email,phone,created_by) VALUES($1,$2,$3,$4,$5) RETURNING `+supplierFields, uuid.NewString(), in.Name, in.Email, in.Phone, actor))
@@ -62,7 +64,7 @@ func (d *Database) UpdateSupplier(ctx context.Context, actor, id string, in p.Su
 		return p.Supplier{}, err
 	}
 	defer tx.Rollback(ctx)
-	if err = inventoryActor(ctx, tx, actor, "admin"); err != nil {
+	if err = inventoryActor(ctx, tx, actor, "staff"); err != nil {
 		return p.Supplier{}, err
 	}
 	old, err := supplierRow(tx.QueryRow(ctx, `SELECT `+supplierFields+` FROM supplier WHERE id=$1 FOR UPDATE`, id))
@@ -90,7 +92,7 @@ func (d *Database) ListSuppliers(ctx context.Context, actor, term string, limit,
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
-	if err = inventoryActor(ctx, tx, actor, "admin"); err != nil {
+	if err = inventoryActor(ctx, tx, actor, "staff"); err != nil {
 		return nil, err
 	}
 	rows, err := tx.Query(ctx, `SELECT `+supplierFields+` FROM supplier WHERE strpos(lower(name),lower($1))>0 ORDER BY lower(name),id LIMIT $2 OFFSET $3`, term, limit, offset)
@@ -105,6 +107,172 @@ func (d *Database) ListSuppliers(ctx context.Context, actor, term string, limit,
 			return nil, e
 		}
 		values = append(values, v)
+	}
+	err = rows.Err()
+	rows.Close()
+	if err != nil {
+		return nil, err
+	}
+	return values, tx.Commit(ctx)
+}
+func (d *Database) RecommendSuppliers(ctx context.Context, actor, materialID, excludeSupplierID string) ([]p.SupplierRecommendation, error) {
+	tx, err := d.pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+	if err = inventoryActor(ctx, tx, actor, "staff"); err != nil {
+		return nil, err
+	}
+	rows, err := tx.Query(ctx, `
+		SELECT
+			s.id::text, s.name, s.email, s.phone, s.is_active, s.version,
+			COALESCE(hist.order_count, 0) > 0 AS has_history,
+			hist.last_unit_cost::text,
+			hist.last_ordered_at,
+			COALESCE(hist.order_count, 0)
+		FROM supplier s
+		LEFT JOIN LATERAL (
+			SELECT
+				(ARRAY_AGG(moi.unit_cost ORDER BY mo.created_at DESC, mo.id DESC))[1] AS last_unit_cost,
+				MAX(mo.created_at) AS last_ordered_at,
+				COUNT(*)::int AS order_count
+			FROM material_order_item moi
+			JOIN material_order mo ON mo.id = moi.order_id
+			WHERE mo.supplier_id = s.id
+			  AND mo.status <> 'cancelled'
+			  AND ($1 = '' OR moi.material_id = NULLIF($1, '')::uuid)
+		) hist ON true
+		WHERE s.is_active = TRUE
+		  AND ($2 = '' OR s.id <> NULLIF($2, '')::uuid)
+		ORDER BY has_history DESC, hist.last_ordered_at DESC NULLS LAST, lower(s.name), s.id
+		LIMIT 100
+	`, materialID, excludeSupplierID)
+	if err != nil {
+		return nil, err
+	}
+	values := []p.SupplierRecommendation{}
+	for rows.Next() {
+		var rec p.SupplierRecommendation
+		var lastCost *string
+		var lastOrderedAt *time.Time
+		if err = rows.Scan(
+			&rec.Supplier.ID, &rec.Supplier.Name, &rec.Supplier.Email, &rec.Supplier.Phone, &rec.Supplier.Active, &rec.Supplier.Version,
+			&rec.HasHistory, &lastCost, &lastOrderedAt, &rec.OrderCount,
+		); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		if lastCost != nil {
+			parsed, parseErr := m.ParseDecimal(*lastCost)
+			if parseErr != nil {
+				rows.Close()
+				return nil, parseErr
+			}
+			rec.LastUnitCost = &parsed
+		}
+		rec.LastOrderedAt = lastOrderedAt
+		values = append(values, rec)
+	}
+	err = rows.Err()
+	rows.Close()
+	if err != nil {
+		return nil, err
+	}
+	return values, tx.Commit(ctx)
+}
+func (d *Database) ListShortages(ctx context.Context, actor string) ([]p.ShortageItem, error) {
+	tx, err := d.pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+	if err = inventoryActor(ctx, tx, actor, "staff"); err != nil {
+		return nil, err
+	}
+	rows, err := tx.Query(ctx, `
+		WITH job_deficits AS (
+			SELECT
+				r.material_id,
+				SUM(GREATEST(r.required_qty - COALESCE(s.qty_consumed, 0) - COALESCE(s.qty_reserved, 0), 0)) AS unreserved_req,
+				ARRAY_AGG(DISTINCT j.id::text ORDER BY j.id::text) FILTER (
+					WHERE GREATEST(r.required_qty - COALESCE(s.qty_consumed, 0) - COALESCE(s.qty_reserved, 0), 0) > 0
+				) AS job_ids
+			FROM job_material_requirement r
+			JOIN job j ON j.id = r.job_id
+			LEFT JOIN material_reservation s ON s.job_id = r.job_id AND s.material_id = r.material_id
+			WHERE j.status IN ('queued', 'in_progress') AND r.required_qty > 0
+			GROUP BY r.material_id
+		),
+		computed AS (
+			SELECT
+				m.id::text AS material_id,
+				m.name AS material_name,
+				m.unit_id::text AS unit_id,
+				u.name AS unit_name,
+				m.qty_on_hand,
+				m.qty_reserved,
+				GREATEST(
+					COALESCE(jd.unreserved_req, 0) - GREATEST(m.qty_on_hand - m.qty_reserved, 0),
+					GREATEST(m.qty_reserved - m.qty_on_hand, 0),
+					0
+				) AS shortage_qty,
+				COALESCE(jd.job_ids, ARRAY[]::text[]) AS job_ids
+			FROM material m
+			JOIN unit u ON u.id = m.unit_id
+			LEFT JOIN job_deficits jd ON jd.material_id = m.id
+			WHERE m.is_active = TRUE
+		)
+		SELECT
+			material_id,
+			material_name,
+			unit_id,
+			unit_name,
+			qty_on_hand::text,
+			qty_reserved::text,
+			(qty_reserved + shortage_qty)::text AS qty_required,
+			shortage_qty::text,
+			shortage_qty::text AS recommended_order_qty,
+			job_ids
+		FROM computed
+		WHERE shortage_qty > 0
+		ORDER BY shortage_qty DESC, lower(material_name), material_id
+	`)
+	if err != nil {
+		return nil, err
+	}
+	values := []p.ShortageItem{}
+	for rows.Next() {
+		var item p.ShortageItem
+		var hand, reserved, required, shortage, recommended string
+		if err = rows.Scan(
+			&item.MaterialID, &item.MaterialName, &item.UnitID, &item.UnitName,
+			&hand, &reserved, &required, &shortage, &recommended, &item.JobIDs,
+		); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		for _, pair := range []struct {
+			text   string
+			target *m.Decimal
+		}{
+			{hand, &item.QtyOnHand},
+			{reserved, &item.QtyReserved},
+			{required, &item.QtyRequired},
+			{shortage, &item.ShortageQty},
+			{recommended, &item.RecommendedOrderQty},
+		} {
+			parsed, parseErr := m.ParseDecimal(pair.text)
+			if parseErr != nil {
+				rows.Close()
+				return nil, parseErr
+			}
+			*pair.target = parsed
+		}
+		if item.JobIDs == nil {
+			item.JobIDs = []string{}
+		}
+		values = append(values, item)
 	}
 	err = rows.Err()
 	rows.Close()
@@ -141,7 +309,7 @@ func (d *Database) ReadOrder(ctx context.Context, actor, id string) (p.Order, er
 		return p.Order{}, err
 	}
 	defer tx.Rollback(ctx)
-	if err = inventoryActor(ctx, tx, actor, "admin"); err != nil {
+	if err = inventoryActor(ctx, tx, actor, "staff"); err != nil {
 		return p.Order{}, err
 	}
 	v, err := readOrder(ctx, tx, id)
@@ -156,7 +324,7 @@ func (d *Database) ListOrders(ctx context.Context, actor, jobID string, limit, o
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
-	if err = inventoryActor(ctx, tx, actor, "admin"); err != nil {
+	if err = inventoryActor(ctx, tx, actor, "staff"); err != nil {
 		return nil, err
 	}
 	rows, err := tx.Query(ctx, `SELECT `+orderDocument+` FROM material_order o WHERE ($1='' OR EXISTS(SELECT 1 FROM material_order_job j WHERE j.order_id=o.id AND j.job_id=NULLIF($1,'')::uuid)) ORDER BY o.created_at DESC,o.id DESC LIMIT $2 OFFSET $3`, jobID, limit, offset)

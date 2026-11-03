@@ -64,7 +64,11 @@ func (s *Service) Receive(ctx context.Context, a auth.Account, order string, in 
 		return State{}, e
 	}
 	in.Note = strings.TrimSpace(in.Note)
+	in.PaymentStatus = strings.ToLower(strings.TrimSpace(in.PaymentStatus))
 	if !note(in.Note) || len(in.Lines) < 1 || len(in.Lines) > 100 {
+		return State{}, req.ErrInvalidInput
+	}
+	if in.PaymentStatus != "" && in.PaymentStatus != "unpaid" && in.PaymentStatus != "partial" && in.PaymentStatus != "paid" {
 		return State{}, req.ErrInvalidInput
 	}
 	in.Lines = append([]ReceiptLine{}, in.Lines...)

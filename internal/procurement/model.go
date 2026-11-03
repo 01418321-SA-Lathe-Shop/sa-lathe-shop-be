@@ -28,6 +28,25 @@ type SupplierUpdate struct {
 	Active          *bool `json:"is_active"`
 	ExpectedVersion int64 `json:"expected_version"`
 }
+type ShortageItem struct {
+	MaterialID          string    `json:"material_id"`
+	MaterialName        string    `json:"material_name"`
+	UnitID              string    `json:"unit_id"`
+	UnitName            string    `json:"unit_name"`
+	QtyOnHand           m.Decimal `json:"qty_on_hand"`
+	QtyReserved         m.Decimal `json:"qty_reserved"`
+	QtyRequired         m.Decimal `json:"qty_required"`
+	ShortageQty         m.Decimal `json:"shortage_qty"`
+	RecommendedOrderQty m.Decimal `json:"recommended_order_qty"`
+	JobIDs              []string  `json:"job_ids"`
+}
+type SupplierRecommendation struct {
+	Supplier      Supplier   `json:"supplier"`
+	HasHistory    bool       `json:"has_history"`
+	LastUnitCost  *m.Decimal `json:"last_unit_cost,omitempty"`
+	LastOrderedAt *time.Time `json:"last_ordered_at,omitempty"`
+	OrderCount    int        `json:"order_count"`
+}
 type LineInput struct {
 	MaterialID string     `json:"material_id"`
 	Quantity   *m.Decimal `json:"quantity"`
@@ -82,6 +101,8 @@ type Repository interface {
 	CreateSupplier(context.Context, string, SupplierInput) (Supplier, error)
 	UpdateSupplier(context.Context, string, string, SupplierUpdate) (Supplier, error)
 	ListSuppliers(context.Context, string, string, int, int) ([]Supplier, error)
+	RecommendSuppliers(context.Context, string, string, string) ([]SupplierRecommendation, error)
+	ListShortages(context.Context, string) ([]ShortageItem, error)
 	PlaceOrder(context.Context, string, OrderInput) (Order, error)
 	ActOnOrder(context.Context, string, string, ActionInput) (Order, error)
 	ReadOrder(context.Context, string, string) (Order, error)

@@ -17,8 +17,15 @@ func (d *Database) Receive(ctx context.Context, actor, id string, in r.ReceiptIn
 	if replay {
 		return v, tx.Commit(ctx)
 	}
-	if v.Status != "ordered" && v.Status != "partially_received" {
+	if v.Status != "ordered" && v.Status != "partially_received" && v.Status != "received" && v.Status != "damaged" {
 		return v, r.ErrConflict
+	}
+	if v.Status == "received" || v.Status == "damaged" {
+		for _, line := range in.Lines {
+			if line.ReplacementClaimID == "" {
+				return v, r.ErrConflict
+			}
+		}
 	}
 	_, err = tx.Exec(ctx, `INSERT INTO material_receipt(id,order_id,actor_id,note) VALUES($1,$2,$3,$4)`, in.IdempotencyKey, id, actor, in.Note)
 	if err != nil {
@@ -86,14 +93,18 @@ func (d *Database) Receive(ctx context.Context, actor, id string, in r.ReceiptIn
 			}
 		}
 	}
-	var complete bool
-	err = tx.QueryRow(ctx, `SELECT bool_and(i.qty_ordered=COALESCE((SELECT sum(good) FROM material_receipt_line l WHERE l.order_id=i.order_id AND l.material_id=i.material_id),0)) FROM material_order_item i WHERE i.order_id=$1`, id).Scan(&complete)
+	var status string
+	err = tx.QueryRow(ctx, `
+		SELECT CASE
+			WHEN NOT bool_and(i.qty_ordered <= COALESCE((SELECT sum(good+damaged) FROM material_receipt_line l WHERE l.order_id=i.order_id AND l.material_id=i.material_id AND l.replacement_claim_id IS NULL), 0)) THEN 'partially_received'
+			WHEN NOT EXISTS(SELECT 1 FROM material_receipt_line l WHERE l.order_id=$1 AND l.good > 0) THEN 'damaged'
+			ELSE 'received'
+		END
+		FROM material_order_item i
+		WHERE i.order_id=$1
+	`, id).Scan(&status)
 	if err != nil {
 		return v, err
 	}
-	status := "partially_received"
-	if complete {
-		status = "received"
-	}
-	return finishReceiving(ctx, tx, actor, id, in.Command, "receive", payload, status, nil, financial)
+	return finishReceiving(ctx, tx, actor, id, in.Command, "receive", payload, status, nil, in.PaymentStatus, financial)
 }
