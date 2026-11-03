@@ -1,5 +1,38 @@
 # Real-backend workflow testing data
 
+## Local realistic dataset refresh (2026-11-03)
+
+The owner requested replacement of all visible sample business data and actual
+PDF files. The active local API was connected to `sa_lathe_shop_seed_test`, not
+`sa_lathe_shop_demo`. A verified custom-format backup of that test database was
+saved outside the repository before it was recreated. This removed the prior v1
+and v2 fixture rows and four tester-entered placeholder requests. The original
+`sa_lathe_shop` database was untouched and contained no business rows.
+
+The refreshed active test database is clean schema17 with six newly seeded
+local-test accounts and a completed `workflows-v2` run. It contains 11 Thai
+manufacturing requests, 6 jobs, 3 material orders and 2 invoices. The fixture
+uploads 20 item-specific, valid, private PDFs: 11 work specifications, 5 customer
+POs, 3 deposit notices and 1 balance-payment notice. Every PDF has a proper PDF
+structure and Thai text; its metadata is `application/pdf` and its ready object
+was downloaded through the API's signed private URL and parsed successfully.
+There are no TXT request attachments in the refreshed database. Payment
+notices are clearly labelled as simulated records and are not bank-issued slips.
+The fixture PDFs are embedded under `internal/demoworkflow/assets/` so future
+local/test runs do not depend on a separate file server. The normal fixture
+command remains additive and never resets a database by itself. The one-time
+database recreation was a separate owner-authorized local operation backed up
+outside source control. The newly generated account passwords are stored in a
+private local file, outside the repository; password-free local-test login stays
+available while explicitly enabled.
+
+The PDF source is `scripts/generate-workflow-pdfs.py`. To revise a document,
+install ReportLab in a local Python environment and point
+`LATHE_SEED_THAI_FONT` at a Noto Sans Thai TTF before running that script.
+Review the regenerated pages visually and run the Go/PDF checks before
+publishing the changed assets. The embedded documents are synthetic and
+must not be presented as genuine bank or supplier issued documents.
+
 Owner authorized representative local workflow data on 2026-10-29 and an
 additional populated UI dataset on 2026-10-31. This extends the six accounts;
 it does not restore frontend browser mocks, add accounts or alter UC1-UC9 rules.
@@ -7,8 +40,8 @@ No production or original `sa_lathe_shop` data is targeted.
 
 ## Scenarios
 
-The current additive fixture is `workflows-v2`; request descriptions start
-`[DEMO SET B rN]` and its catalog/suppliers use `DEMO SET B` names. It can coexist
+The current additive fixture is `workflows-v2`; request descriptions are
+item-specific Thai production names. It can coexist
 with a completed `workflows-v1` run, which remains immutable and is never reset.
 Deadline dates are real future instants relative to the first seed run, not
 backdated audit events. Nida and Ploy share the company; Somchai is isolated.
@@ -33,10 +66,10 @@ backdated audit events. Nida and Ploy share the company; Somchai is isolated.
 `workflows-v2` adds 11 requests, 11 quotations (including the r3 revision), 6 jobs,
 5 customer PO submissions, 3 deposits, 2 invoices, 2 customer balance payments,
 3 units, 6 materials, 3 suppliers, 3 supplier orders, 2 receipts and 1 claim.
-There are 20 actual private test documents: 11 specifications, 5 POs,
-3 deposit proofs and 1 balance-payment proof. These are supported TXT files,
-clearly labelled DEMO / TEST ONLY, not real bank receipts, production drawings
-or rendered invoice/PO PDFs. Signed downloads open the actual stored files.
+There are 20 actual private PDF documents: 11 specifications, 5 customer POs,
+3 deposit notices and 1 balance-payment notice. Signed downloads open the
+actual stored PDF files. Quotation and invoice records remain structured system
+data; this fixture does not add stored PDF exports for those records.
 On a local demo database that already contains `workflows-v1`, applying v2 adds
 this entire set without adopting, editing or deleting the earlier fixture or
 tester-created records.

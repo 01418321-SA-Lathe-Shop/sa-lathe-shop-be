@@ -1,5 +1,23 @@
 # Implementation plan
 
+## Local test data and PDF refresh (2026-11-03) — done
+
+- [x] Compare the supplied data dictionary with the live backend schema and identify the active API database.
+- [x] Back up the active `sa_lathe_shop_seed_test` before replacing its old fixture and placeholder rows.
+- [x] Recreate only that local test database at schema17, seed six login accounts, and apply 11 realistic request workflows through real APIs.
+- [x] Replace all fixture TXT uploads with 20 item-specific PDF files; verify every private stored file by signed download and PDF parsing.
+- [x] Confirm 11 requests, 6 jobs, 3 material orders, 2 invoices, no old DEMO/placeholder requests, and zero TXT attachments.
+
+The original `sa_lathe_shop` database was not changed. A separate inactive
+`sa_lathe_shop_demo` remains outside the active UI path. The attached data
+dictionary guided document types and relationships but its sample IDs/tables
+were not inserted directly because the live schema uses UUIDs, provenance,
+private object storage and transactional domain rules. The account passwords
+are regenerated and stored in a private local file outside source control.
+Quotation/invoice PDF export is still a separate feature; their records are
+structured database data, while the documents attached in this fixture are
+real PDFs. See docs/017-demo-workflows.md.
+
 ## Password-free local demo login (2026-10-29) — done
 
 - [x] Inspect auth/session composition, seed provenance and current configuration.
