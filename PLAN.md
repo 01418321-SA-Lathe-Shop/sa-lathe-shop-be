@@ -568,3 +568,12 @@ Verification: `go build`, `go vet` and `go test ./...` pass. On the local demo D
 - [x] `GET` / `POST /customers/{customer_id}/addresses`: members read, owner adds.
 - [x] Demo seed and workflow guards accept schema version 18.
 - [ ] Editing, removing or labelling addresses, and choosing one on documents or deliveries: to be defined.
+
+### UC12 Add Admin (Super Admin) — done, owner approved 2026-11-03
+- [x] Migration 000020: `admin.admin_level` (`admin` / `super_admin`); the earliest existing Admin becomes Super Admin.
+- [x] Bootstrap creates a Super Admin; accounts expose `is_super_admin`.
+- [x] `GET` / `POST /admin/admins` and `PATCH /admin/admins/{id}` (`is_active` only), Super Admin only; Super Admins cannot be deactivated.
+- [x] Demo seed accepts schema 13–20; the workflow fixture accepts 19–20.
+- [ ] Promoting an Admin to Super Admin, or a second Super Admin: not built.
+
+Verification: `go build`, `go vet` and unit tests pass. On disposable PostgreSQL and S3, 000020 ran up, down and up, and `TestStaffAuthIntegration` covers the Super Admin flag, create, 403 for regular Admins and Workers, list, deactivation with session revocation, and refusal to deactivate a Super Admin. A separate disposable DB at version 19 with two Admins confirmed the backfill picks the earliest one.
