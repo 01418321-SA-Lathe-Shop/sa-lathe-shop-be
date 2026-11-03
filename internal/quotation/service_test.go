@@ -49,7 +49,7 @@ func (f *fakeRepo) GetRequestRejection(context.Context, string, string) (Rejecti
 func worker() auth.Account { return auth.Account{ID: testID, Active: true, Role: auth.RoleWorker} }
 func input(t *testing.T, price string) DraftInput {
 	m, l, p := amount(t, "800"), amount(t, "200"), amount(t, price)
-	return DraftInput{&m, &l, &p}
+	return DraftInput{MaterialCost: &m, LaborCost: &l, FinalPrice: &p}
 }
 func TestDraftPriceAndPermissions(t *testing.T) {
 	f := &fakeRepo{}
@@ -105,5 +105,24 @@ func TestInvalidEditSendReject(t *testing.T) {
 	}
 	if f.calls != 0 {
 		t.Fatal("invalid commands reached repository")
+	}
+}
+func TestDraftDocumentFields(t *testing.T) {
+	f := &fakeRepo{}
+	s := NewService(f)
+	in := input(t, "1600")
+	bad := "31/12/2026"
+	in.ValidUntil = &bad
+	if _, err := s.Create(context.Background(), worker(), testID, in); !errors.Is(err, ErrInvalidInput) || f.calls != 0 {
+		t.Fatal("bad valid_until accepted")
+	}
+	good := "2026-12-31"
+	in.ValidUntil, in.Notes = &good, "  ราคานี้ไม่รวมค่าขนส่ง  "
+	if _, err := s.Create(context.Background(), worker(), testID, in); err != nil {
+		t.Fatal(err)
+	}
+	in.Notes = strings.Repeat("ก", 2001)
+	if _, err := s.Create(context.Background(), worker(), testID, in); !errors.Is(err, ErrInvalidInput) {
+		t.Fatal("long notes accepted")
 	}
 }

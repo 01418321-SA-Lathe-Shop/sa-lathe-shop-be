@@ -5,6 +5,7 @@ import (
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/auth"
 	"github.com/google/uuid"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
@@ -20,7 +21,16 @@ func inputDraft(in DraftInput) (Draft, error) {
 	if in.FinalPrice.satang < estimate.MinimumPrice.satang {
 		return Draft{}, ErrInvalidInput
 	}
-	return Draft{MaterialCost: *in.MaterialCost, LaborCost: *in.LaborCost, FinalPrice: *in.FinalPrice}, nil
+	notes := strings.TrimSpace(in.Notes)
+	if !utf8.ValidString(notes) || strings.ContainsRune(notes, 0) || utf8.RuneCountInString(notes) > 2000 {
+		return Draft{}, ErrInvalidInput
+	}
+	if in.ValidUntil != nil {
+		if _, err := time.Parse(time.DateOnly, *in.ValidUntil); err != nil {
+			return Draft{}, ErrInvalidInput
+		}
+	}
+	return Draft{MaterialCost: *in.MaterialCost, LaborCost: *in.LaborCost, FinalPrice: *in.FinalPrice, ValidUntil: in.ValidUntil, Notes: notes}, nil
 }
 func staffView(q Quotation, role string) (Quotation, error) {
 	q.Costs = nil
