@@ -11,12 +11,12 @@ import (
 
 var _ q.Repository = (*Database)(nil)
 
-const quoteFields = `q.id::text,q.quotation_no,q.request_id::text,q.version,q.previous_quotation_id::text,q.status,q.lock_version,c.material_cost::text,c.labor_cost::text,c.final_price::text,q.created_by::text,q.created_at,q.edited_at,q.sent_at`
+const quoteFields = `q.id::text,q.quotation_no,q.request_id::text,q.version,q.previous_quotation_id::text,q.status,q.lock_version,c.material_cost::text,c.labor_cost::text,c.final_price::text,q.created_by::text,q.created_at,q.edited_at,q.sent_at,q.valid_until::text,q.notes`
 
 func quoteRow(row pgx.Row) (q.Quotation, error) {
 	var v q.Quotation
 	var material, labor, price string
-	err := row.Scan(&v.ID, &v.Number, &v.RequestID, &v.Version, &v.PreviousID, &v.Status, &v.LockVersion, &material, &labor, &price, &v.CreatedBy, &v.CreatedAt, &v.EditedAt, &v.SentAt)
+	err := row.Scan(&v.ID, &v.Number, &v.RequestID, &v.Version, &v.PreviousID, &v.Status, &v.LockVersion, &material, &labor, &price, &v.CreatedBy, &v.CreatedAt, &v.EditedAt, &v.SentAt, &v.ValidUntil, &v.Notes)
 	if err != nil {
 		return v, quoteError(err)
 	}
@@ -88,7 +88,7 @@ func (d *Database) CreateDraft(ctx context.Context, actor string, in q.Draft) (q
 	} else if status != "pending" {
 		return q.Quotation{}, q.ErrConflict
 	}
-	_, err = tx.Exec(ctx, `INSERT INTO quotation(id,request_id,version,previous_quotation_id,created_by,edited_by) VALUES($1,$2,$3,$4,$5,$5)`, in.ID, in.RequestID, version, previous, actor)
+	_, err = tx.Exec(ctx, `INSERT INTO quotation(id,request_id,version,previous_quotation_id,created_by,edited_by,valid_until,notes) VALUES($1,$2,$3,$4,$5,$5,$6::date,$7)`, in.ID, in.RequestID, version, previous, actor, in.ValidUntil, in.Notes)
 	if err != nil {
 		return q.Quotation{}, quoteError(err)
 	}
@@ -134,7 +134,7 @@ func (d *Database) UpdateDraft(ctx context.Context, actor string, in q.Draft) (q
 	if err != nil {
 		return q.Quotation{}, quoteError(err)
 	}
-	_, err = tx.Exec(ctx, `UPDATE quotation SET lock_version=lock_version+1,edited_by=$2,edited_at=now() WHERE id=$1`, in.ID, actor)
+	_, err = tx.Exec(ctx, `UPDATE quotation SET lock_version=lock_version+1,edited_by=$2,edited_at=now(),valid_until=$3::date,notes=$4 WHERE id=$1`, in.ID, actor, in.ValidUntil, in.Notes)
 	if err != nil {
 		return q.Quotation{}, quoteError(err)
 	}

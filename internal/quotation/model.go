@@ -17,6 +17,9 @@ type DraftInput struct {
 	MaterialCost *Amount `json:"material_cost"`
 	LaborCost    *Amount `json:"labor_cost"`
 	FinalPrice   *Amount `json:"final_price"`
+	// Printed on the quotation; optional.
+	ValidUntil *string `json:"valid_until"`
+	Notes      string  `json:"notes"`
 }
 type EditInput struct {
 	DraftInput
@@ -38,11 +41,15 @@ type Quotation struct {
 	CreatedAt    time.Time  `json:"created_at"`
 	EditedAt     time.Time  `json:"edited_at"`
 	SentAt       *time.Time `json:"sent_at,omitempty"`
+	ValidUntil   *string    `json:"valid_until,omitempty"`
+	Notes        string     `json:"notes"`
 }
 type Draft struct {
 	ID, RequestID                       string
 	MaterialCost, LaborCost, FinalPrice Amount
 	ExpectedLockVersion                 int64
+	ValidUntil                          *string
+	Notes                               string
 }
 type Rejection struct {
 	RequestID  string    `json:"request_id"`

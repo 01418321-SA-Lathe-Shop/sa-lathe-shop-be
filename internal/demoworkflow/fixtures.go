@@ -3,6 +3,8 @@ package demoworkflow
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -49,6 +51,23 @@ func (r *Runner) build(ctx context.Context) error {
 	if profiles["nida.company"] != profiles["ploy.company"] || profiles["somchai"] == profiles["nida.company"] {
 		return ErrGuard
 	}
+	if _, e := r.step(ctx, "shop-profile", admin, "PUT", "/shop-profile", Object{
+		"name": "Lathe Shop Control", "address": "88/8 ถนนสุขุมวิท แขวงพระโขนง เขตคลองเตย กรุงเทพมหานคร 10110",
+		"tax_id": "", "phone": "02-000-0100", "email": "sales@example.test",
+		"bank_name": "", "bank_account_name": "", "bank_account_no": "", "expected_lock_version": 0,
+	}, false, nil); e != nil {
+		return e
+	}
+	for _, customer := range []struct{ key, actor, address, phone, email string }{
+		{"company-billing", "nida.company", "125/4 ถนนบางนา-ตราด แขวงบางนา เขตบางนา กรุงเทพมหานคร 10260", "02-000-0200", "billing@example.test"},
+		{"individual-billing", "somchai", "45/12 ถนนสุขุมวิท แขวงสำโรงเหนือ อำเภอเมืองสมุทรปราการ สมุทรปราการ 10270", "08-0000-0300", "somchai@example.test"},
+	} {
+		if _, e := r.step(ctx, customer.key, customer.actor, "PUT", "/customers/"+profiles[customer.actor]+"/billing", Object{
+			"address": customer.address, "tax_id": "", "phone": customer.phone, "email": customer.email, "expected_lock_version": 1,
+		}, false, nil); e != nil {
+			return e
+		}
+	}
 	unitIDs := []string{}
 	for i, name := range []string{"ชิ้น", "กิโลกรัม", "แผ่น"} {
 		u, e := r.post(ctx, fmt.Sprintf("unit-%d", i), admin, "/units", Object{"name": name})
@@ -89,7 +108,7 @@ func (r *Runner) build(ctx context.Context) error {
 		if s.key == "r9" {
 			estimator = "kittipong.staff"
 		}
-		quote, e := r.post(ctx, s.key+"-quote", estimator, "/requests/"+requestID+"/quotations", Object{"material_cost": "1000.00", "labor_cost": "500.00", "final_price": s.price})
+		quote, e := r.post(ctx, s.key+"-quote", estimator, "/requests/"+requestID+"/quotations", Object{"material_cost": "1000.00", "labor_cost": "500.00", "final_price": s.price, "valid_until": r.started.Add(30 * 24 * time.Hour).Format(time.DateOnly), "notes": "งานกลึงตามสเปกที่ลูกค้าแนบ; ราคาสำหรับจำนวนทั้งหมด"})
 		if e != nil {
 			return e
 		}
@@ -105,7 +124,7 @@ func (r *Runner) build(ctx context.Context) error {
 			if e != nil {
 				return e
 			}
-			revised, e := r.post(ctx, s.key+"-revision", estimator, "/requests/"+requestID+"/quotations", Object{"material_cost": "950.00", "labor_cost": "500.00", "final_price": "2600.00"})
+			revised, e := r.post(ctx, s.key+"-revision", estimator, "/requests/"+requestID+"/quotations", Object{"material_cost": "950.00", "labor_cost": "500.00", "final_price": "2600.00", "valid_until": r.started.Add(30 * 24 * time.Hour).Format(time.DateOnly), "notes": "ปรับราคาตามคำขอของลูกค้า"})
 			if e != nil {
 				return e
 			}
@@ -210,6 +229,19 @@ func (r *Runner) build(ctx context.Context) error {
 	return r.orders(ctx, materialIDs, jobs)
 }
 func (r *Runner) submit(ctx context.Context, s scenario, quote Object, requestID, kind string, terms Object, approve bool) (Object, error) {
+	if kind == "po" {
+		sequence, err := strconv.Atoi(strings.TrimPrefix(s.key, "r"))
+		if err != nil {
+			return nil, ErrGuard
+		}
+		_, err = r.step(ctx, s.key+"-po-fields", s.customer, "PUT", "/quotations/"+str(quote, "id")+"/customer-po", Object{
+			"po_no": fmt.Sprintf("PO-%d-%03d", r.started.Year(), sequence), "issued_on": r.started.Format(time.DateOnly),
+			"remarks": "สั่งผลิต " + s.title, "expected_lock_version": 0,
+		}, false, nil)
+		if err != nil {
+			return nil, err
+		}
+	}
 	doc, e := r.document(ctx, s.key+"-"+kind+"-document", s.customer, "/requests/"+requestID+"/uploads", "/uploads/", "")
 	if e != nil {
 		return nil, e

@@ -45,10 +45,21 @@ Only active **Admin** users can create and manage Worker accounts.
 | `POST` | `/auth/login` | Public (rate limited) | Authenticate with username and password |
 | `GET` | `/auth/me` | Active Session | Returns current account and role profile |
 | `POST` | `/auth/logout` | Active Session | Revokes the current session token (HTTP 204) |
+| `POST` | `/auth/password` | Active Session (rate limited) | Change own password: `{current_password, new_password}` (HTTP 204) |
 | `GET` | `/admin/workers?limit=50&offset=0` | Admin | List workers with pagination (limit 1–100) |
 | `POST` | `/admin/workers` | Admin | Create a new worker account |
 | `GET` | `/admin/workers/{account_id}` | Admin | Fetch worker profile |
 | `PATCH` | `/admin/workers/{account_id}` | Admin | Edit worker, change password, or deactivate/reactivate |
+
+### Self-Service Password Change (2026-11-03)
+Every active role (Admin, Worker, Customer) may change only its own password. The
+service verifies `current_password` with Argon2id, applies the normal password rule,
+and also requires the new password to differ from the current one and not contain
+the username. A wrong current password returns HTTP 400 `invalid_current_password`
+(never 401, so the caller stays signed in). On success the hash is replaced under an
+account row lock and every *other* session is revoked; the calling session stays
+active. No migration. Admin resets of Worker passwords via `PATCH /admin/workers/{id}`
+are unchanged.
 
 ### Required Worker Contacts & Validation (Migration 000006)
 Admin worker creation requires all of the following fields:

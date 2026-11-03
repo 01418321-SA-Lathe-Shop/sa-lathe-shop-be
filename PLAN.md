@@ -4,9 +4,9 @@
 
 - [x] Compare the supplied data dictionary with the live backend schema and identify the active API database.
 - [x] Back up the active `sa_lathe_shop_seed_test` before replacing its old fixture and placeholder rows.
-- [x] Recreate only that local test database at schema17, seed six login accounts, and apply 11 realistic request workflows through real APIs.
+- [x] Recreate only that local test database at schema18, seed six login accounts, and apply 11 realistic request workflows through real APIs.
 - [x] Replace all fixture TXT uploads with 20 item-specific PDF files; verify every private stored file by signed download and PDF parsing.
-- [x] Confirm 11 requests, 6 jobs, 3 material orders, 2 invoices, no old DEMO/placeholder requests, and zero TXT attachments.
+- [x] Confirm 149 API workflow steps: 11 requests, 6 jobs, 3 material orders, 2 invoices, shop profile, 2 billing profiles, 5 customer PO details, no old DEMO/placeholder requests, and zero TXT attachments.
 
 The original `sa_lathe_shop` database was not changed. A separate inactive
 `sa_lathe_shop_demo` remains outside the active UI path. The attached data
@@ -16,7 +16,21 @@ private object storage and transactional domain rules. The account passwords
 are regenerated and stored in a private local file outside source control.
 Quotation/invoice PDF export is still a separate feature; their records are
 structured database data, while the documents attached in this fixture are
-real PDFs. See docs/017-demo-workflows.md.
+real PDFs. The latest develop branch's printed-document migration was merged as
+000017; the workflow fixture permission migration follows as 000018. Shop
+profile, customer billing, quotation print fields and customer PO details are
+now populated through their APIs before the documents are printed. See
+docs/017-demo-workflows.md.
+
+## Self-service password change (2026-11-03) — done
+
+- [x] `POST /auth/password` for every active role: verify current password (Argon2id), account password rule plus differs-from-current and no-username, rate limited per IP.
+- [x] Replace hash under an account row lock; revoke every other session, keep the caller's. No migration.
+- [x] Unit/HTTP tests; docs/000-auth.md and openapi.yaml updated; committed `7cf805a` to develop.
+
+Verification: go build ./..., go vet (auth, postgres), full default `go test ./...` pass. Real PostgreSQL check through the
+local Docker API against the demo DB: wrong current password 400, success 204, other session 401, old password rejected,
+new password accepted. Local API container afterwards rebuilt from 77d3568 with its previous demo settings.
 
 ## Password-free local demo login (2026-10-29) — done
 
@@ -538,3 +552,11 @@ Each phase also needs:
 - [ ] Integration tests covering rejected rounding and retries; update `scripts/verify-uc5.ps1` and `verify-uc8.ps1`, plus `verify-uc6.ps1` and `verify-uc7.ps1` in Phase C.
 
 Known gap: based on the schema, routes and docs; not every write path was read, so the Phase B file list may grow.
+
+### Printed document details (shop profile, billing, quotation notes, customer PO) — done
+- [x] Migration 000017: `shop_profile` (created on first Admin save), customer billing columns, quotation `valid_until`/`notes`, `customer_po`.
+- [x] `internal/document`: shop profile, billing and customer PO endpoints with optimistic versions; quotation draft fields.
+- [x] Demo seed and workflow guards accept schema version 17.
+- [ ] Shop logo upload: not built; attachments are tied to requests.
+
+Verification: `go build`, `go vet` and `go test ./...` pass. On the local demo DB, 000017 ran up, down and up, and every new endpoint was exercised over real HTTP. Repository integration suites were not run. See `docs/020-printed-documents.md`.

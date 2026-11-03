@@ -21,6 +21,7 @@ tags:
   - name: Production
   - name: Customer fulfillment
   - name: Notifications
+  - name: Printed documents
 paths:
   /health:
     get:
@@ -136,6 +137,17 @@ paths:
       responses:
         '204': {description: Session revoked}
         '401': {$ref: '#/components/responses/Error'}
+  /auth/password:
+    post:
+      tags: [Authentication]
+      summary: Change the current account's own password (rate limited)
+      description: Body {current_password, new_password}. new_password follows the account password rule, must differ from current_password and must not contain the username. Revokes every other session of the account; the calling session stays active.
+      x-allowed-roles: [admin, worker, customer]
+      responses:
+        '204': {description: Password changed}
+        '400': {description: invalid_input, or invalid_current_password when current_password does not match (session stays valid)}
+        '401': {$ref: '#/components/responses/Error'}
+        '429': {$ref: '#/components/responses/Error'}
   /admin/workers:
     get:
       tags: [Authentication]
@@ -255,6 +267,7 @@ paths:
     post:
       tags: [Quotations and decisions]
       summary: Create a worker quotation draft
+      description: Body {material_cost, labor_cost, final_price, valid_until?, notes?}. valid_until is YYYY-MM-DD or null; notes is printed on the quotation (up to 2,000 characters).
       x-allowed-roles: [worker]
       parameters: [{$ref: '#/components/parameters/RequestID'}]
       requestBody: {$ref: '#/components/requestBodies/JsonObject'}
@@ -277,6 +290,7 @@ paths:
     patch:
       tags: [Quotations and decisions]
       summary: Edit a worker quotation draft with optimistic version
+      description: Same body as create plus expected_lock_version. Omitted valid_until/notes are cleared.
       x-allowed-roles: [worker]
       parameters: [{$ref: '#/components/parameters/QuotationID'}]
       requestBody: {$ref: '#/components/requestBodies/JsonObject'}
@@ -757,6 +771,47 @@ paths:
       x-allowed-roles: [admin, worker, customer]
       parameters: [{$ref: '#/components/parameters/NotificationID'}]
       responses: {'204': {description: Notification marked read}, '404': {$ref: '#/components/responses/Error'}}
+  /shop-profile:
+    get:
+      tags: [Printed documents]
+      summary: Read the shop details printed on documents (empty strings mean not provided)
+      x-allowed-roles: [admin, worker, customer]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '401': {$ref: '#/components/responses/Error'}}
+    put:
+      tags: [Printed documents]
+      summary: Replace the shop details with optimistic version
+      description: Body {name, address, tax_id, phone, email, bank_name, bank_account_name, bank_account_no, expected_lock_version}. Every text field may be empty.
+      x-allowed-roles: [admin]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '400': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}, '409': {$ref: '#/components/responses/Error'}}
+  /customers/{customer_id}/billing:
+    parameters: [{$ref: '#/components/parameters/CustomerID'}]
+    get:
+      tags: [Printed documents]
+      summary: Read a customer's billing details for printed documents
+      x-allowed-roles: [admin, worker, customer member]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '404': {$ref: '#/components/responses/Error'}}
+    put:
+      tags: [Printed documents]
+      summary: Replace the customer's billing details with optimistic version
+      description: Body {address, tax_id, phone, email, expected_lock_version}.
+      x-allowed-roles: [customer owner]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '400': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}, '404': {$ref: '#/components/responses/Error'}, '409': {$ref: '#/components/responses/Error'}}
+  /quotations/{quotation_id}/customer-po:
+    parameters: [{$ref: '#/components/parameters/QuotationID'}]
+    get:
+      tags: [Printed documents]
+      summary: Read the customer's own PO details for an accepted quotation
+      x-allowed-roles: [admin, worker, authorized customer member]
+      responses: {'200': {$ref: '#/components/responses/Json'}, '404': {$ref: '#/components/responses/Error'}}
+    put:
+      tags: [Printed documents]
+      summary: Create (expected_lock_version 0) or edit the customer's PO details
+      description: Body {po_no, issued_on (YYYY-MM-DD), remarks, expected_lock_version}. Allowed only while the accepted terms require a PO and no PO evidence is approved. The amount is the quotation's final price and is not stored.
+      x-allowed-roles: [authorized customer member]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '400': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}, '404': {$ref: '#/components/responses/Error'}, '409': {$ref: '#/components/responses/Error'}}
 components:
   securitySchemes:
     bearerAuth:
