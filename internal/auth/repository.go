@@ -12,6 +12,9 @@ type Repository interface {
 	ListWorkers(context.Context, int, int) ([]Worker, error)
 	GetWorker(context.Context, string) (Worker, error)
 	UpdateWorker(context.Context, string, WorkerChanges) (Worker, error)
+	ListAdmins(context.Context) ([]Admin, error)
+	CreateAdmin(context.Context, NewStaff) (Admin, error)
+	SetAdminActive(ctx context.Context, id string, active bool) (Admin, error)
 	// ChangePassword(accountID, expectedHash, newHash, keepTokenHash) revokes all other sessions.
 	ChangePassword(context.Context, string, string, string, []byte) error
 }

@@ -197,6 +197,33 @@ func TestStaffAuthIntegration(t *testing.T) {
 	call("GET", "/admin/workers", nil, workerLogin.AccessToken, 403, nil)
 	call("PATCH", "/admin/workers/"+worker.ID, map[string]any{"is_active": false}, workerLogin.AccessToken, 403, nil)
 	call("GET", "/admin/workers", nil, adminLogin.AccessToken, 200, nil)
+	// UC12: the bootstrap Admin is the Super Admin and alone manages other Admins.
+	var me auth.Account
+	call("GET", "/auth/me", nil, adminLogin.AccessToken, 200, &me)
+	if !me.SuperAdmin {
+		t.Fatal("bootstrap admin is not super admin")
+	}
+	var second auth.Admin
+	call("POST", "/admin/admins", auth.AdminInput{Username: "phase3_admin2", Name: "Second", Password: workerPassword, Email: "admin2@example.com", Phone: "+66812345679"}, adminLogin.AccessToken, 201, &second)
+	if second.SuperAdmin || second.Email == nil || *second.Email != "admin2@example.com" {
+		t.Fatal("created admin has wrong level or contacts")
+	}
+	call("GET", "/admin/admins", nil, workerLogin.AccessToken, 403, nil)
+	secondLogin := login("phase3_admin2", workerPassword)
+	call("GET", "/admin/workers", nil, secondLogin.AccessToken, 200, nil)
+	call("GET", "/admin/admins", nil, secondLogin.AccessToken, 403, nil)
+	call("POST", "/admin/admins", auth.AdminInput{Username: "phase3_admin3", Name: "Third", Password: workerPassword, Email: "a3@example.com", Phone: "+66812345670"}, secondLogin.AccessToken, 403, nil)
+	call("PATCH", "/admin/admins/"+admin.ID, map[string]any{"is_active": false}, adminLogin.AccessToken, 403, nil)
+	var admins struct {
+		Items []auth.Admin `json:"items"`
+	}
+	call("GET", "/admin/admins", nil, adminLogin.AccessToken, 200, &admins)
+	if len(admins.Items) != 2 || !admins.Items[0].SuperAdmin || admins.Items[1].ID != second.ID {
+		t.Fatal("admin list wrong")
+	}
+	call("PATCH", "/admin/admins/"+second.ID, map[string]any{"is_active": false}, adminLogin.AccessToken, 200, nil)
+	call("GET", "/auth/me", nil, secondLogin.AccessToken, 401, nil)
+	call("PATCH", "/admin/admins/"+second.ID, map[string]any{"is_active": true}, adminLogin.AccessToken, 200, nil)
 	call("PATCH", "/admin/workers/"+worker.ID, map[string]any{"role": "admin"}, adminLogin.AccessToken, 400, nil)
 	call("PATCH", "/admin/workers/"+admin.ID, map[string]any{"is_active": false}, adminLogin.AccessToken, 404, nil)
 	t.Run("transaction_rollback", func(t *testing.T) {

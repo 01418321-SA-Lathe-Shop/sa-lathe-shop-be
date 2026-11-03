@@ -10,10 +10,11 @@ import (
 
 var _ auth.Repository = (*Database)(nil)
 
-const accountFields = `a.id::text,a.person_id::text,a.username,p.name,a.role,a.is_active,a.password_hash,a.created_at`
+const accountFields = `a.id::text,a.person_id::text,a.username,p.name,a.role,a.is_active,a.password_hash,a.created_at,
+ EXISTS(SELECT 1 FROM public.admin ad WHERE ad.person_id=a.person_id AND ad.admin_level='super_admin')`
 
 func accountTargets(a *auth.Account) []any {
-	return []any{&a.ID, &a.PersonID, &a.Username, &a.Name, &a.Role, &a.Active, &a.PasswordHash, &a.CreatedAt}
+	return []any{&a.ID, &a.PersonID, &a.Username, &a.Name, &a.Role, &a.Active, &a.PasswordHash, &a.CreatedAt, &a.SuperAdmin}
 }
 func accountRow(row pgx.Row) (auth.Account, error) {
 	var a auth.Account
@@ -112,13 +113,20 @@ func insertStaff(ctx context.Context, tx pgx.Tx, input auth.NewStaff) (auth.Acco
 	if err != nil {
 		return auth.Account{}, authError(err)
 	}
-	if a.Role == auth.RoleAdmin {
-		_, err = tx.Exec(ctx, `INSERT INTO admin(person_id) VALUES($1)`, a.PersonID)
-	} else {
+	// Bootstrap Admins have no contacts; created Admins and Workers always do.
+	if input.Email != "" || input.Phone != "" {
 		_, err = tx.Exec(ctx, `UPDATE person SET email=$2,phone=$3 WHERE id=$1`, a.PersonID, input.Email, input.Phone)
 		if err != nil {
 			return auth.Account{}, authError(err)
 		}
+	}
+	if a.Role == auth.RoleAdmin {
+		level := "admin"
+		if a.SuperAdmin {
+			level = "super_admin"
+		}
+		_, err = tx.Exec(ctx, `INSERT INTO admin(person_id,admin_level) VALUES($1,$2)`, a.PersonID, level)
+	} else {
 		_, err = tx.Exec(ctx, `INSERT INTO worker(person_id,employee_no,position) VALUES($1,$2,$3)`, a.PersonID, input.EmployeeNo, input.Position)
 	}
 	return a, authError(err)
@@ -141,6 +149,7 @@ func (d *Database) BootstrapAdmin(ctx context.Context, input auth.NewStaff) (aut
 		return auth.Account{}, auth.ErrAdminExists
 	}
 	input.Account.Role = auth.RoleAdmin
+	input.Account.SuperAdmin = true
 	a, err := insertStaff(ctx, tx, input)
 	if err != nil {
 		return auth.Account{}, err
