@@ -71,6 +71,16 @@ func (s *Service) CreateUnit(ctx context.Context, a auth.Account, in UnitInput) 
 	}
 	return s.repo.CreateUnit(ctx, a.ID, in)
 }
+func (s *Service) UpdateUnit(ctx context.Context, a auth.Account, unitID string, in UnitInput) (Unit, error) {
+	if !allowed(a, auth.RoleAdmin) {
+		return Unit{}, req.ErrForbidden
+	}
+	in.Name = strings.TrimSpace(in.Name)
+	if !validID(unitID) || !validText(in.Name, 50) {
+		return Unit{}, req.ErrInvalidInput
+	}
+	return s.repo.UpdateUnit(ctx, a.ID, unitID, in)
+}
 func (s *Service) Units(ctx context.Context, a auth.Account) ([]Unit, error) {
 	if !allowed(a, "staff") {
 		return nil, req.ErrForbidden
@@ -185,6 +195,15 @@ func (s *Service) CreateConversion(ctx context.Context, a auth.Account, id strin
 		return Conversion{}, req.ErrInvalidInput
 	}
 	return s.repo.CreateConversion(ctx, a.ID, id, in)
+}
+func (s *Service) UpdateConversion(ctx context.Context, a auth.Account, id, conversionID string, in ConversionUpdate) (Conversion, error) {
+	if !allowed(a, auth.RoleAdmin) {
+		return Conversion{}, req.ErrForbidden
+	}
+	if !validID(id) || !validID(conversionID) || in.Factor == nil || in.Factor.IsZero() {
+		return Conversion{}, req.ErrInvalidInput
+	}
+	return s.repo.UpdateConversion(ctx, a.ID, id, conversionID, in)
 }
 func (s *Service) DeactivateConversion(ctx context.Context, a auth.Account, id, conversionID string) (Conversion, error) {
 	if !allowed(a, auth.RoleAdmin) {
