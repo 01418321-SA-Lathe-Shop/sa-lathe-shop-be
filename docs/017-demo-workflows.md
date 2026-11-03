@@ -8,6 +8,9 @@ PDF files. The active local API was connected to `sa_lathe_shop_seed_test`, not
 saved outside the repository before it was recreated. This removed the prior v1
 and v2 fixture rows and four tester-entered placeholder requests. The original
 `sa_lathe_shop` database was untouched and contained no business rows.
+The inactive `sa_lathe_shop_demo` was separately backed up, cleared of its old
+v1 sample and migrated empty to schema19; the active API still uses
+`sa_lathe_shop_seed_test`.
 
 The refreshed active test database is clean schema19 with six newly seeded
 local-test accounts and a completed `workflows-v2` run. It contains 11 Thai

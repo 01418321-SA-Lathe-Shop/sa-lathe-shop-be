@@ -8,8 +8,9 @@
 - [x] Replace all fixture TXT uploads with 20 item-specific PDF files; verify every private stored file by signed download and PDF parsing.
 - [x] Confirm 151 API workflow steps: 11 requests, 6 jobs, 3 material orders, 2 invoices, shop profile, 2 billing profiles, 2 customer addresses, 5 customer PO details, no old DEMO/placeholder requests, and zero TXT attachments.
 
-The original `sa_lathe_shop` database was not changed. A separate inactive
-`sa_lathe_shop_demo` remains outside the active UI path. The attached data
+The original `sa_lathe_shop` database was not changed. The separate inactive
+`sa_lathe_shop_demo` was backed up, cleared of its one old sample request and
+six old sample accounts, and migrated empty through schema19. The attached data
 dictionary guided document types and relationships but its sample IDs/tables
 were not inserted directly because the live schema uses UUIDs, provenance,
 private object storage and transactional domain rules. The account passwords
