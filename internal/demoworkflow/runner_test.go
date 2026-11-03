@@ -112,7 +112,7 @@ func TestUploadRefusesForeignOrigin(t *testing.T) {
 	defer server.Close()
 	c := newClient(Config{APIOrigin: server.URL, StorageOrigin: "http://localhost:19000"})
 	c.tokens["somchai"] = "test-only-api-token"
-	_, e := c.upload(context.Background(), "somchai", "/uploads", "/complete/", "TEST.txt", "DEMO / TEST ONLY")
+	_, e := c.upload(context.Background(), "somchai", "/uploads", "/complete/", "test.pdf", []byte("%PDF-1.4\n"))
 	if !errors.Is(e, ErrGuard) {
 		t.Fatal("foreign signed upload destination accepted")
 	}

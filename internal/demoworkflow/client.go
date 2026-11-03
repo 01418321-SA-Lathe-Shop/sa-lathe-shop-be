@@ -96,9 +96,8 @@ func (c *client) logout() {
 		delete(c.tokens, actor)
 	}
 }
-func (c *client) upload(ctx context.Context, actor, path, completePrefix, name, text string) (Object, error) {
-	data := []byte(text)
-	intent, e := c.call(ctx, actor, "POST", path, Object{"file_name": name, "content_type": "text/plain", "byte_size": len(data)})
+func (c *client) upload(ctx context.Context, actor, path, completePrefix, name string, data []byte) (Object, error) {
+	intent, e := c.call(ctx, actor, "POST", path, Object{"file_name": name, "content_type": "application/pdf", "byte_size": len(data)})
 	if e != nil {
 		return nil, e
 	}
@@ -121,7 +120,7 @@ func (c *client) upload(ctx context.Context, actor, path, completePrefix, name, 
 	if req.Header.Get("Authorization") != "" {
 		return nil, ErrGuard
 	}
-	req.Header.Set("Content-Type", "text/plain")
+	req.Header.Set("Content-Type", "application/pdf")
 	res, e := c.http.Do(req)
 	if e != nil {
 		return nil, fmt.Errorf("private demo upload failed (details withheld)")
