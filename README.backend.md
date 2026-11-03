@@ -29,6 +29,10 @@ The existing README.md has been preserved exactly.
 - [Source report to backend traceability](docs/019-source-traceability.md)
 - [Printed document details](docs/020-printed-documents.md)
 - [ER diagram vs implemented schema](docs/021-er-schema-comparison.md)
+- [UC10 — Unit setting](docs/022-UC10.md)
+- [UC11 — Add Worker](docs/023-UC11.md)
+- [UC12 — Add Admin (not approved)](docs/024-UC12.md)
+- [Use-case description alignment (UC1–UC12)](docs/025-uc-spec-alignment.md)
 - [Architecture and open questions](AGENTS.md)
 - [Phased plan](PLAN.md)
 
