@@ -54,7 +54,7 @@ try {
  }
  if(-not $ready){throw 'Docker API readiness failed'}
  try {
-  $registration=@{username='docker_customer';password=$env:TEST_ADMIN_PASSWORD;name='Docker Customer';customer_type='individual'}|ConvertTo-Json
+  $registration=@{username='docker_customer';password=$env:TEST_ADMIN_PASSWORD;name='Docker Customer';customer_type='individual';address='1 Docker Road'}|ConvertTo-Json
   $null=Invoke-RestMethod -Method Post -Uri ($apiAddress+'/auth/register') -ContentType 'application/json' -Body $registration
   $loginBody=@{username='docker_customer';password=$env:TEST_ADMIN_PASSWORD}|ConvertTo-Json
   $login=Invoke-RestMethod -Method Post -Uri ($apiAddress+'/auth/login') -ContentType 'application/json' -Body $loginBody
