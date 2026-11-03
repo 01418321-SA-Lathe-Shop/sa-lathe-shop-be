@@ -73,10 +73,44 @@ func (d *Database) CreateUnit(ctx context.Context, actor string, in m.UnitInput)
 	if err = inventoryActor(ctx, tx, actor, "admin"); err != nil {
 		return m.Unit{}, err
 	}
+	// Q10.E1: Case-insensitive duplicate check on unit name
+	var dup bool
+	err = tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM unit WHERE LOWER(name) = LOWER($1))`, in.Name).Scan(&dup)
+	if err != nil {
+		return m.Unit{}, err
+	}
+	if dup {
+		return m.Unit{}, m.ErrConflict
+	}
 	value := m.Unit{ID: uuid.NewString(), Name: in.Name}
 	_, err = tx.Exec(ctx, `INSERT INTO unit(id,name,created_by) VALUES($1,$2,$3)`, value.ID, value.Name, actor)
 	if err != nil {
 		return value, inventoryError(err)
+	}
+	return value, tx.Commit(ctx)
+}
+func (d *Database) UpdateUnit(ctx context.Context, actor, unitID string, in m.UnitInput) (m.Unit, error) {
+	tx, err := d.pool.Begin(ctx)
+	if err != nil {
+		return m.Unit{}, err
+	}
+	defer tx.Rollback(ctx)
+	if err = inventoryActor(ctx, tx, actor, "admin"); err != nil {
+		return m.Unit{}, err
+	}
+	// Q10.E1: Case-insensitive duplicate check on unit name excluding self
+	var dup bool
+	err = tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM unit WHERE LOWER(name) = LOWER($1) AND id <> $2)`, in.Name, unitID).Scan(&dup)
+	if err != nil {
+		return m.Unit{}, err
+	}
+	if dup {
+		return m.Unit{}, m.ErrConflict
+	}
+	var value m.Unit
+	err = tx.QueryRow(ctx, `UPDATE unit SET name=$2 WHERE id=$1 RETURNING id::text, name`, unitID, in.Name).Scan(&value.ID, &value.Name)
+	if err != nil {
+		return m.Unit{}, inventoryError(err)
 	}
 	return value, tx.Commit(ctx)
 }

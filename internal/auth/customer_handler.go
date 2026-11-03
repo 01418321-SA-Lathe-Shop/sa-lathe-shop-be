@@ -17,8 +17,8 @@ func (h *Handler) CustomerRoutes(r chi.Router, service *CustomerService) {
 			writeAuthError(w, r, err)
 			return
 		}
-		// Public sign-up must give an address for a new customer; internal callers (seed, tests) may omit it.
-		if in.Invitation == "" && strings.TrimSpace(in.Address) == "" {
+		// Public sign-up must give an address (flat or structured) for a new customer; internal callers (seed, tests) may omit it.
+		if in.Invitation == "" && strings.TrimSpace(in.Address) == "" && strings.TrimSpace(in.AddressLine1) == "" {
 			writeAuthError(w, r, fmt.Errorf("%w: address is required", ErrInvalidInput))
 			return
 		}
@@ -57,13 +57,27 @@ func (h *Handler) CustomerRoutes(r chi.Router, service *CustomerService) {
 		})
 		r.Post("/customers/{customer_id}/addresses", func(w http.ResponseWriter, r *http.Request) {
 			var in struct {
-				Address string `json:"address"`
+				Address      string `json:"address"`
+				AddressLine1 string `json:"address_line1"`
+				AddressLine2 string `json:"address_line2"`
+				District     string `json:"district"`
+				Province     string `json:"province"`
+				PostalCode   string `json:"postal_code"`
+				IsDefault    bool   `json:"is_default"`
 			}
 			if err := decode(w, r, &in); err != nil {
 				writeAuthError(w, r, err)
 				return
 			}
-			item, err := service.AddAddress(r.Context(), CurrentAccount(r.Context()), chi.URLParam(r, "customer_id"), in.Address)
+			item, err := service.AddStructuredAddress(r.Context(), CurrentAccount(r.Context()), chi.URLParam(r, "customer_id"), CustomerAddress{
+				Address:      in.Address,
+				AddressLine1: in.AddressLine1,
+				AddressLine2: in.AddressLine2,
+				District:     in.District,
+				Province:     in.Province,
+				PostalCode:   in.PostalCode,
+				IsDefault:    in.IsDefault,
+			})
 			if err != nil {
 				writeAuthError(w, r, err)
 				return

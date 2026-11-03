@@ -1,5 +1,28 @@
 # Implementation plan
 
+## Local test data and PDF refresh (2026-11-03) — done
+
+- [x] Compare the supplied data dictionary with the live backend schema and identify the active API database.
+- [x] Back up the active `sa_lathe_shop_seed_test` before replacing its old fixture and placeholder rows.
+- [x] Recreate only that local test database at schema19, seed six login accounts, and apply 11 realistic request workflows through real APIs.
+- [x] Replace all fixture TXT uploads with 20 item-specific PDF files; verify every private stored file by signed download and PDF parsing.
+- [x] Confirm 151 API workflow steps: 11 requests, 6 jobs, 3 material orders, 2 invoices, shop profile, 2 billing profiles, 2 customer addresses, 5 customer PO details, no old DEMO/placeholder requests, and zero TXT attachments.
+
+The original `sa_lathe_shop` database was not changed. The separate inactive
+`sa_lathe_shop_demo` was backed up, cleared of its one old sample request and
+six old sample accounts, and migrated empty through schema19. The attached data
+dictionary guided document types and relationships but its sample IDs/tables
+were not inserted directly because the live schema uses UUIDs, provenance,
+private object storage and transactional domain rules. The account passwords
+are regenerated and stored in a private local file outside source control.
+Quotation/invoice PDF export is still a separate feature; their records are
+structured database data, while the documents attached in this fixture are
+real PDFs. The latest develop branch's printed-document migration was merged as
+000017; customer addresses follow as 000018 and the workflow fixture permission
+migration as 000019. Shop profile, customer billing, quotation print fields, customer addresses and customer PO details are
+now populated through their APIs before the documents are printed. See
+docs/017-demo-workflows.md.
+
 ## Self-service password change (2026-11-03) — done
 
 - [x] `POST /auth/password` for every active role: verify current password (Argon2id), account password rule plus differs-from-current and no-username, rate limited per IP.
@@ -132,6 +155,21 @@ seed/cleanup/retirement tests, six normal and password-free API logins, role
 gates, revocation and default-off endpoint checks. Live demo readback confirmed
 11 requests, 6 jobs, 5 term_evidence POs, 3 deposits and clean schema14.
 Final publication is grouped on develop; remote tip is verified at handoff.
+
+### Additive UI workflow dataset v2 — implemented and locally applied (authorized 2026-10-31)
+- [x] Add a second guarded workflow fixture (`workflows-v2`, labelled `DEMO SET B`)
+  so populated Production, Receiving, Delivery/Payment and Orders screens can be
+  exercised with more rows without resetting the completed v1 fixture.
+- [x] Keep all writes on existing real HTTP/domain paths and preserve v1/tester data.
+- [x] Migrate only the guarded local demo DB through schema17 and apply v2:
+  141 real API steps completed, adding 11 requests, 6 jobs, 3 material orders,
+  receiving/claim states, 2 invoices and pending/settled payment states. The
+  incomplete v1 journal and all existing tester records were preserved.
+- [x] Complete read-only v2 verification after the demo login rate-limit window:
+  all 141 checkpoints, private documents, role isolation, stock, receiving,
+  production and payment states passed against the live local stack.
+- [x] Publish the verified additive fixture as separate migration/fixture commits
+  to `origin/develop`.
 
 No existing DB is targeted. Never run automatically, TRUNCATE, reset a DB,
 disable triggers or remove immutable audits. Passwords/tokens/hashes stay out
@@ -530,3 +568,12 @@ Verification: `go build`, `go vet` and `go test ./...` pass. On the local demo D
 - [x] `GET` / `POST /customers/{customer_id}/addresses`: members read, owner adds.
 - [x] Demo seed and workflow guards accept schema version 18.
 - [ ] Editing, removing or labelling addresses, and choosing one on documents or deliveries: to be defined.
+
+### UC12 Add Admin (Super Admin) — done, owner approved 2026-11-03
+- [x] Migration 000020: `admin.admin_level` (`admin` / `super_admin`); the earliest existing Admin becomes Super Admin.
+- [x] Bootstrap creates a Super Admin; accounts expose `is_super_admin`.
+- [x] `GET` / `POST /admin/admins` and `PATCH /admin/admins/{id}` (`is_active` only), Super Admin only; Super Admins cannot be deactivated.
+- [x] Demo seed accepts schema 13–20; the workflow fixture accepts 19–20.
+- [ ] Promoting an Admin to Super Admin, or a second Super Admin: not built.
+
+Verification: `go build`, `go vet` and unit tests pass. On disposable PostgreSQL and S3, 000020 ran up, down and up, and `TestStaffAuthIntegration` covers the Super Admin flag, create, 403 for regular Admins and Workers, list, deactivation with session revocation, and refusal to deactivate a Super Admin. A separate disposable DB at version 19 with two Admins confirmed the backfill picks the earliest one.

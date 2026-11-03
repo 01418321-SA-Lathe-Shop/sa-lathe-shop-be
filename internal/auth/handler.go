@@ -24,6 +24,12 @@ func (h *Handler) Routes(r chi.Router) {
 			r.Get("/{id}", h.getWorker)
 			r.Patch("/{id}", h.updateWorker)
 		})
+		r.Route("/admin/admins", func(r chi.Router) {
+			r.Use(RequireRole(RoleAdmin))
+			r.Get("/", h.listAdmins)
+			r.Post("/", h.createAdmin)
+			r.Patch("/{id}", h.setAdminActive)
+		})
 	})
 }
 func decode(w http.ResponseWriter, r *http.Request, v any) error {
@@ -143,4 +149,40 @@ func (h *Handler) listWorkers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpserver.JSON(w, 200, map[string]any{"items": workers, "limit": limit, "offset": offset})
+}
+func (h *Handler) listAdmins(w http.ResponseWriter, r *http.Request) {
+	admins, err := h.service.ListAdmins(r.Context(), CurrentAccount(r.Context()))
+	if err != nil {
+		writeAuthError(w, r, err)
+		return
+	}
+	httpserver.JSON(w, 200, map[string]any{"items": admins})
+}
+func (h *Handler) createAdmin(w http.ResponseWriter, r *http.Request) {
+	var input AdminInput
+	if err := decode(w, r, &input); err != nil {
+		writeAuthError(w, r, err)
+		return
+	}
+	admin, err := h.service.CreateAdmin(r.Context(), CurrentAccount(r.Context()), input)
+	if err != nil {
+		writeAuthError(w, r, err)
+		return
+	}
+	httpserver.JSON(w, 201, admin)
+}
+func (h *Handler) setAdminActive(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Active *bool `json:"is_active"`
+	}
+	if err := decode(w, r, &input); err != nil {
+		writeAuthError(w, r, err)
+		return
+	}
+	admin, err := h.service.SetAdminActive(r.Context(), CurrentAccount(r.Context()), chi.URLParam(r, "id"), input.Active)
+	if err != nil {
+		writeAuthError(w, r, err)
+		return
+	}
+	httpserver.JSON(w, 200, admin)
 }

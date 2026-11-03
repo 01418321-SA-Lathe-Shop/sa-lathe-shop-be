@@ -31,6 +31,8 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, message = 403, "forbidden", "Permission denied"
 	case errors.Is(err, ErrNotFound):
 		status, code, message = 404, "not_found", "Request or file not found"
+	case errors.Is(err, ErrConflict):
+		status, code, message = 409, "conflict", "Request state changed"
 	}
 	if status == http.StatusInternalServerError {
 		httpserver.LogInternalError(r, err)
@@ -55,6 +57,28 @@ func (h *Handler) Routes(r chi.Router, authenticate func(http.Handler) http.Hand
 		})
 		r.Get("/requests/{request_id}", func(w http.ResponseWriter, r *http.Request) {
 			result, err := h.service.Get(r.Context(), principal(r), chi.URLParam(r, "request_id"))
+			if err != nil {
+				WriteError(w, r, err)
+				return
+			}
+			httpserver.JSON(w, 200, result)
+		})
+		r.Delete("/requests/{request_id}", func(w http.ResponseWriter, r *http.Request) {
+			if err := h.service.RollbackPending(r.Context(), principal(r), chi.URLParam(r, "request_id")); err != nil {
+				WriteError(w, r, err)
+				return
+			}
+			w.WriteHeader(204)
+		})
+		r.Post("/requests/{request_id}/request-info", func(w http.ResponseWriter, r *http.Request) {
+			var in struct {
+				Note string `json:"note"`
+			}
+			if err := Decode(w, r, &in); err != nil {
+				WriteError(w, r, err)
+				return
+			}
+			result, err := h.service.RequestInfo(r.Context(), principal(r), chi.URLParam(r, "request_id"), in.Note)
 			if err != nil {
 				WriteError(w, r, err)
 				return

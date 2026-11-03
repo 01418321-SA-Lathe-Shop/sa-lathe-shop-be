@@ -139,9 +139,18 @@ func writeFulfillment(ctx context.Context, tx pgx.Tx, actor, id string, in f.Act
 	case "terms":
 		_, e = tx.Exec(ctx, `UPDATE job SET invoice_credit_days=$2,fulfillment_version=fulfillment_version+1 WHERE id=$1`, id, *in.CreditDays)
 	case "invoice":
-		_, e = tx.Exec(ctx, `INSERT INTO invoice(id,job_id,amount,credit_days,issued_at,due_at) SELECT $1,id,balance,invoice_credit_days,t,t+invoice_credit_days*interval '24 hours' FROM job CROSS JOIN (SELECT clock_timestamp() t)x WHERE id=$2`, in.IdempotencyKey, id)
+		if v.CreditDays == nil {
+			if _, e = tx.Exec(ctx, `UPDATE job SET invoice_credit_days=0 WHERE id=$1 AND invoice_credit_days IS NULL`, id); e != nil {
+				return e
+			}
+		}
+		_, e = tx.Exec(ctx, `INSERT INTO invoice(id,job_id,amount,credit_days,issued_at,due_at) SELECT $1,id,balance,COALESCE(invoice_credit_days,0),t,t+COALESCE(invoice_credit_days,0)*interval '24 hours' FROM job CROSS JOIN (SELECT clock_timestamp() t)x WHERE id=$2`, in.IdempotencyKey, id)
 	case "ship":
-		_, e = tx.Exec(ctx, `INSERT INTO delivery(id,job_id,cycle,method,receiver_name) SELECT $1,id,production_cycle,$3,$4 FROM job WHERE id=$2`, in.IdempotencyKey, id, in.Method, in.ReceiverName)
+		shippingCost := "0.00"
+		if in.ShippingCost != nil {
+			shippingCost = in.ShippingCost.String()
+		}
+		_, e = tx.Exec(ctx, `INSERT INTO delivery(id,job_id,cycle,method,shipping_cost,receiver_name) SELECT $1,id,production_cycle,$3,$4,$5 FROM job WHERE id=$2`, in.IdempotencyKey, id, in.Method, shippingCost, in.ReceiverName)
 	case "accept", "return":
 		last := v.Deliveries[len(v.Deliveries)-1]
 		status := "delivered"

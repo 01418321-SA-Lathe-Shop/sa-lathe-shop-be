@@ -3,6 +3,7 @@ package demoworkflow
 import (
 	"context"
 	"crypto/sha256"
+	"embed"
 	"fmt"
 	"net/http"
 	"time"
@@ -10,6 +11,9 @@ import (
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/auth"
 	"github.com/google/uuid"
 )
+
+//go:embed assets/*.pdf
+var seedPDFs embed.FS
 
 type Report struct {
 	Reused    bool              `json:"reused"`
@@ -121,10 +125,13 @@ func (r *Runner) command(ctx context.Context, key, actor, method, path string, s
 	}
 	return r.step(ctx, key, actor, method, path, body, true, nil)
 }
-func (r *Runner) document(ctx context.Context, key, actor, path, prefix, text string) (Object, error) {
-	name := "TEST-" + key + ".txt"
-	content := "DEMO / TEST ONLY - NOT A REAL ORDER OR PAYMENT\n" + text + "\n"
-	body := Object{"file_name": name, "content_type": "text/plain", "byte_size": len([]byte(content)), "sha256": fmt.Sprintf("%x", sha256.Sum256([]byte(content)))}
+func (r *Runner) document(ctx context.Context, key, actor, path, prefix, _ string) (Object, error) {
+	name := key + ".pdf"
+	content, err := seedPDFs.ReadFile("assets/" + name)
+	if err != nil || len(content) < 8 || string(content[:5]) != "%PDF-" {
+		return nil, ErrGuard
+	}
+	body := Object{"file_name": name, "content_type": "application/pdf", "byte_size": len(content), "sha256": fmt.Sprintf("%x", sha256.Sum256(content))}
 	return r.step(ctx, key, actor, "UPLOAD", path, body, false, func() (Object, error) {
 		return r.api.upload(ctx, actor, path, prefix, name, content)
 	})

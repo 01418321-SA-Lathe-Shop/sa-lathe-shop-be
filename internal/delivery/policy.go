@@ -12,7 +12,7 @@ func CanApply(v State, in Action) error {
 			return ErrConflict
 		}
 	case "invoice":
-		if v.JobStatus != "completed" || v.Invoice != nil || v.CreditDays == nil {
+		if v.JobStatus != "completed" || v.Invoice != nil {
 			return ErrConflict
 		}
 	case "ship":

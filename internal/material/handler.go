@@ -39,6 +39,15 @@ func (h *Handler) Routes(r chi.Router, authenticate func(http.Handler) http.Hand
 			v, err := h.service.CreateUnit(r.Context(), actor(r), in)
 			respond(w, r, v, err)
 		})
+		r.Patch("/units/{unit_id}", func(w http.ResponseWriter, r *http.Request) {
+			var in UnitInput
+			if err := req.Decode(w, r, &in); err != nil {
+				writeError(w, r, err)
+				return
+			}
+			v, err := h.service.UpdateUnit(r.Context(), actor(r), chi.URLParam(r, "unit_id"), in)
+			respond(w, r, v, err)
+		})
 		r.Get("/units", func(w http.ResponseWriter, r *http.Request) {
 			v, err := h.service.Units(r.Context(), actor(r))
 			respond(w, r, map[string]any{"items": v}, err)
@@ -99,6 +108,15 @@ func (h *Handler) Routes(r chi.Router, authenticate func(http.Handler) http.Hand
 				return
 			}
 			v, err := h.service.CreateConversion(r.Context(), actor(r), chi.URLParam(r, "material_id"), in)
+			respond(w, r, v, err)
+		})
+		r.Patch("/materials/{material_id}/conversions/{conversion_id}", func(w http.ResponseWriter, r *http.Request) {
+			var in ConversionUpdate
+			if err := req.Decode(w, r, &in); err != nil {
+				writeError(w, r, err)
+				return
+			}
+			v, err := h.service.UpdateConversion(r.Context(), actor(r), chi.URLParam(r, "material_id"), chi.URLParam(r, "conversion_id"), in)
 			respond(w, r, v, err)
 		})
 		r.Post("/materials/{material_id}/conversions/{conversion_id}/deactivate", func(w http.ResponseWriter, r *http.Request) {

@@ -20,8 +20,9 @@ type ReceiptLine struct {
 }
 type ReceiptInput struct {
 	Command
-	Note  string        `json:"note"`
-	Lines []ReceiptLine `json:"lines"`
+	Note          string        `json:"note"`
+	PaymentStatus string        `json:"payment_status,omitempty"`
+	Lines         []ReceiptLine `json:"lines"`
 }
 type ClaimInput struct {
 	Command

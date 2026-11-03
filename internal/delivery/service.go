@@ -76,10 +76,13 @@ func (s *Service) Issue(ctx context.Context, a auth.Account, id string, in Comma
 }
 func (s *Service) Ship(ctx context.Context, a auth.Account, id string, in ShipInput) (State, error) {
 	in.ReceiverName = strings.TrimSpace(in.ReceiverName)
-	if (in.Method != "self" && in.Method != "third_party") || !validation.Text(in.ReceiverName, 1, 200) {
+	if (in.Method != "self" && in.Method != "third_party" && in.Method != "pickup") || !validation.Text(in.ReceiverName, 1, 200) {
 		return State{}, req.ErrInvalidInput
 	}
-	return s.apply(ctx, a, id, "staff", Action{Command: in.Command, Kind: "ship", Method: in.Method, ReceiverName: in.ReceiverName})
+	if in.Method == "pickup" && in.ShippingCost != nil && in.ShippingCost.String() != "0.00" {
+		return State{}, req.ErrInvalidInput
+	}
+	return s.apply(ctx, a, id, "staff", Action{Command: in.Command, Kind: "ship", Method: in.Method, ShippingCost: in.ShippingCost, ReceiverName: in.ReceiverName})
 }
 func (s *Service) Inspect(ctx context.Context, a auth.Account, id string, in InspectInput) (State, error) {
 	in.Reason = strings.TrimSpace(in.Reason)

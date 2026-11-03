@@ -34,6 +34,27 @@ The initial Admin account cannot be created via public HTTP. It is bootstrapped 
 ```
 For non-interactive setup, environment variables `BOOTSTRAP_ADMIN_USERNAME`, `BOOTSTRAP_ADMIN_NAME`, and `BOOTSTRAP_ADMIN_PASSWORD` can be provided.
 
+### Admin levels and UC12 Add Admin (2026-11-03, owner approved)
+Admins have a level: `admin` or `super_admin` (`admin.admin_level`, migration 000020).
+The bootstrap command creates a Super Admin. Migration 000020 makes the earliest
+existing Admin (by account creation time) the Super Admin and leaves the others as
+regular Admins. Account responses, including `/auth/me` and login, carry
+`is_super_admin` (false for every non-Admin).
+
+Only an active Super Admin may use the endpoints below; regular Admins and other
+roles get 403. Created Admins are always regular Admins with the same username,
+name, password and required contact rules as Workers (contacts are non-unique). There
+is no promotion to Super Admin and no adoption of an existing person or account. A
+Super Admin can deactivate or reactivate regular Admins only; any Super Admin target,
+including the caller, returns 403, so a Super Admin always remains. Deactivation
+revokes the target's sessions. Regular Admins keep every other Admin permission.
+
+| Method | Path | Permission | Description |
+|---|---|---|---|
+| `GET` | `/admin/admins` | Super Admin | List all Admins, oldest first, with `email`, `phone`, `is_super_admin` |
+| `POST` | `/admin/admins` | Super Admin | Create a regular Admin: `{username, password, name, email, phone}` (HTTP 201) |
+| `PATCH` | `/admin/admins/{account_id}` | Super Admin | `{is_active}` only; deactivate or reactivate a regular Admin |
+
 ---
 
 ## 2. Worker Management API

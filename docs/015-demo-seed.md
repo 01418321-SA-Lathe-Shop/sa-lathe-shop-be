@@ -3,7 +3,7 @@
 Update 2026-10-29: representative workflow/private-document fixtures are now
 implemented as a separate explicitly enabled command. See
 [017-demo-workflows.md](017-demo-workflows.md). Identity seeding remains
-account-only; clean migration13 or14 is supported. Workflow seeding needs14.
+account-only; clean migration13 through17 is supported. Current workflow v2 seeding needs17.
 Earlier S0-S3 verification records below describe the account-only scope at
 that time, not a prohibition on the later owner-authorized workflow command.
 

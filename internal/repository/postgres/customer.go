@@ -19,7 +19,33 @@ func (d *Database) RegisterCustomer(ctx context.Context, in auth.CustomerRegistr
 	defer tx.Rollback(ctx)
 	a := in.Account
 	a.Role = auth.RoleCustomer
-	_, err = tx.Exec(ctx, `INSERT INTO person(id,name) VALUES($1,$2)`, a.PersonID, a.Name)
+	// H-01 (UC1 Q1.E1): Check duplicate person by phone/email or duplicate company tax_id when supplied.
+	if in.Phone != "" || in.Email != "" {
+		var dup bool
+		if err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM person p WHERE ($1<>'' AND p.phone=$1) OR ($2<>'' AND lower(p.email)=lower($2)))`, in.Phone, in.Email).Scan(&dup); err != nil {
+			return auth.Account{}, authError(err)
+		}
+		if dup {
+			return auth.Account{}, auth.ErrConflict
+		}
+	}
+	if in.TaxID != "" {
+		var dupTax bool
+		if err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM customer c WHERE c.tax_id=$1)`, in.TaxID).Scan(&dupTax); err != nil {
+			return auth.Account{}, authError(err)
+		}
+		if dupTax {
+			return auth.Account{}, auth.ErrConflict
+		}
+	}
+	var phonePtr, emailPtr *string
+	if in.Phone != "" {
+		phonePtr = &in.Phone
+	}
+	if in.Email != "" {
+		emailPtr = &in.Email
+	}
+	_, err = tx.Exec(ctx, `INSERT INTO person(id,name,phone,email) VALUES($1,$2,$3,$4)`, a.PersonID, a.Name, phonePtr, emailPtr)
 	if err != nil {
 		return auth.Account{}, authError(err)
 	}
@@ -37,12 +63,14 @@ func (d *Database) RegisterCustomer(ctx context.Context, in auth.CustomerRegistr
 			name = in.CompanyName
 		}
 		// The sign-up address also fills the billing address used on printed documents.
-		_, err = tx.Exec(ctx, `INSERT INTO customer(id,customer_type,name,billing_address) VALUES($1,$2,$3,$4)`, in.CustomerID, in.Type, name, in.Address)
+		_, err = tx.Exec(ctx, `INSERT INTO customer(id,customer_type,name,billing_address,tax_id,billing_phone,billing_email) VALUES($1,$2,$3,$4,$5,$6,$7)`,
+			in.CustomerID, in.Type, name, in.Address, in.TaxID, in.Phone, in.Email)
 		if err != nil {
 			return auth.Account{}, authError(err)
 		}
 		if in.Address != "" {
-			_, err = tx.Exec(ctx, `INSERT INTO customer_address(id,customer_id,address,created_by) VALUES($1,$2,$3,$4)`, uuid.NewString(), in.CustomerID, in.Address, a.ID)
+			_, err = tx.Exec(ctx, `INSERT INTO customer_address(id,customer_id,address,address_line1,address_line2,district,province,postal_code,is_default,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+				uuid.NewString(), in.CustomerID, in.Address, in.AddressLine1, in.AddressLine2, in.District, in.Province, in.PostalCode, in.IsDefault, a.ID)
 			if err != nil {
 				return auth.Account{}, authError(err)
 			}
@@ -133,7 +161,7 @@ func (d *Database) CustomerAddresses(ctx context.Context, accountID, customerID 
 	if !member {
 		return nil, auth.ErrForbidden
 	}
-	rows, err := d.identityQueries().Query(ctx, `SELECT id::text,address,created_at FROM customer_address WHERE customer_id=$1 ORDER BY created_at,id`, customerID)
+	rows, err := d.identityQueries().Query(ctx, `SELECT id::text,address,address_line1,address_line2,district,province,postal_code,is_default,created_at FROM customer_address WHERE customer_id=$1 ORDER BY is_default DESC,created_at,id`, customerID)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +169,7 @@ func (d *Database) CustomerAddresses(ctx context.Context, accountID, customerID 
 	result := make([]auth.CustomerAddress, 0)
 	for rows.Next() {
 		var v auth.CustomerAddress
-		if err = rows.Scan(&v.ID, &v.Address, &v.CreatedAt); err != nil {
+		if err = rows.Scan(&v.ID, &v.Address, &v.AddressLine1, &v.AddressLine2, &v.District, &v.Province, &v.PostalCode, &v.IsDefault, &v.CreatedAt); err != nil {
 			return nil, err
 		}
 		result = append(result, v)
@@ -149,13 +177,31 @@ func (d *Database) CustomerAddresses(ctx context.Context, accountID, customerID 
 	return result, rows.Err()
 }
 func (d *Database) AddCustomerAddress(ctx context.Context, accountID, customerID string, in auth.CustomerAddress) (auth.CustomerAddress, error) {
-	err := d.identityQueries().QueryRow(ctx, `INSERT INTO customer_address(id,customer_id,address,created_by)
- SELECT $3,$2,$4,$1 WHERE `+activeCustomerMember+` AND m.is_owner) RETURNING created_at`, accountID, customerID, in.ID, in.Address).Scan(&in.CreatedAt)
-	if errors.Is(err, pgx.ErrNoRows) {
+	tx, err := d.identityBegin(ctx)
+	if err != nil {
+		return auth.CustomerAddress{}, err
+	}
+	defer tx.Rollback(ctx)
+	var owner bool
+	if err = tx.QueryRow(ctx, `SELECT `+activeCustomerMember+` AND m.is_owner)`, accountID, customerID).Scan(&owner); err != nil {
+		return auth.CustomerAddress{}, err
+	}
+	if !owner {
 		return auth.CustomerAddress{}, auth.ErrForbidden
 	}
+	if in.IsDefault {
+		if _, err = tx.Exec(ctx, `UPDATE customer_address SET is_default=false WHERE customer_id=$1`, customerID); err != nil {
+			return auth.CustomerAddress{}, authError(err)
+		}
+		if _, err = tx.Exec(ctx, `UPDATE customer SET billing_address=$2 WHERE id=$1`, customerID, in.Address); err != nil {
+			return auth.CustomerAddress{}, authError(err)
+		}
+	}
+	err = tx.QueryRow(ctx, `INSERT INTO customer_address(id,customer_id,address,address_line1,address_line2,district,province,postal_code,is_default,created_by)
+ VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING created_at`,
+		in.ID, customerID, in.Address, in.AddressLine1, in.AddressLine2, in.District, in.Province, in.PostalCode, in.IsDefault, accountID).Scan(&in.CreatedAt)
 	if err != nil {
 		return auth.CustomerAddress{}, authError(err)
 	}
-	return in, nil
+	return in, tx.Commit(ctx)
 }

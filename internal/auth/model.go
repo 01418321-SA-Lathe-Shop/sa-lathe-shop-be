@@ -27,6 +27,7 @@ type Account struct {
 	Name         string    `json:"name"`
 	Role         string    `json:"role"`
 	Active       bool      `json:"is_active"`
+	SuperAdmin   bool      `json:"is_super_admin"`
 	PasswordHash string    `json:"-"`
 	CreatedAt    time.Time `json:"created_at"`
 }
@@ -36,6 +37,19 @@ type Worker struct {
 	Phone      *string `json:"phone"`
 	EmployeeNo string  `json:"employee_no"`
 	Position   string  `json:"position"`
+	HiredAt    string  `json:"hired_at,omitempty"`
+}
+type Admin struct {
+	Account
+	Email *string `json:"email"`
+	Phone *string `json:"phone"`
+}
+type AdminInput struct {
+	Email    string `json:"email"`
+	Phone    string `json:"phone"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+	Name     string `json:"name"`
 }
 type Session struct {
 	ID        string
@@ -52,9 +66,9 @@ type LoginResult struct {
 	Account     Account   `json:"account"`
 }
 type NewStaff struct {
-	Account              Account
-	EmployeeNo, Position string
-	Email, Phone         string
+	Account                       Account
+	EmployeeNo, Position, HiredAt string
+	Email, Phone                  string
 }
 type WorkerInput struct {
 	Email      string `json:"email"`
@@ -64,6 +78,7 @@ type WorkerInput struct {
 	Name       string `json:"name"`
 	EmployeeNo string `json:"employee_no"`
 	Position   string `json:"position"`
+	HiredAt    string `json:"hired_at,omitempty"`
 }
 type WorkerUpdate struct {
 	Email      *string `json:"email,omitempty"`
@@ -73,12 +88,13 @@ type WorkerUpdate struct {
 	Name       *string `json:"name,omitempty"`
 	EmployeeNo *string `json:"employee_no,omitempty"`
 	Position   *string `json:"position,omitempty"`
+	HiredAt    *string `json:"hired_at,omitempty"`
 	Active     *bool   `json:"is_active,omitempty"`
 }
 
 // WorkerChanges is validated service input, not an HTTP DTO.
 type WorkerChanges struct {
-	Email, Phone                                       *string
-	Username, Name, EmployeeNo, Position, PasswordHash *string
-	Active                                             *bool
+	Email, Phone                                                *string
+	Username, Name, EmployeeNo, Position, HiredAt, PasswordHash *string
+	Active                                                      *bool
 }

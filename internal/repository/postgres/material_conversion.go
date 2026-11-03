@@ -123,6 +123,31 @@ func (d *Database) CreateConversion(ctx context.Context, actor, material string,
 	}
 	return value, tx.Commit(ctx)
 }
+func (d *Database) UpdateConversion(ctx context.Context, actor, material, id string, in m.ConversionUpdate) (m.Conversion, error) {
+	tx, err := d.pool.Begin(ctx)
+	if err != nil {
+		return m.Conversion{}, err
+	}
+	defer tx.Rollback(ctx)
+	if err = inventoryActor(ctx, tx, actor, "admin"); err != nil {
+		return m.Conversion{}, err
+	}
+	tag, err := tx.Exec(ctx, `UPDATE unit_conversion SET factor=$3 WHERE material_id=$1 AND id=$2 AND is_active`, material, id, in.Factor.String())
+	if err != nil {
+		return m.Conversion{}, inventoryError(err)
+	}
+	if tag.RowsAffected() == 0 {
+		if _, err := readConversion(ctx, tx, material, id); err != nil {
+			return m.Conversion{}, err
+		}
+		return m.Conversion{}, m.ErrConflict
+	}
+	value, err := readConversion(ctx, tx, material, id)
+	if err != nil {
+		return value, err
+	}
+	return value, tx.Commit(ctx)
+}
 
 // A repeated deactivation returns the original record, so a lost response is safe to retry.
 func (d *Database) DeactivateConversion(ctx context.Context, actor, material, id string) (m.Conversion, error) {

@@ -10,11 +10,12 @@ import (
 )
 
 var _ req.Repository = (*Database)(nil)
+var _ req.OptionalRepository = (*Database)(nil)
 
-const requestFields = `r.id::text,r.no_request,r.customer_id::text,r.created_by::text,r.description,r.qty,r.material_spec,r.deadline,r.source,r.status,r.created_at`
+const requestFields = `r.id::text,r.no_request,r.customer_id::text,r.created_by::text,r.description,r.qty,r.material_spec,r.deadline,r.source,r.status,r.info_request_note,r.info_requested_at,r.created_at`
 
 func requestTargets(r *req.Request) []any {
-	return []any{&r.ID, &r.Number, &r.CustomerID, &r.CreatedBy, &r.Description, &r.Quantity, &r.MaterialSpec, &r.Deadline, &r.Source, &r.Status, &r.CreatedAt}
+	return []any{&r.ID, &r.Number, &r.CustomerID, &r.CreatedBy, &r.Description, &r.Quantity, &r.MaterialSpec, &r.Deadline, &r.Source, &r.Status, &r.InfoRequestNote, &r.InfoRequestedAt, &r.CreatedAt}
 }
 func (d *Database) Create(ctx context.Context, r req.Request) (req.Request, error) {
 	tx, err := d.pool.Begin(ctx)
@@ -68,4 +69,68 @@ func (d *Database) ListRequests(ctx context.Context, accountID string, limit, of
 		result = append(result, r)
 	}
 	return result, rows.Err()
+}
+
+// DeletePending rolls back a newly created pending request when initial attachment upload fails (UC1 Except-Step 5 / Q1.E3).
+func (d *Database) DeletePending(ctx context.Context, accountID, id string) error {
+	tx, err := d.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	var status, createdBy string
+	var hasQuote bool
+	err = tx.QueryRow(ctx, `SELECT r.status,r.created_by::text,EXISTS(SELECT 1 FROM quotation q WHERE q.request_id=r.id)
+ FROM job_request r WHERE r.id=$2 AND `+accessibleRequest+` FOR UPDATE OF r`, accountID, id).Scan(&status, &createdBy, &hasQuote)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return req.ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+	if createdBy != accountID {
+		return req.ErrForbidden
+	}
+	if status != "pending" || hasQuote {
+		return req.ErrConflict
+	}
+	if _, err = tx.Exec(ctx, `DELETE FROM request_attachment WHERE request_id=$1`, id); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, `DELETE FROM notification WHERE request_id=$1`, id); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, `DELETE FROM outbox WHERE request_id=$1`, id); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, `DELETE FROM job_request WHERE id=$1`, id); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// RequestInfo records a Worker request for more information on a pending or ongoing request (UC2 Alt-Step 5).
+func (d *Database) RequestInfo(ctx context.Context, accountID, id, note string) (req.Request, error) {
+	tx, err := d.pool.Begin(ctx)
+	if err != nil {
+		return req.Request{}, err
+	}
+	defer tx.Rollback(ctx)
+	var r req.Request
+	err = tx.QueryRow(ctx, `UPDATE job_request AS r SET info_request_note=$3,info_requested_at=clock_timestamp(),edited_at=clock_timestamp()
+ WHERE r.id=$2 AND r.status IN ('pending','ongoing')
+ AND EXISTS(SELECT 1 FROM account a WHERE a.id=$1 AND a.is_active AND a.role='worker')
+ RETURNING `+requestFields, accountID, id, note).Scan(requestTargets(&r)...)
+	if errors.Is(err, pgx.ErrNoRows) {
+		var exists bool
+		_ = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM job_request WHERE id=$1)`, id).Scan(&exists)
+		if !exists {
+			return req.Request{}, req.ErrNotFound
+		}
+		return req.Request{}, req.ErrConflict
+	}
+	if err != nil {
+		return req.Request{}, err
+	}
+	return r, tx.Commit(ctx)
 }

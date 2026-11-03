@@ -64,8 +64,8 @@ func (d *Database) startReceiving(ctx context.Context, actor, id string, c r.Com
 	}
 	return tx, v, false, financial, payload, nil
 }
-func finishReceiving(ctx context.Context, tx pgx.Tx, actor, id string, c r.Command, action string, payload []byte, status string, credit *int, financial bool) (r.State, error) {
-	_, err := tx.Exec(ctx, `UPDATE material_order SET version=version+1,status=$2,credit_days=COALESCE(credit_days,$3::integer),full_received_at=CASE WHEN $2='received' THEN COALESCE(full_received_at,clock_timestamp()) ELSE full_received_at END WHERE id=$1`, id, status, credit)
+func finishReceiving(ctx context.Context, tx pgx.Tx, actor, id string, c r.Command, action string, payload []byte, status string, credit *int, paymentStatus string, financial bool) (r.State, error) {
+	_, err := tx.Exec(ctx, `UPDATE material_order SET version=version+1,status=$2,credit_days=COALESCE(credit_days,$3::integer),payment_status=COALESCE(NULLIF($4,''),payment_status),full_received_at=CASE WHEN $2 IN ('received','damaged') THEN COALESCE(full_received_at,clock_timestamp()) ELSE full_received_at END WHERE id=$1`, id, status, credit, paymentStatus)
 	if err != nil {
 		return r.State{}, procurementError(err)
 	}
@@ -95,7 +95,7 @@ func (d *Database) SetCredit(ctx context.Context, actor, id string, in r.CreditI
 	if v.Finance.CreditDays != nil {
 		return v, r.ErrConflict
 	}
-	return finishReceiving(ctx, tx, actor, id, in.Command, "credit_terms", payload, v.Status, in.Days, financial)
+	return finishReceiving(ctx, tx, actor, id, in.Command, "credit_terms", payload, v.Status, in.Days, "", financial)
 }
 func (d *Database) ClaimReplacement(ctx context.Context, actor, id, claimID string, in r.ClaimInput) (r.State, error) {
 	input := struct {
@@ -117,7 +117,7 @@ func (d *Database) ClaimReplacement(ctx context.Context, actor, id, claimID stri
 	if tag.RowsAffected() != 1 {
 		return v, r.ErrConflict
 	}
-	return finishReceiving(ctx, tx, actor, id, in.Command, "claim", payload, v.Status, nil, financial)
+	return finishReceiving(ctx, tx, actor, id, in.Command, "claim", payload, v.Status, nil, "", financial)
 }
 func (d *Database) SettleSupplier(ctx context.Context, actor, id string, in r.SettlementInput) (r.State, error) {
 	tx, v, replay, financial, payload, err := d.startReceiving(ctx, actor, id, in.Command, "settle", in, true)
@@ -128,7 +128,7 @@ func (d *Database) SettleSupplier(ctx context.Context, actor, id string, in r.Se
 	if replay {
 		return v, tx.Commit(ctx)
 	}
-	if v.Status != "received" || v.Finance.CreditDays == nil || v.Finance.Settlement != nil {
+	if (v.Status != "received" && v.Status != "partially_received" && v.Status != "damaged") || v.Finance.Settlement != nil {
 		return v, r.ErrConflict
 	}
 	var evidence any
@@ -139,5 +139,10 @@ func (d *Database) SettleSupplier(ctx context.Context, actor, id string, in r.Se
 	if err != nil {
 		return v, procurementError(err)
 	}
-	return finishReceiving(ctx, tx, actor, id, in.Command, "settle", payload, v.Status, nil, financial)
+	var defaultCredit *int
+	if v.Finance.CreditDays == nil {
+		zero := 0
+		defaultCredit = &zero
+	}
+	return finishReceiving(ctx, tx, actor, id, in.Command, "settle", payload, v.Status, defaultCredit, "paid", financial)
 }

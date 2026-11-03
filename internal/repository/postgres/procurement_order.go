@@ -52,7 +52,7 @@ func (d *Database) PlaceOrder(ctx context.Context, actor string, in p.OrderInput
 		return p.Order{}, err
 	}
 	defer tx.Rollback(ctx)
-	if err = inventoryActor(ctx, tx, actor, "admin"); err != nil {
+	if err = inventoryActor(ctx, tx, actor, "staff"); err != nil {
 		return p.Order{}, err
 	}
 	command, err := json.Marshal(struct {
@@ -128,7 +128,7 @@ func (d *Database) ActOnOrder(ctx context.Context, actor, id string, in p.Action
 		return p.Order{}, err
 	}
 	defer tx.Rollback(ctx)
-	if err = inventoryActor(ctx, tx, actor, "admin"); err != nil {
+	if err = inventoryActor(ctx, tx, actor, "staff"); err != nil {
 		return p.Order{}, err
 	}
 	command, err := json.Marshal(struct {

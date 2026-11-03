@@ -2,6 +2,8 @@ package auth
 
 import (
 	"context"
+	"fmt"
+	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/platform/validation"
 	"strings"
 	"time"
 
@@ -12,10 +14,19 @@ type Registration struct {
 	Username     string `json:"username"`
 	Password     string `json:"password"`
 	Name         string `json:"name"`
+	Phone        string `json:"phone,omitempty"`
+	Email        string `json:"email,omitempty"`
 	CustomerType string `json:"customer_type"`
 	CompanyName  string `json:"company_name,omitempty"`
+	TaxID        string `json:"tax_id,omitempty"`
 	Invitation   string `json:"invitation,omitempty"`
 	Address      string `json:"address,omitempty"`
+	AddressLine1 string `json:"address_line1,omitempty"`
+	AddressLine2 string `json:"address_line2,omitempty"`
+	District     string `json:"district,omitempty"`
+	Province     string `json:"province,omitempty"`
+	PostalCode   string `json:"postal_code,omitempty"`
+	IsDefault    *bool  `json:"is_default,omitempty"`
 }
 type CustomerProfile struct {
 	ID    string `json:"id"`
@@ -24,14 +35,23 @@ type CustomerProfile struct {
 	Owner bool   `json:"is_owner"`
 }
 type CustomerRegistration struct {
-	Account                                Account
-	CustomerID, Type, CompanyName, Address string
-	InvitationHash                         []byte
+	Account                                                            Account
+	CustomerID, Type, CompanyName, Address                             string
+	Phone, Email, TaxID                                                string
+	AddressLine1, AddressLine2, District, Province, PostalCode         string
+	IsDefault                                                          bool
+	InvitationHash                                                     []byte
 }
 type CustomerAddress struct {
-	ID        string    `json:"id"`
-	Address   string    `json:"address"`
-	CreatedAt time.Time `json:"created_at"`
+	ID           string    `json:"id"`
+	Address      string    `json:"address"`
+	AddressLine1 string    `json:"address_line1,omitempty"`
+	AddressLine2 string    `json:"address_line2,omitempty"`
+	District     string    `json:"district,omitempty"`
+	Province     string    `json:"province,omitempty"`
+	PostalCode   string    `json:"postal_code,omitempty"`
+	IsDefault    bool      `json:"is_default"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 type Invitation struct {
 	ID, CustomerID, CreatedBy string
@@ -56,6 +76,38 @@ type CustomerService struct {
 func NewCustomerService(repo CustomerRepository, hasher PasswordHasher) *CustomerService {
 	return &CustomerService{repo: repo, hasher: hasher}
 }
+
+func normalizeStructuredAddress(address, line1, line2, district, province, postalCode string) (string, string, string, string, string, string, error) {
+	address = strings.TrimSpace(address)
+	line1 = strings.TrimSpace(line1)
+	line2 = strings.TrimSpace(line2)
+	district = strings.TrimSpace(district)
+	province = strings.TrimSpace(province)
+	postalCode = strings.TrimSpace(postalCode)
+	hasStructured := line1 != "" || line2 != "" || district != "" || province != "" || postalCode != ""
+	if hasStructured {
+		if !validation.Text(line1, 1, 300) || !validation.Text(line2, 0, 300) ||
+			!validation.Text(district, 1, 150) || !validation.Text(province, 1, 150) ||
+			!postalCodePattern.MatchString(postalCode) {
+			return "", "", "", "", "", "", fmt.Errorf("%w: structured address requires address_line1, district, province and 5-digit postal_code", ErrInvalidInput)
+		}
+		if address == "" {
+			parts := []string{line1}
+			if line2 != "" {
+				parts = append(parts, line2)
+			}
+			parts = append(parts, district, province, postalCode)
+			address = strings.Join(parts, " ")
+		}
+	}
+	if address != "" {
+		if err := validateAddress(address); err != nil {
+			return "", "", "", "", "", "", err
+		}
+	}
+	return address, line1, line2, district, province, postalCode, nil
+}
+
 func (s *CustomerService) Register(ctx context.Context, in Registration) (Account, error) {
 	username, err := normalizeUsername(in.Username)
 	if err != nil {
@@ -83,15 +135,30 @@ func (s *CustomerService) Register(ctx context.Context, in Registration) (Accoun
 			return Account{}, err
 		}
 	}
-	// Invitation joins use the company's existing addresses.
-	address := strings.TrimSpace(in.Address)
-	if in.Invitation != "" && address != "" {
-		return Account{}, ErrInvalidInput
-	}
-	if address != "" {
-		if err = validateAddress(address); err != nil {
+	var phone, email string
+	if strings.TrimSpace(in.Phone) != "" {
+		phone, err = normalizePhone(in.Phone)
+		if err != nil {
 			return Account{}, err
 		}
+	}
+	if strings.TrimSpace(in.Email) != "" {
+		email, err = normalizeEmail(in.Email)
+		if err != nil {
+			return Account{}, err
+		}
+	}
+	taxID := strings.TrimSpace(in.TaxID)
+	if taxID != "" && !validation.Text(taxID, 1, 30) {
+		return Account{}, ErrInvalidInput
+	}
+	// Invitation joins use the company's existing addresses.
+	address, line1, line2, district, province, postalCode, err := normalizeStructuredAddress(in.Address, in.AddressLine1, in.AddressLine2, in.District, in.Province, in.PostalCode)
+	if err != nil {
+		return Account{}, err
+	}
+	if in.Invitation != "" && address != "" {
+		return Account{}, ErrInvalidInput
 	}
 	var invitationHash []byte
 	if in.Invitation != "" {
@@ -104,7 +171,27 @@ func (s *CustomerService) Register(ctx context.Context, in Registration) (Accoun
 	if err != nil {
 		return Account{}, err
 	}
-	a, err := s.repo.RegisterCustomer(ctx, CustomerRegistration{Account: Account{ID: uuid.NewString(), PersonID: uuid.NewString(), Username: username, Name: name, Role: RoleCustomer, Active: true, PasswordHash: hash}, CustomerID: uuid.NewString(), Type: in.CustomerType, CompanyName: company, Address: address, InvitationHash: invitationHash})
+	isDefault := true
+	if in.IsDefault != nil {
+		isDefault = *in.IsDefault
+	}
+	a, err := s.repo.RegisterCustomer(ctx, CustomerRegistration{
+		Account:        Account{ID: uuid.NewString(), PersonID: uuid.NewString(), Username: username, Name: name, Role: RoleCustomer, Active: true, PasswordHash: hash},
+		CustomerID:     uuid.NewString(),
+		Type:           in.CustomerType,
+		CompanyName:    company,
+		Address:        address,
+		Phone:          phone,
+		Email:          email,
+		TaxID:          taxID,
+		AddressLine1:   line1,
+		AddressLine2:   line2,
+		District:       district,
+		Province:       province,
+		PostalCode:     postalCode,
+		IsDefault:      isDefault,
+		InvitationHash: invitationHash,
+	})
 	a.PasswordHash = ""
 	return a, err
 }
@@ -153,15 +240,30 @@ func (s *CustomerService) Addresses(ctx context.Context, a Account, customerID s
 	return s.repo.CustomerAddresses(ctx, a.ID, customerID)
 }
 func (s *CustomerService) AddAddress(ctx context.Context, a Account, customerID, address string) (CustomerAddress, error) {
+	return s.AddStructuredAddress(ctx, a, customerID, CustomerAddress{Address: address})
+}
+func (s *CustomerService) AddStructuredAddress(ctx context.Context, a Account, customerID string, in CustomerAddress) (CustomerAddress, error) {
 	if !a.Active || a.Role != RoleCustomer {
 		return CustomerAddress{}, ErrForbidden
 	}
 	if err := validateID(customerID); err != nil {
 		return CustomerAddress{}, err
 	}
-	address = strings.TrimSpace(address)
-	if err := validateAddress(address); err != nil {
-		return CustomerAddress{}, err
+	address, line1, line2, district, province, postalCode, err := normalizeStructuredAddress(in.Address, in.AddressLine1, in.AddressLine2, in.District, in.Province, in.PostalCode)
+	if err != nil || address == "" {
+		if err != nil {
+			return CustomerAddress{}, err
+		}
+		return CustomerAddress{}, ErrInvalidInput
 	}
-	return s.repo.AddCustomerAddress(ctx, a.ID, customerID, CustomerAddress{ID: uuid.NewString(), Address: address})
+	return s.repo.AddCustomerAddress(ctx, a.ID, customerID, CustomerAddress{
+		ID:           uuid.NewString(),
+		Address:      address,
+		AddressLine1: line1,
+		AddressLine2: line2,
+		District:     district,
+		Province:     province,
+		PostalCode:   postalCode,
+		IsDefault:    in.IsDefault,
+	})
 }

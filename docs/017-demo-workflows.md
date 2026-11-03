@@ -1,12 +1,57 @@
 # Real-backend workflow testing data
 
-Owner authorized representative local workflow data on 2026-10-29. This extends
-the six accounts; it does not replace frontend mock mode, add accounts or alter
-UC1-UC9 rules. No production or original `sa_lathe_shop` data is targeted.
+## Local realistic dataset refresh (2026-11-03)
+
+The owner requested replacement of all visible sample business data and actual
+PDF files. The active local API was connected to `sa_lathe_shop_seed_test`, not
+`sa_lathe_shop_demo`. A verified custom-format backup of that test database was
+saved outside the repository before it was recreated. This removed the prior v1
+and v2 fixture rows and four tester-entered placeholder requests. The original
+`sa_lathe_shop` database was untouched and contained no business rows.
+The inactive `sa_lathe_shop_demo` was separately backed up, cleared of its old
+v1 sample and migrated empty to schema19; the active API still uses
+`sa_lathe_shop_seed_test`.
+
+The refreshed active test database is clean schema19 with six newly seeded
+local-test accounts and a completed `workflows-v2` run. It contains 11 Thai
+manufacturing requests, 6 jobs, 3 material orders and 2 invoices. The fixture
+uploads 20 item-specific, valid, private PDFs: 11 work specifications, 5 customer
+POs, 3 deposit notices and 1 balance-payment notice. Every PDF has a proper PDF
+structure and Thai text; its metadata is `application/pdf` and its ready object
+was downloaded through the API's signed private URL and parsed successfully.
+There are no TXT request attachments in the refreshed database. Payment
+notices are clearly labelled as simulated records and are not bank-issued slips.
+The fixture also saves the shop profile, both customer billing profiles,
+both customer addresses,
+quotation validity/notes and the structured details of all five customer POs
+through the new printed-document APIs introduced by migration17.
+The final local run completed 151 guarded API steps and verified all 20 private
+PDF downloads against the embedded source files byte for byte.
+The fixture PDFs are embedded under `internal/demoworkflow/assets/` so future
+local/test runs do not depend on a separate file server. The normal fixture
+command remains additive and never resets a database by itself. The one-time
+database recreation was a separate owner-authorized local operation backed up
+outside source control. The newly generated account passwords are stored in a
+private local file, outside the repository; password-free local-test login stays
+available while explicitly enabled.
+
+The PDF source is `scripts/generate-workflow-pdfs.py`. To revise a document,
+install ReportLab in a local Python environment and point
+`LATHE_SEED_THAI_FONT` at a Noto Sans Thai TTF before running that script.
+Review the regenerated pages visually and run the Go/PDF checks before
+publishing the changed assets. The embedded documents are synthetic and
+must not be presented as genuine bank or supplier issued documents.
+
+Owner authorized representative local workflow data on 2026-10-29 and an
+additional populated UI dataset on 2026-10-31. This extends the six accounts;
+it does not restore frontend browser mocks, add accounts or alter UC1-UC9 rules.
+No production or original `sa_lathe_shop` data is targeted.
 
 ## Scenarios
 
-All request descriptions start `[DEMO rN]`; catalog/suppliers use `DEMO` names.
+The current additive fixture is `workflows-v2`; request descriptions are
+item-specific Thai production names. It can coexist
+with a completed `workflows-v1` run, which remains immutable and is never reset.
 Deadline dates are real future instants relative to the first seed run, not
 backdated audit events. Nida and Ploy share the company; Somchai is isolated.
 
@@ -27,21 +72,33 @@ backdated audit events. Nida and Ploy share the company; Somchai is isolated.
 | o2 | Admin/Worker | S45C20 accepted: good15/damaged5; replacement claim submitted, no payment |
 | o3 | Admin/Worker | AL6061 10 fully received, 14-day credit, unpaid |
 
-Totals: 11 requests, 11 quotations (including the r3 revision), 6 jobs,
+`workflows-v2` adds 11 requests, 11 quotations (including the r3 revision), 6 jobs,
 5 customer PO submissions, 3 deposits, 2 invoices, 2 customer balance payments,
 3 units, 6 materials, 3 suppliers, 3 supplier orders, 2 receipts and 1 claim.
-There are 20 actual private test documents: 11 specifications, 5 POs,
-3 deposit proofs and 1 balance-payment proof. These are supported TXT files,
-clearly labelled DEMO / TEST ONLY, not real bank receipts, production drawings
-or rendered invoice/PO PDFs. Signed downloads open the actual stored files.
+There are 20 actual private PDF documents: 11 specifications, 5 customer POs,
+3 deposit notices and 1 balance-payment notice. Signed downloads open the
+actual stored PDF files. Quotation and invoice records remain structured system
+data; this fixture does not add stored PDF exports for those records.
+On a local demo database that already contains `workflows-v1`, applying v2 adds
+this entire set without adopting, editing or deleting the earlier fixture or
+tester-created records.
+
+On 2026-10-31 the guarded local `sa_lathe_shop_demo` database was migrated through
+schema17 and `workflows-v2` completed all 141 real API steps. The
+existing incomplete v1 journal remained untouched. This local execution added
+the full totals above; it did not reset any existing business record. A
+read-only verification then passed all 141 recorded steps, private-document
+checks, company isolation, Worker finance redaction, inventory reconciliation,
+receiving states and pending/settled customer-payment states.
 
 ## Safety and ownership
 
 - Explicit CLI only; never called by API/worker startup. No new HTTP endpoint.
 - Requires existing account provenance, an active matching identity manifest,
   loopback API/S3 origins, guarded local/test DB URL/name and opt-ins below.
-- Requires clean migration14. Account seeding accepts clean13 or14; no schema
-  change to business rules or demo login. Migration14 adds only an operation journal.
+- Requires clean migration19. Account seeding accepts clean13 through19; no schema
+  change to business rules or demo login. Migration14 adds the operation journal;
+  migration19 only permits the separately owned `workflows-v2` journal key.
 - Repository validates actual DB, then login checks all six real API account UUIDs
   against that DB; wrong-target/name matches are never adopted.
 - Session advisory lock permits only one workflow seed process per DB. Normal
@@ -77,7 +134,7 @@ go run ./cmd/seed-demo-workflows apply
 go run ./cmd/seed-demo-workflows verify
 ```
 
-Operator prerequisites: migrate the dedicated demo DB through14; seed accounts;
+Operator prerequisites: migrate the dedicated demo DB through19; seed accounts;
 API uses the same DB and `LOCAL_TEST_ACCOUNT_ENABLE=true`; private S3 is ready
 and its browser/signed origin matches SEED_WORKFLOW_S3_ORIGIN; worker runs with
 LINE disabled. No seed passwords are needed for this workflow command.

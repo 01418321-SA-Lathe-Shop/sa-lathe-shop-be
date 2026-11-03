@@ -42,6 +42,14 @@ func (s *Service) Submit(ctx context.Context, p Principal, input Input) (Request
 	}
 	input.Description = strings.TrimSpace(input.Description)
 	input.MaterialSpec = strings.TrimSpace(input.MaterialSpec)
+	source := strings.TrimSpace(input.Source)
+	if source == "" {
+		source = "net"
+	}
+	if source != "net" && source != "phone" && source != "line" {
+		return Request{}, ErrInvalidInput
+	}
+	input.Source = source
 	if !validID(input.CustomerID) || !validation.Text(input.Description, 1, MaxDescriptionCharacters) ||
 		!validation.Text(input.MaterialSpec, 0, MaxMaterialSpecCharacters) || input.Quantity <= 0 {
 		return Request{}, ErrInvalidInput
@@ -57,7 +65,7 @@ func (s *Service) Submit(ctx context.Context, p Principal, input Input) (Request
 	// A customer's requested deadline is not a guaranteed production delivery date.
 	// Quotation/Deposit/PO deadlines belong to later use cases.
 	value := Request{ID: uuid.NewString(), CreatedBy: p.AccountID, Input: input,
-		Source: "net", Status: "pending", CreatedAt: now}
+		Source: source, Status: "pending", CreatedAt: now}
 	return s.repo.Create(ctx, value)
 }
 
@@ -85,4 +93,35 @@ func (s *Service) List(ctx context.Context, p Principal, limit, offset int) ([]R
 		return nil, ErrInvalidInput
 	}
 	return s.repo.ListRequests(ctx, p.AccountID, limit, offset)
+}
+
+// RollbackPending deletes a newly created pending request when initial attachment upload fails (UC1 Except-Step 5 / Q1.E3).
+func (s *Service) RollbackPending(ctx context.Context, p Principal, id string) error {
+	if !validPrincipal(p) {
+		return ErrForbidden
+	}
+	if !validID(id) {
+		return ErrInvalidInput
+	}
+	opt, ok := s.repo.(OptionalRepository)
+	if !ok {
+		return ErrForbidden
+	}
+	return opt.DeletePending(ctx, p.AccountID, id)
+}
+
+// RequestInfo records a Worker request for additional customer details (UC2 Alt-Step 5).
+func (s *Service) RequestInfo(ctx context.Context, p Principal, id, note string) (Request, error) {
+	if !p.Active || !validID(p.AccountID) || p.Role != "worker" {
+		return Request{}, ErrForbidden
+	}
+	note = strings.TrimSpace(note)
+	if !validID(id) || !validation.Text(note, 1, 2000) {
+		return Request{}, ErrInvalidInput
+	}
+	opt, ok := s.repo.(OptionalRepository)
+	if !ok {
+		return Request{}, ErrForbidden
+	}
+	return opt.RequestInfo(ctx, p.AccountID, id, note)
 }

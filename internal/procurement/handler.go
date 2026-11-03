@@ -25,7 +25,7 @@ func respond(w http.ResponseWriter, r *http.Request, v any, err error) {
 }
 func (h *Handler) Routes(r chi.Router, authenticate func(http.Handler) http.Handler) {
 	r.Group(func(r chi.Router) {
-		r.Use(authenticate, auth.RequireRole(auth.RoleAdmin))
+		r.Use(authenticate, auth.RequireRole(auth.RoleAdmin, auth.RoleWorker))
 		r.Use(func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Cache-Control", "no-store")
@@ -57,6 +57,19 @@ func (h *Handler) Routes(r chi.Router, authenticate func(http.Handler) http.Hand
 				return
 			}
 			v, err := h.service.Suppliers(r.Context(), auth.CurrentAccount(r.Context()), r.URL.Query().Get("search"), limit, offset)
+			respond(w, r, map[string]any{"items": v}, err)
+		})
+		r.Get("/suppliers/recommendations", func(w http.ResponseWriter, r *http.Request) {
+			v, err := h.service.RecommendSuppliers(
+				r.Context(),
+				auth.CurrentAccount(r.Context()),
+				r.URL.Query().Get("material_id"),
+				r.URL.Query().Get("exclude_supplier_id"),
+			)
+			respond(w, r, map[string]any{"items": v}, err)
+		})
+		r.Get("/material-orders/shortages", func(w http.ResponseWriter, r *http.Request) {
+			v, err := h.service.Shortages(r.Context(), auth.CurrentAccount(r.Context()))
 			respond(w, r, map[string]any{"items": v}, err)
 		})
 		r.Post("/material-orders", func(w http.ResponseWriter, r *http.Request) {

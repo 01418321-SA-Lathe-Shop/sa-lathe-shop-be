@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strings"
 )
 
 func (c *client) status(ctx context.Context, actor, path string) (int, error) {
@@ -41,7 +40,7 @@ func (c *client) checkDocument(ctx context.Context, actor, path string) error {
 	}
 	data, e := io.ReadAll(io.LimitReader(res.Body, 4096))
 	res.Body.Close()
-	if e != nil || res.StatusCode != 200 || !strings.Contains(string(data), "DEMO / TEST ONLY") {
+	if e != nil || res.StatusCode != 200 || len(data) < 5 || string(data[:5]) != "%PDF-" {
 		return fmt.Errorf("demo document content verification failed")
 	}
 	u.RawQuery = ""
@@ -128,7 +127,7 @@ func (r *Runner) verify(ctx context.Context, initial bool) error {
 		}
 	}
 	if initial {
-		stock, e := r.get(ctx, admin, "/materials?search=DEMO&limit=100")
+		stock, e := r.get(ctx, admin, "/materials?search=S45C&limit=100")
 		if e != nil {
 			return e
 		}
@@ -137,7 +136,7 @@ func (r *Runner) verify(ctx context.Context, initial bool) error {
 			if str(m, "id") == str(results["material-S45C"], "id") {
 				found = true
 			}
-			if str(m, "id") == str(results["material-S45C"], "id") && (str(m, "qty_on_hand") != "105.000000" || str(m, "qty_reserved") != "8.000000" || str(m, "avg_cost") != "100.000000") {
+			if str(m, "id") == str(results["material-S45C"], "id") && (str(m, "qty_on_hand") != "109.000000" || str(m, "qty_reserved") != "8.000000" || str(m, "avg_cost") != "100.000000") {
 				return fmt.Errorf("initial stock reconciliation mismatch")
 			}
 		}

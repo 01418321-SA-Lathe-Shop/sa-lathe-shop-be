@@ -6,6 +6,7 @@ import (
 	"time"
 
 	q "github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/quotation"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -123,6 +124,21 @@ func (d *Database) DecideQuotation(ctx context.Context, actor, id string, in q.D
 	}
 	if terms := result.Terms; terms != nil {
 		_, err = tx.Exec(ctx, `INSERT INTO quotation_acceptance_terms(quotation_id,customer_type,final_price,deposit_required,po_required,deposit_amount,accepted_at,documents_due_at) VALUES($1,$2,$3::numeric,$4,$5,$6::numeric,$7,$8)`, id, kind, terms.FinalPrice.String(), terms.DepositRequired, terms.PORequired, terms.DepositAmount.String(), terms.AcceptedAt, terms.DocumentsDueAt)
+		if err != nil {
+			return q.Decision{}, quoteError(err)
+		}
+	}
+	// M-03 (UC3 Except-Step 1b / Q3.5): When rejected and not yet canceled, auto-create the next draft revision in the same transaction.
+	if in.Outcome == "reject" && nextStatus == "ongoing" {
+		nextDraftID := uuid.NewString()
+		_, err = tx.Exec(ctx, `INSERT INTO quotation(id,request_id,version,previous_quotation_id,status,created_by,edited_by,created_at,edited_at,valid_until,notes)
+ VALUES($1,$2,$3,$4,'draft',$5,$5,$6,$6,$7::date,$8)`,
+			nextDraftID, requestID, value.Version+1, id, value.CreatedBy, now, value.ValidUntil, value.Notes)
+		if err != nil {
+			return q.Decision{}, quoteError(err)
+		}
+		_, err = tx.Exec(ctx, `INSERT INTO quotation_cost(quotation_id,material_cost,labor_cost,final_price) VALUES($1,$2::numeric,$3::numeric,$4::numeric)`,
+			nextDraftID, value.MaterialCost.String(), value.LaborCost.String(), value.FinalPrice.String())
 		if err != nil {
 			return q.Decision{}, quoteError(err)
 		}

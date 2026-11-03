@@ -47,6 +47,10 @@ func (d *Database) ExpireUnfulfilled(ctx context.Context) (int, error) {
 			return 0, err
 		}
 		if tag.RowsAffected() == 1 {
+			// M-04 (UC4 Except-Step 2 / Q4.E2): Also mark the quotation rejected on 14-day expiry.
+			if _, err = tx.Exec(ctx, `UPDATE quotation SET status='rejected',edited_at=clock_timestamp(),lock_version=lock_version+1 WHERE id=$1`, t.quote); err != nil {
+				return 0, err
+			}
 			if _, err = tx.Exec(ctx, `INSERT INTO uc4_cancellation(quotation_id,request_id) VALUES($1,$2)`, t.quote, t.request); err != nil {
 				return 0, err
 			}

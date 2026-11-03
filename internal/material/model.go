@@ -113,8 +113,12 @@ type ConversionInput struct {
 	UnitID string   `json:"unit_id"`
 	Factor *Decimal `json:"factor"`
 }
+type ConversionUpdate struct {
+	Factor *Decimal `json:"factor"`
+}
 type Repository interface {
 	CreateUnit(context.Context, string, UnitInput) (Unit, error)
+	UpdateUnit(context.Context, string, string, UnitInput) (Unit, error)
 	ListUnits(context.Context, string) ([]Unit, error)
 	CreateMaterial(context.Context, string, MaterialInput) (Material, error)
 	UpdateMaterial(context.Context, string, string, MaterialUpdate) (Material, error)
@@ -125,5 +129,6 @@ type Repository interface {
 	GetPlan(context.Context, string, string) (Plan, error)
 	ListConversions(context.Context, string, string) ([]Conversion, error)
 	CreateConversion(context.Context, string, string, ConversionInput) (Conversion, error)
+	UpdateConversion(context.Context, string, string, string, ConversionUpdate) (Conversion, error)
 	DeactivateConversion(context.Context, string, string, string) (Conversion, error)
 }
