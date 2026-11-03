@@ -28,6 +28,7 @@ The existing README.md has been preserved exactly.
 - [System analysis digest](docs/018-system-analysis.md)
 - [Source report to backend traceability](docs/019-source-traceability.md)
 - [Printed document details](docs/020-printed-documents.md)
+- [ER diagram vs implemented schema](docs/021-er-schema-comparison.md)
 - [Architecture and open questions](AGENTS.md)
 - [Phased plan](PLAN.md)
 
