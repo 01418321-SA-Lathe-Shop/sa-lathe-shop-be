@@ -30,11 +30,22 @@ func (h *Handler) Authenticate(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), accountKey{}, account)))
 	})
 }
-func RequireRole(role string) func(http.Handler) http.Handler {
+func RequireRole(roles ...string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			a := CurrentAccount(r.Context())
-			if !a.Active || a.Role != role {
+			if !a.Active {
+				writeAuthError(w, r, ErrForbidden)
+				return
+			}
+			matched := false
+			for _, role := range roles {
+				if a.Role == role {
+					matched = true
+					break
+				}
+			}
+			if !matched {
 				writeAuthError(w, r, ErrForbidden)
 				return
 			}

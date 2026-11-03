@@ -7,12 +7,15 @@ import (
 	"net/mail"
 	"regexp"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 )
 
 var usernamePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_.-]{2,63}$`)
 var employeePattern = regexp.MustCompile(`^[A-Z0-9][A-Z0-9_.-]{0,29}$`)
+var postalCodePattern = regexp.MustCompile(`^[0-9]{5}$`)
+var bangkokZone = time.FixedZone("Asia/Bangkok", 7*3600)
 
 func normalizeEmail(s string) (string, error) {
 	s = strings.TrimSpace(s)
@@ -87,6 +90,21 @@ func validatePosition(s string) error {
 		return fmt.Errorf("%w: position must be at most 100 characters", ErrInvalidInput)
 	}
 	return nil
+}
+func validateHiredAt(s string) (string, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return time.Now().In(bangkokZone).Format(time.DateOnly), nil
+	}
+	parsed, err := time.ParseInLocation(time.DateOnly, s, bangkokZone)
+	if err != nil {
+		return "", fmt.Errorf("%w: hired_at must be a valid YYYY-MM-DD date", ErrInvalidInput)
+	}
+	today := time.Now().In(bangkokZone).Format(time.DateOnly)
+	if parsed.Format(time.DateOnly) > today {
+		return "", fmt.Errorf("%w: hired_at must not be in the future", ErrInvalidInput)
+	}
+	return parsed.Format(time.DateOnly), nil
 }
 func validateID(s string) error {
 	if _, err := uuid.Parse(s); err != nil || len(s) != 36 {

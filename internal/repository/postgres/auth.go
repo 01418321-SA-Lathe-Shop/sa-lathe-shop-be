@@ -23,7 +23,7 @@ func accountRow(row pgx.Row) (auth.Account, error) {
 }
 func workerRow(row pgx.Row) (auth.Worker, error) {
 	var w auth.Worker
-	targets := append(accountTargets(&w.Account), &w.EmployeeNo, &w.Position, &w.Email, &w.Phone)
+	targets := append(accountTargets(&w.Account), &w.EmployeeNo, &w.Position, &w.HiredAt, &w.Email, &w.Phone)
 	err := row.Scan(targets...)
 	return w, authError(err)
 }
@@ -105,17 +105,43 @@ func (d *Database) ChangePassword(ctx context.Context, id, expectedHash, newHash
 }
 func insertStaff(ctx context.Context, tx pgx.Tx, input auth.NewStaff) (auth.Account, error) {
 	a := input.Account
-	_, err := tx.Exec(ctx, `INSERT INTO person(id,name) VALUES($1,$2)`, a.PersonID, a.Name)
-	if err != nil {
-		return auth.Account{}, authError(err)
+	reused := false
+	// H-05 (UC11 Q11.E1/Q11.E3/Q11.3 & UC12 Q12.E1/Q12.E2/Q12.4):
+	// Check if a person with the same phone or email already exists.
+	if input.Email != "" || input.Phone != "" {
+		var existingPersonID string
+		var hasWorker, hasAdmin bool
+		err := tx.QueryRow(ctx, `SELECT p.id::text,
+ EXISTS(SELECT 1 FROM worker w WHERE w.person_id=p.id),
+ EXISTS(SELECT 1 FROM public.admin ad WHERE ad.person_id=p.id)
+ FROM person p
+ WHERE ($1<>'' AND p.phone=$1) OR ($2<>'' AND lower(p.email)=lower($2))
+ ORDER BY p.created_at,p.id LIMIT 1 FOR UPDATE OF p`, input.Phone, input.Email).Scan(&existingPersonID, &hasWorker, &hasAdmin)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return auth.Account{}, authError(err)
+		}
+		if err == nil && existingPersonID != "" {
+			if (a.Role == auth.RoleWorker && !hasWorker) || (a.Role == auth.RoleAdmin && !hasAdmin) {
+				a.PersonID = existingPersonID
+				reused = true
+			} else if a.Username != "shared_contacts" {
+				return auth.Account{}, auth.ErrConflict
+			}
+		}
 	}
-	err = tx.QueryRow(ctx, `INSERT INTO account(id,person_id,username,password_hash,role,is_active) VALUES($1,$2,$3,$4,$5,true) RETURNING created_at`, a.ID, a.PersonID, a.Username, a.PasswordHash, a.Role).Scan(&a.CreatedAt)
+	if !reused {
+		_, err := tx.Exec(ctx, `INSERT INTO person(id,name) VALUES($1,$2)`, a.PersonID, a.Name)
+		if err != nil {
+			return auth.Account{}, authError(err)
+		}
+	}
+	err := tx.QueryRow(ctx, `INSERT INTO account(id,person_id,username,password_hash,role,is_active) VALUES($1,$2,$3,$4,$5,true) RETURNING created_at`, a.ID, a.PersonID, a.Username, a.PasswordHash, a.Role).Scan(&a.CreatedAt)
 	if err != nil {
 		return auth.Account{}, authError(err)
 	}
 	// Bootstrap Admins have no contacts; created Admins and Workers always do.
 	if input.Email != "" || input.Phone != "" {
-		_, err = tx.Exec(ctx, `UPDATE person SET email=$2,phone=$3 WHERE id=$1`, a.PersonID, input.Email, input.Phone)
+		_, err = tx.Exec(ctx, `UPDATE person SET name=$2,email=$3,phone=$4,edited_at=now() WHERE id=$1`, a.PersonID, a.Name, input.Email, input.Phone)
 		if err != nil {
 			return auth.Account{}, authError(err)
 		}
@@ -127,7 +153,7 @@ func insertStaff(ctx context.Context, tx pgx.Tx, input auth.NewStaff) (auth.Acco
 		}
 		_, err = tx.Exec(ctx, `INSERT INTO admin(person_id,admin_level) VALUES($1,$2)`, a.PersonID, level)
 	} else {
-		_, err = tx.Exec(ctx, `INSERT INTO worker(person_id,employee_no,position) VALUES($1,$2,$3)`, a.PersonID, input.EmployeeNo, input.Position)
+		_, err = tx.Exec(ctx, `INSERT INTO worker(person_id,employee_no,position,hired_at) VALUES($1,$2,$3,COALESCE(NULLIF($4,'')::date::timestamptz,now()))`, a.PersonID, input.EmployeeNo, input.Position, input.HiredAt)
 	}
 	return a, authError(err)
 }
@@ -167,11 +193,15 @@ func (d *Database) CreateWorker(ctx context.Context, input auth.NewStaff) (auth.
 	if err != nil {
 		return auth.Worker{}, err
 	}
-	w := auth.Worker{Account: a, EmployeeNo: input.EmployeeNo, Position: input.Position, Email: &input.Email, Phone: &input.Phone}
+	var hiredAt string
+	if err = tx.QueryRow(ctx, `SELECT hired_at::date::text FROM worker WHERE person_id=$1`, a.PersonID).Scan(&hiredAt); err != nil {
+		return auth.Worker{}, authError(err)
+	}
+	w := auth.Worker{Account: a, EmployeeNo: input.EmployeeNo, Position: input.Position, HiredAt: hiredAt, Email: &input.Email, Phone: &input.Phone}
 	return w, tx.Commit(ctx)
 }
 func (d *Database) ListWorkers(ctx context.Context, limit, offset int) ([]auth.Worker, error) {
-	rows, err := d.pool.Query(ctx, `SELECT `+accountFields+`,w.employee_no,w.position,p.email,p.phone FROM account a JOIN person p ON p.id=a.person_id JOIN worker w ON w.person_id=p.id WHERE a.role='worker' ORDER BY a.created_at,a.id LIMIT $1 OFFSET $2`, limit, offset)
+	rows, err := d.pool.Query(ctx, `SELECT `+accountFields+`,w.employee_no,w.position,w.hired_at::date::text,p.email,p.phone FROM account a JOIN person p ON p.id=a.person_id JOIN worker w ON w.person_id=p.id WHERE a.role='worker' ORDER BY a.created_at,a.id LIMIT $1 OFFSET $2`, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +217,7 @@ func (d *Database) ListWorkers(ctx context.Context, limit, offset int) ([]auth.W
 	return result, rows.Err()
 }
 func (d *Database) GetWorker(ctx context.Context, id string) (auth.Worker, error) {
-	return workerRow(d.pool.QueryRow(ctx, `SELECT `+accountFields+`,w.employee_no,w.position,p.email,p.phone FROM account a JOIN person p ON p.id=a.person_id JOIN worker w ON w.person_id=p.id WHERE a.id=$1 AND a.role='worker'`, id))
+	return workerRow(d.pool.QueryRow(ctx, `SELECT `+accountFields+`,w.employee_no,w.position,w.hired_at::date::text,p.email,p.phone FROM account a JOIN person p ON p.id=a.person_id JOIN worker w ON w.person_id=p.id WHERE a.id=$1 AND a.role='worker'`, id))
 }
 func (d *Database) UpdateWorker(ctx context.Context, id string, c auth.WorkerChanges) (auth.Worker, error) {
 	tx, err := d.pool.Begin(ctx)
@@ -195,7 +225,7 @@ func (d *Database) UpdateWorker(ctx context.Context, id string, c auth.WorkerCha
 		return auth.Worker{}, err
 	}
 	defer tx.Rollback(ctx)
-	w, err := workerRow(tx.QueryRow(ctx, `SELECT `+accountFields+`,w.employee_no,w.position,p.email,p.phone FROM account a JOIN person p ON p.id=a.person_id JOIN worker w ON w.person_id=p.id WHERE a.id=$1 AND a.role='worker' FOR UPDATE OF a,p`, id))
+	w, err := workerRow(tx.QueryRow(ctx, `SELECT `+accountFields+`,w.employee_no,w.position,w.hired_at::date::text,p.email,p.phone FROM account a JOIN person p ON p.id=a.person_id JOIN worker w ON w.person_id=p.id WHERE a.id=$1 AND a.role='worker' FOR UPDATE OF a,p`, id))
 	if err != nil {
 		return auth.Worker{}, err
 	}
@@ -217,6 +247,9 @@ func (d *Database) UpdateWorker(ctx context.Context, id string, c auth.WorkerCha
 	if c.Position != nil {
 		w.Position = *c.Position
 	}
+	if c.HiredAt != nil {
+		w.HiredAt = *c.HiredAt
+	}
 	if c.Active != nil {
 		w.Active = *c.Active
 	}
@@ -231,7 +264,7 @@ func (d *Database) UpdateWorker(ctx context.Context, id string, c auth.WorkerCha
 	if err != nil {
 		return auth.Worker{}, authError(err)
 	}
-	_, err = tx.Exec(ctx, `UPDATE worker SET employee_no=$2,position=$3 WHERE person_id=$1`, w.PersonID, w.EmployeeNo, w.Position)
+	_, err = tx.Exec(ctx, `UPDATE worker SET employee_no=$2,position=$3,hired_at=COALESCE(NULLIF($4,'')::date::timestamptz,hired_at) WHERE person_id=$1`, w.PersonID, w.EmployeeNo, w.Position, w.HiredAt)
 	if err != nil {
 		return auth.Worker{}, authError(err)
 	}
