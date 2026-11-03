@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/auth"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -35,9 +36,16 @@ func (d *Database) RegisterCustomer(ctx context.Context, in auth.CustomerRegistr
 		if in.Type == "company" {
 			name = in.CompanyName
 		}
-		_, err = tx.Exec(ctx, `INSERT INTO customer(id,customer_type,name) VALUES($1,$2,$3)`, in.CustomerID, in.Type, name)
+		// The sign-up address also fills the billing address used on printed documents.
+		_, err = tx.Exec(ctx, `INSERT INTO customer(id,customer_type,name,billing_address) VALUES($1,$2,$3,$4)`, in.CustomerID, in.Type, name, in.Address)
 		if err != nil {
 			return auth.Account{}, authError(err)
+		}
+		if in.Address != "" {
+			_, err = tx.Exec(ctx, `INSERT INTO customer_address(id,customer_id,address,created_by) VALUES($1,$2,$3,$4)`, uuid.NewString(), in.CustomerID, in.Address, a.ID)
+			if err != nil {
+				return auth.Account{}, authError(err)
+			}
 		}
 		_, err = tx.Exec(ctx, `INSERT INTO customer_member(customer_id,account_id,is_owner) VALUES($1,$2,true)`, in.CustomerID, a.ID)
 		if err != nil {
@@ -113,4 +121,41 @@ func (d *Database) AcceptInvitation(ctx context.Context, accountID string, hash 
 		return err
 	}
 	return tx.Commit(ctx)
+}
+
+const activeCustomerMember = `EXISTS(SELECT 1 FROM customer_member m JOIN account a ON a.id=m.account_id WHERE m.customer_id=$2 AND m.account_id=$1 AND a.is_active AND a.role='customer'`
+
+func (d *Database) CustomerAddresses(ctx context.Context, accountID, customerID string) ([]auth.CustomerAddress, error) {
+	var member bool
+	if err := d.identityQueries().QueryRow(ctx, `SELECT `+activeCustomerMember+`)`, accountID, customerID).Scan(&member); err != nil {
+		return nil, err
+	}
+	if !member {
+		return nil, auth.ErrForbidden
+	}
+	rows, err := d.identityQueries().Query(ctx, `SELECT id::text,address,created_at FROM customer_address WHERE customer_id=$1 ORDER BY created_at,id`, customerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	result := make([]auth.CustomerAddress, 0)
+	for rows.Next() {
+		var v auth.CustomerAddress
+		if err = rows.Scan(&v.ID, &v.Address, &v.CreatedAt); err != nil {
+			return nil, err
+		}
+		result = append(result, v)
+	}
+	return result, rows.Err()
+}
+func (d *Database) AddCustomerAddress(ctx context.Context, accountID, customerID string, in auth.CustomerAddress) (auth.CustomerAddress, error) {
+	err := d.identityQueries().QueryRow(ctx, `INSERT INTO customer_address(id,customer_id,address,created_by)
+ SELECT $3,$2,$4,$1 WHERE `+activeCustomerMember+` AND m.is_owner) RETURNING created_at`, accountID, customerID, in.ID, in.Address).Scan(&in.CreatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return auth.CustomerAddress{}, auth.ErrForbidden
+	}
+	if err != nil {
+		return auth.CustomerAddress{}, authError(err)
+	}
+	return in, nil
 }

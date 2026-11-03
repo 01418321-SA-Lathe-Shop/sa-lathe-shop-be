@@ -4,9 +4,9 @@
 
 - [x] Compare the supplied data dictionary with the live backend schema and identify the active API database.
 - [x] Back up the active `sa_lathe_shop_seed_test` before replacing its old fixture and placeholder rows.
-- [x] Recreate only that local test database at schema18, seed six login accounts, and apply 11 realistic request workflows through real APIs.
+- [x] Recreate only that local test database at schema19, seed six login accounts, and apply 11 realistic request workflows through real APIs.
 - [x] Replace all fixture TXT uploads with 20 item-specific PDF files; verify every private stored file by signed download and PDF parsing.
-- [x] Confirm 149 API workflow steps: 11 requests, 6 jobs, 3 material orders, 2 invoices, shop profile, 2 billing profiles, 5 customer PO details, no old DEMO/placeholder requests, and zero TXT attachments.
+- [x] Confirm 151 API workflow steps: 11 requests, 6 jobs, 3 material orders, 2 invoices, shop profile, 2 billing profiles, 2 customer addresses, 5 customer PO details, no old DEMO/placeholder requests, and zero TXT attachments.
 
 The original `sa_lathe_shop` database was not changed. A separate inactive
 `sa_lathe_shop_demo` remains outside the active UI path. The attached data
@@ -17,8 +17,8 @@ are regenerated and stored in a private local file outside source control.
 Quotation/invoice PDF export is still a separate feature; their records are
 structured database data, while the documents attached in this fixture are
 real PDFs. The latest develop branch's printed-document migration was merged as
-000017; the workflow fixture permission migration follows as 000018. Shop
-profile, customer billing, quotation print fields and customer PO details are
+000017; customer addresses follow as 000018 and the workflow fixture permission
+migration as 000019. Shop profile, customer billing, quotation print fields, customer addresses and customer PO details are
 now populated through their APIs before the documents are printed. See
 docs/017-demo-workflows.md.
 
@@ -560,3 +560,10 @@ Known gap: based on the schema, routes and docs; not every write path was read, 
 - [ ] Shop logo upload: not built; attachments are tied to requests.
 
 Verification: `go build`, `go vet` and `go test ./...` pass. On the local demo DB, 000017 ran up, down and up, and every new endpoint was exercised over real HTTP. Repository integration suites were not run. See `docs/020-printed-documents.md`.
+
+### Customer addresses at sign-up — done
+- [x] Migration 000018: `customer_address` (one or more per customer); existing non-empty billing addresses are copied.
+- [x] `POST /auth/register` requires `address` for a new individual or company customer and rejects it with an invitation; the address also fills `billing_address`. Seed and service callers may still omit it.
+- [x] `GET` / `POST /customers/{customer_id}/addresses`: members read, owner adds.
+- [x] Demo seed and workflow guards accept schema version 18.
+- [ ] Editing, removing or labelling addresses, and choosing one on documents or deliveries: to be defined.

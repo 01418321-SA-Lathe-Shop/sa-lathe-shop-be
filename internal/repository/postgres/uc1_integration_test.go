@@ -112,7 +112,11 @@ func TestUC1Integration(t *testing.T) {
 	}
 	register := func(username, kind, company, invite string) auth.LoginResult {
 		t.Helper()
-		call("POST", "/auth/register", "", auth.Registration{Username: username, Name: username, Password: password, CustomerType: kind, CompanyName: company, Invitation: invite}, 201)
+		address := ""
+		if invite == "" {
+			address = "1 Test Road, Bangkok"
+		}
+		call("POST", "/auth/register", "", auth.Registration{Username: username, Name: username, Password: password, CustomerType: kind, CompanyName: company, Invitation: invite, Address: address}, 201)
 		return login(username)
 	}
 	owner := register("company_owner", "company", "Example Company", "")
@@ -136,6 +140,21 @@ func TestUC1Integration(t *testing.T) {
 		t.Fatal("failed invitation left an orphan person")
 	}
 	outsider := register("outside_customer", "individual", "", "")
+	call("POST", "/auth/register", "", auth.Registration{Username: "no_address", Name: "No Address", Password: password, CustomerType: "individual"}, 400)
+	var addresses struct {
+		Items []auth.CustomerAddress `json:"items"`
+	}
+	decode(call("GET", "/customers/"+companyID+"/addresses", coworker.AccessToken, nil, 200), &addresses)
+	if len(addresses.Items) != 1 || addresses.Items[0].Address != "1 Test Road, Bangkok" {
+		t.Fatal("sign-up address not recorded")
+	}
+	call("POST", "/customers/"+companyID+"/addresses", owner.AccessToken, map[string]string{"address": "2 Warehouse Road"}, 201)
+	call("POST", "/customers/"+companyID+"/addresses", coworker.AccessToken, map[string]string{"address": "3 Member Road"}, 403)
+	call("GET", "/customers/"+companyID+"/addresses", outsider.AccessToken, nil, 403)
+	decode(call("GET", "/customers/"+companyID+"/addresses", owner.AccessToken, nil, 200), &addresses)
+	if len(addresses.Items) != 2 || addresses.Items[1].Address != "2 Warehouse Road" {
+		t.Fatal("added address missing")
+	}
 	call("POST", "/customers/"+companyID+"/invitations", coworker.AccessToken, nil, 403)
 	call("POST", "/requests", "", req.Input{CustomerID: companyID, Description: "job", Quantity: 1}, 401)
 	call("POST", "/requests", outsider.AccessToken, req.Input{CustomerID: companyID, Description: "job", Quantity: 1}, 403)

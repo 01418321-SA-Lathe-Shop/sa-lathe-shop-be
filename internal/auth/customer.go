@@ -15,6 +15,7 @@ type Registration struct {
 	CustomerType string `json:"customer_type"`
 	CompanyName  string `json:"company_name,omitempty"`
 	Invitation   string `json:"invitation,omitempty"`
+	Address      string `json:"address,omitempty"`
 }
 type CustomerProfile struct {
 	ID    string `json:"id"`
@@ -23,9 +24,14 @@ type CustomerProfile struct {
 	Owner bool   `json:"is_owner"`
 }
 type CustomerRegistration struct {
-	Account                       Account
-	CustomerID, Type, CompanyName string
-	InvitationHash                []byte
+	Account                                Account
+	CustomerID, Type, CompanyName, Address string
+	InvitationHash                         []byte
+}
+type CustomerAddress struct {
+	ID        string    `json:"id"`
+	Address   string    `json:"address"`
+	CreatedAt time.Time `json:"created_at"`
 }
 type Invitation struct {
 	ID, CustomerID, CreatedBy string
@@ -37,6 +43,8 @@ type CustomerRepository interface {
 	CustomerProfiles(context.Context, string) ([]CustomerProfile, error)
 	SaveInvitation(context.Context, Invitation) error
 	AcceptInvitation(context.Context, string, []byte) error
+	CustomerAddresses(ctx context.Context, accountID, customerID string) ([]CustomerAddress, error)
+	AddCustomerAddress(ctx context.Context, accountID, customerID string, in CustomerAddress) (CustomerAddress, error)
 }
 
 // Separate interface keeps staff mocks and repository consumers unchanged.
@@ -75,6 +83,16 @@ func (s *CustomerService) Register(ctx context.Context, in Registration) (Accoun
 			return Account{}, err
 		}
 	}
+	// Invitation joins use the company's existing addresses.
+	address := strings.TrimSpace(in.Address)
+	if in.Invitation != "" && address != "" {
+		return Account{}, ErrInvalidInput
+	}
+	if address != "" {
+		if err = validateAddress(address); err != nil {
+			return Account{}, err
+		}
+	}
 	var invitationHash []byte
 	if in.Invitation != "" {
 		if !validToken(in.Invitation) {
@@ -86,7 +104,7 @@ func (s *CustomerService) Register(ctx context.Context, in Registration) (Accoun
 	if err != nil {
 		return Account{}, err
 	}
-	a, err := s.repo.RegisterCustomer(ctx, CustomerRegistration{Account: Account{ID: uuid.NewString(), PersonID: uuid.NewString(), Username: username, Name: name, Role: RoleCustomer, Active: true, PasswordHash: hash}, CustomerID: uuid.NewString(), Type: in.CustomerType, CompanyName: company, InvitationHash: invitationHash})
+	a, err := s.repo.RegisterCustomer(ctx, CustomerRegistration{Account: Account{ID: uuid.NewString(), PersonID: uuid.NewString(), Username: username, Name: name, Role: RoleCustomer, Active: true, PasswordHash: hash}, CustomerID: uuid.NewString(), Type: in.CustomerType, CompanyName: company, Address: address, InvitationHash: invitationHash})
 	a.PasswordHash = ""
 	return a, err
 }
@@ -122,4 +140,28 @@ func (s *CustomerService) Join(ctx context.Context, a Account, token string) err
 		return ErrInvalidInput
 	}
 	return s.repo.AcceptInvitation(ctx, a.ID, digest(token))
+}
+
+// Addresses are readable by the customer's members; only the owner adds them.
+func (s *CustomerService) Addresses(ctx context.Context, a Account, customerID string) ([]CustomerAddress, error) {
+	if !a.Active || a.Role != RoleCustomer {
+		return nil, ErrForbidden
+	}
+	if err := validateID(customerID); err != nil {
+		return nil, err
+	}
+	return s.repo.CustomerAddresses(ctx, a.ID, customerID)
+}
+func (s *CustomerService) AddAddress(ctx context.Context, a Account, customerID, address string) (CustomerAddress, error) {
+	if !a.Active || a.Role != RoleCustomer {
+		return CustomerAddress{}, ErrForbidden
+	}
+	if err := validateID(customerID); err != nil {
+		return CustomerAddress{}, err
+	}
+	address = strings.TrimSpace(address)
+	if err := validateAddress(address); err != nil {
+		return CustomerAddress{}, err
+	}
+	return s.repo.AddCustomerAddress(ctx, a.ID, customerID, CustomerAddress{ID: uuid.NewString(), Address: address})
 }

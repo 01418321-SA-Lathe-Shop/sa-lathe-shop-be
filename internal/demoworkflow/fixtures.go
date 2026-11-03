@@ -67,6 +67,9 @@ func (r *Runner) build(ctx context.Context) error {
 		}, false, nil); e != nil {
 			return e
 		}
+		if _, e := r.post(ctx, customer.key+"-address", customer.actor, "/customers/"+profiles[customer.actor]+"/addresses", Object{"address": customer.address}); e != nil {
+			return e
+		}
 	}
 	unitIDs := []string{}
 	for i, name := range []string{"ชิ้น", "กิโลกรัม", "แผ่น"} {
