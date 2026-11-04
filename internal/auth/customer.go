@@ -21,6 +21,7 @@ type Registration struct {
 	TaxID        string `json:"tax_id,omitempty"`
 	Invitation   string `json:"invitation,omitempty"`
 	Address      string `json:"address,omitempty"`
+	ContactName  string `json:"contact_name,omitempty"`
 	AddressLine1 string `json:"address_line1,omitempty"`
 	AddressLine2 string `json:"address_line2,omitempty"`
 	District     string `json:"district,omitempty"`
@@ -39,11 +40,13 @@ type CustomerRegistration struct {
 	CustomerID, Type, CompanyName, Address                             string
 	Phone, Email, TaxID                                                string
 	AddressLine1, AddressLine2, District, Province, PostalCode         string
+	ContactName                                                        string
 	IsDefault                                                          bool
 	InvitationHash                                                     []byte
 }
 type CustomerAddress struct {
 	ID           string    `json:"id"`
+	ContactName  string    `json:"contact_name"`
 	Address      string    `json:"address"`
 	AddressLine1 string    `json:"address_line1,omitempty"`
 	AddressLine2 string    `json:"address_line2,omitempty"`
@@ -65,6 +68,7 @@ type CustomerRepository interface {
 	AcceptInvitation(context.Context, string, []byte) error
 	CustomerAddresses(ctx context.Context, accountID, customerID string) ([]CustomerAddress, error)
 	AddCustomerAddress(ctx context.Context, accountID, customerID string, in CustomerAddress) (CustomerAddress, error)
+	UpdateCustomerAddress(ctx context.Context, accountID, customerID string, in CustomerAddress) (CustomerAddress, error)
 }
 
 // Separate interface keeps staff mocks and repository consumers unchanged.
@@ -157,7 +161,11 @@ func (s *CustomerService) Register(ctx context.Context, in Registration) (Accoun
 	if err != nil {
 		return Account{}, err
 	}
-	if in.Invitation != "" && address != "" {
+	contactName, err := normalizeContactName(in.ContactName)
+	if err != nil {
+		return Account{}, err
+	}
+	if in.Invitation != "" && (address != "" || contactName != "") {
 		return Account{}, ErrInvalidInput
 	}
 	var invitationHash []byte
@@ -181,6 +189,7 @@ func (s *CustomerService) Register(ctx context.Context, in Registration) (Accoun
 		Type:           in.CustomerType,
 		CompanyName:    company,
 		Address:        address,
+		ContactName:    contactName,
 		Phone:          phone,
 		Email:          email,
 		TaxID:          taxID,
@@ -243,6 +252,18 @@ func (s *CustomerService) AddAddress(ctx context.Context, a Account, customerID,
 	return s.AddStructuredAddress(ctx, a, customerID, CustomerAddress{Address: address})
 }
 func (s *CustomerService) AddStructuredAddress(ctx context.Context, a Account, customerID string, in CustomerAddress) (CustomerAddress, error) {
+	in.ID = uuid.NewString()
+	return s.saveAddress(ctx, a, customerID, in, s.repo.AddCustomerAddress)
+}
+
+// UpdateAddress replaces one address's contact and location; owners only, like adding.
+func (s *CustomerService) UpdateAddress(ctx context.Context, a Account, customerID string, in CustomerAddress) (CustomerAddress, error) {
+	if err := validateID(in.ID); err != nil {
+		return CustomerAddress{}, err
+	}
+	return s.saveAddress(ctx, a, customerID, in, s.repo.UpdateCustomerAddress)
+}
+func (s *CustomerService) saveAddress(ctx context.Context, a Account, customerID string, in CustomerAddress, save func(context.Context, string, string, CustomerAddress) (CustomerAddress, error)) (CustomerAddress, error) {
 	if !a.Active || a.Role != RoleCustomer {
 		return CustomerAddress{}, ErrForbidden
 	}
@@ -256,8 +277,13 @@ func (s *CustomerService) AddStructuredAddress(ctx context.Context, a Account, c
 		}
 		return CustomerAddress{}, ErrInvalidInput
 	}
-	return s.repo.AddCustomerAddress(ctx, a.ID, customerID, CustomerAddress{
-		ID:           uuid.NewString(),
+	contactName, err := normalizeContactName(in.ContactName)
+	if err != nil {
+		return CustomerAddress{}, err
+	}
+	return save(ctx, a.ID, customerID, CustomerAddress{
+		ID:           in.ID,
+		ContactName:  contactName,
 		Address:      address,
 		AddressLine1: line1,
 		AddressLine2: line2,
@@ -266,4 +292,13 @@ func (s *CustomerService) AddStructuredAddress(ctx context.Context, a Account, c
 		PostalCode:   postalCode,
 		IsDefault:    in.IsDefault,
 	})
+}
+
+// Contact name is optional (legacy rows and API callers); when given it follows person-name rules.
+func normalizeContactName(s string) (string, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return "", nil
+	}
+	return s, validateName(s)
 }

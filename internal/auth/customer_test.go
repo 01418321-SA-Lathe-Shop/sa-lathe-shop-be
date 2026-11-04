@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -39,6 +40,38 @@ func (f *customerFake) CustomerAddresses(context.Context, string, string) ([]Cus
 func (f *customerFake) AddCustomerAddress(_ context.Context, _, _ string, in CustomerAddress) (CustomerAddress, error) {
 	f.calls++
 	return in, f.err
+}
+func (f *customerFake) UpdateCustomerAddress(_ context.Context, _, _ string, in CustomerAddress) (CustomerAddress, error) {
+	f.calls++
+	return in, f.err
+}
+
+func TestAddressContactName(t *testing.T) {
+	repo := &customerFake{}
+	s := NewCustomerService(repo, customerHasher{})
+	owner := Account{ID: "00000000-0000-4000-8000-000000000001", Role: RoleCustomer, Active: true}
+	customer := "00000000-0000-4000-8000-000000000002"
+	in := CustomerAddress{ContactName: "  คุณวิภา รับของ ", AddressLine1: "9 ถนนเทพารักษ์", District: "บางพลี", Province: "สมุทรปราการ", PostalCode: "10540"}
+	got, err := s.AddStructuredAddress(context.Background(), owner, customer, in)
+	if err != nil || got.ContactName != "คุณวิภา รับของ" || got.ID == "" || got.Address == "" {
+		t.Fatalf("add kept contact %q, err %v", got.ContactName, err)
+	}
+	in.ID = got.ID
+	in.ContactName = "แผนกรับสินค้า"
+	if got, err = s.UpdateAddress(context.Background(), owner, customer, in); err != nil || got.ContactName != "แผนกรับสินค้า" || got.ID != in.ID {
+		t.Fatalf("update: %+v %v", got, err)
+	}
+	in.ContactName = strings.Repeat("ก", 201)
+	if _, err = s.UpdateAddress(context.Background(), owner, customer, in); !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("long contact accepted: %v", err)
+	}
+	in.ContactName, in.ID = "ok", "not-a-uuid"
+	if _, err = s.UpdateAddress(context.Background(), owner, customer, in); !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("bad id accepted: %v", err)
+	}
+	if _, err = s.Register(context.Background(), Registration{Username: "joiner", Password: "a-long-test-password", Name: "Name", CustomerType: "company", Invitation: "token", ContactName: "x"}); !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("invitation join accepted a contact name: %v", err)
+	}
 }
 
 type customerHasher struct{}

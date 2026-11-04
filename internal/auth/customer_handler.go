@@ -55,35 +55,47 @@ func (h *Handler) CustomerRoutes(r chi.Router, service *CustomerService) {
 			}
 			httpserver.JSON(w, 200, map[string]any{"items": items})
 		})
-		r.Post("/customers/{customer_id}/addresses", func(w http.ResponseWriter, r *http.Request) {
-			var in struct {
-				Address      string `json:"address"`
-				AddressLine1 string `json:"address_line1"`
-				AddressLine2 string `json:"address_line2"`
-				District     string `json:"district"`
-				Province     string `json:"province"`
-				PostalCode   string `json:"postal_code"`
-				IsDefault    bool   `json:"is_default"`
+		// POST adds, PUT replaces one address; both take the same body.
+		saveAddress := func(status int, save func(*http.Request, CustomerAddress) (CustomerAddress, error)) http.HandlerFunc {
+			return func(w http.ResponseWriter, r *http.Request) {
+				var in struct {
+					ContactName  string `json:"contact_name"`
+					Address      string `json:"address"`
+					AddressLine1 string `json:"address_line1"`
+					AddressLine2 string `json:"address_line2"`
+					District     string `json:"district"`
+					Province     string `json:"province"`
+					PostalCode   string `json:"postal_code"`
+					IsDefault    bool   `json:"is_default"`
+				}
+				if err := decode(w, r, &in); err != nil {
+					writeAuthError(w, r, err)
+					return
+				}
+				item, err := save(r, CustomerAddress{
+					ContactName:  in.ContactName,
+					Address:      in.Address,
+					AddressLine1: in.AddressLine1,
+					AddressLine2: in.AddressLine2,
+					District:     in.District,
+					Province:     in.Province,
+					PostalCode:   in.PostalCode,
+					IsDefault:    in.IsDefault,
+				})
+				if err != nil {
+					writeAuthError(w, r, err)
+					return
+				}
+				httpserver.JSON(w, status, item)
 			}
-			if err := decode(w, r, &in); err != nil {
-				writeAuthError(w, r, err)
-				return
-			}
-			item, err := service.AddStructuredAddress(r.Context(), CurrentAccount(r.Context()), chi.URLParam(r, "customer_id"), CustomerAddress{
-				Address:      in.Address,
-				AddressLine1: in.AddressLine1,
-				AddressLine2: in.AddressLine2,
-				District:     in.District,
-				Province:     in.Province,
-				PostalCode:   in.PostalCode,
-				IsDefault:    in.IsDefault,
-			})
-			if err != nil {
-				writeAuthError(w, r, err)
-				return
-			}
-			httpserver.JSON(w, 201, item)
-		})
+		}
+		r.Post("/customers/{customer_id}/addresses", saveAddress(201, func(r *http.Request, in CustomerAddress) (CustomerAddress, error) {
+			return service.AddStructuredAddress(r.Context(), CurrentAccount(r.Context()), chi.URLParam(r, "customer_id"), in)
+		}))
+		r.Put("/customers/{customer_id}/addresses/{address_id}", saveAddress(200, func(r *http.Request, in CustomerAddress) (CustomerAddress, error) {
+			in.ID = chi.URLParam(r, "address_id")
+			return service.UpdateAddress(r.Context(), CurrentAccount(r.Context()), chi.URLParam(r, "customer_id"), in)
+		}))
 		r.With(NewLoginLimiter().Middleware).Post("/customers/join", func(w http.ResponseWriter, r *http.Request) {
 			var in struct {
 				Invitation string `json:"invitation"`

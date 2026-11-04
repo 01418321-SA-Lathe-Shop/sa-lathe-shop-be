@@ -213,17 +213,26 @@ paths:
     parameters: [{$ref: '#/components/parameters/CustomerID'}]
     get:
       tags: [Authentication]
-      summary: List the customer's addresses, oldest first
-      description: Returns {items:[{id, address, created_at}]}.
+      summary: List the customer's addresses, default first then oldest
+      description: Returns {items:[{id, contact_name, address, address_line1, address_line2, district, province, postal_code, is_default, created_at}]}. contact_name is the recipient/contact person for that address, separate from the customer's registered name; legacy rows return "".
       x-allowed-roles: [customer member]
       responses: {'200': {$ref: '#/components/responses/Json'}, '400': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}}
     post:
       tags: [Authentication]
       summary: Add another address
-      description: Body {address} (1-500 characters). Returns the new {id, address, created_at}. Addresses cannot be edited or removed yet.
+      description: Body {contact_name?, address?, address_line1?, address_line2?, district?, province?, postal_code?, is_default?}. contact_name is optional, at most 200 characters. Give a flat address (1-500 characters) or structured lines (line1, district, province and 5-digit postal_code). Returns the new address. Addresses cannot be removed yet.
       x-allowed-roles: [customer owner]
       requestBody: {$ref: '#/components/requestBodies/JsonObject'}
       responses: {'201': {$ref: '#/components/responses/Json'}, '400': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}}
+  /customers/{customer_id}/addresses/{address_id}:
+    parameters: [{$ref: '#/components/parameters/CustomerID'}, {name: address_id, in: path, required: true, schema: {type: string, format: uuid}}]
+    put:
+      tags: [Authentication]
+      summary: Replace one address (contact name and location)
+      description: Same body and validation as POST; the whole address is replaced. is_default=true also makes it the billing address. Returns the saved address.
+      x-allowed-roles: [customer owner]
+      requestBody: {$ref: '#/components/requestBodies/JsonObject'}
+      responses: {'200': {$ref: '#/components/responses/Json'}, '400': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}, '404': {$ref: '#/components/responses/Error'}}
   /customers/join:
     post:
       tags: [Authentication]
