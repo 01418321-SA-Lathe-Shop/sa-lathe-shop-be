@@ -37,17 +37,17 @@ try{
  # Completed seed reruns must preserve it, not restore the fixture baseline.
  $login=Invoke-RestMethod ($env:SEED_WORKFLOW_API_ORIGIN+'/auth/local-test/login') -Method Post -ContentType 'application/json' -Body '{"username":"pim.admin"}'
  $headers=@{Authorization=('Bearer '+$login.access_token)}
- $catalog=Invoke-RestMethod ($env:SEED_WORKFLOW_API_ORIGIN+'/materials?search=DEMO%20NBR') -Headers $headers
- $material=$catalog.items | Where-Object {$_.name -eq 'DEMO NBR'} | Select-Object -First 1
+ $catalog=Invoke-RestMethod ($env:SEED_WORKFLOW_API_ORIGIN+'/materials?search=POM') -Headers $headers
+ $material=$catalog.items | Where-Object {$_.name -like '*POM*'} | Select-Object -First 1
  if(-not $material){throw 'Tester progress fixture material missing'}
- $body=@{idempotency_key=[guid]::NewGuid().ToString();expected_version=$material.version;mode='addition';quantity='1';unit_cost='60';reason='TEST ONLY tester progress preservation'} | ConvertTo-Json
+ $body=@{idempotency_key=[guid]::NewGuid().ToString();expected_version=$material.version;mode='addition';quantity='1';unit_cost='220';reason='TEST ONLY tester progress preservation'} | ConvertTo-Json
  $null=Invoke-RestMethod ($env:SEED_WORKFLOW_API_ORIGIN+'/materials/'+$material.id+'/stock') -Method Post -ContentType 'application/json' -Headers $headers -Body $body
  $before=docker compose @compose exec -T postgres psql -U fixture -d sa_lathe_shop_demo -At -c "SELECT (SELECT count(*) FROM job_request)||':'||(SELECT count(*) FROM job)||':'||(SELECT count(*) FROM demo_workflow_step)||':'||(SELECT count(*) FROM auth_session);"
  go run ./cmd/seed-demo-workflows apply
  if($LASTEXITCODE -ne 0){throw 'Workflow rerun failed'}
  $after=docker compose @compose exec -T postgres psql -U fixture -d sa_lathe_shop_demo -At -c "SELECT (SELECT count(*) FROM job_request)||':'||(SELECT count(*) FROM job)||':'||(SELECT count(*) FROM demo_workflow_step)||':'||(SELECT count(*) FROM auth_session);"
  if($before.Trim() -ne $after.Trim()){throw 'Completed rerun duplicated records or sessions'}
- $catalog=Invoke-RestMethod ($env:SEED_WORKFLOW_API_ORIGIN+'/materials?search=DEMO%20NBR') -Headers $headers
+ $catalog=Invoke-RestMethod ($env:SEED_WORKFLOW_API_ORIGIN+'/materials?search=POM') -Headers $headers
  $changed=$catalog.items | Where-Object {$_.id -eq $material.id} | Select-Object -First 1
  if($changed.qty_on_hand -ne '21.000000'){throw 'Completed rerun overwrote tester progress'}
  Invoke-RestMethod ($env:SEED_WORKFLOW_API_ORIGIN+'/auth/logout') -Method Post -Headers $headers | Out-Null

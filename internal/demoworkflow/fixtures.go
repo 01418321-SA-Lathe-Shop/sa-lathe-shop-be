@@ -35,6 +35,30 @@ var scenarios = []scenario{
 	{"r11", "ploy.company", "ปลอกบูชบรอนซ์เครื่องบรรจุ", "บรอนซ์ Ø35 x 40 มม.; ค่าคลาดเคลื่อน ±0.10 มม.", "6400.00", 10},
 }
 
+type conversion struct{ unit, factor string }
+
+// Real Thai stockist materials. Stock is kept in kilograms, the unit steel is bought and priced in;
+// alternative units are per material because kg per metre depends on section and density
+// (theoretical weight = section mm² × length mm × density g/cm³ ÷ 1,000,000, rounded to the gram).
+var materials = []struct {
+	key, name, stock, cost string
+	conversions            []conversion
+}{
+	{"S45C", "เหล็กเพลา S45C Ø45 มม.", "100", "48", []conversion{{"เมตร", "12.485"}, {"เส้น", "74.909"}}},
+	{"S45C16", "เหล็กเพลา S45C Ø16 มม.", "30", "50", []conversion{{"เมตร", "1.578"}, {"เส้น", "9.470"}}},
+	{"S45CPL", "เหล็กแผ่น S45C หนา 40 มม.", "60", "52", nil},
+	{"SCM440", "เหล็กเพลา SCM440 Ø50 มม.", "0", "85", []conversion{{"เมตร", "15.413"}, {"เส้น", "92.481"}}},
+	{"SS400", "เหล็กแผ่น SS400 หนา 12 มม. (4×8 ฟุต)", "300", "32", []conversion{{"แผ่น", "279.955"}}},
+	{"FLAT", "เหล็กแบน SS400 50×6 มม.", "0", "30", []conversion{{"เมตร", "2.355"}, {"เส้น", "14.130"}}},
+	{"ANGLE", "เหล็กฉาก SS400 50×50×5 มม.", "0", "30", []conversion{{"เมตร", "3.770"}, {"เส้น", "22.620"}}},
+	{"SUS304", "เหล็กกล้าไร้สนิม SUS304 แผ่นหนา 25 มม.", "0", "165", nil},
+	{"SUS316", "เหล็กกล้าไร้สนิม SUS316 เพลากลม Ø25 มม.", "0", "260", []conversion{{"เมตร", "3.917"}}},
+	{"AL6061", "อะลูมิเนียม AL6061-T6 แผ่นหนา 20 มม.", "60", "160", nil},
+	{"BRONZE", "ทองบรอนซ์ SAE660 เพลากลมตัน Ø40 มม.", "40", "380", []conversion{{"เมตร", "11.222"}}},
+	{"COPPER", "ทองแดง C1100 เพลากลม Ø20 มม.", "0", "420", []conversion{{"เมตร", "2.809"}}},
+	{"POM", "พลาสติกวิศวกรรม POM (อะซีทัล) แท่งกลม Ø50 มม.", "20", "220", []conversion{{"เมตร", "2.769"}}},
+}
+
 func (r *Runner) build(ctx context.Context) error {
 	profiles := map[string]string{}
 	for _, actor := range []string{"nida.company", "ploy.company", "somchai"} {
@@ -58,36 +82,41 @@ func (r *Runner) build(ctx context.Context) error {
 	}, false, nil); e != nil {
 		return e
 	}
-	for _, customer := range []struct{ key, actor, address, phone, email string }{
-		{"company-billing", "nida.company", "125/4 ถนนบางนา-ตราด แขวงบางนา เขตบางนา กรุงเทพมหานคร 10260", "02-000-0200", "billing@example.test"},
-		{"individual-billing", "somchai", "45/12 ถนนสุขุมวิท แขวงสำโรงเหนือ อำเภอเมืองสมุทรปราการ สมุทรปราการ 10270", "08-0000-0300", "somchai@example.test"},
+	for _, customer := range []struct{ key, actor, contact, address, phone, email string }{
+		{"company-billing", "nida.company", "นิดา วงศ์สุวรรณ (ฝ่ายจัดซื้อ)", "125/4 ถนนบางนา-ตราด แขวงบางนา เขตบางนา กรุงเทพมหานคร 10260", "02-000-0200", "billing@example.test"},
+		{"individual-billing", "somchai", "สมชาย ใจดี", "45/12 ถนนสุขุมวิท แขวงสำโรงเหนือ อำเภอเมืองสมุทรปราการ สมุทรปราการ 10270", "08-0000-0300", "somchai@example.test"},
 	} {
 		if _, e := r.step(ctx, customer.key, customer.actor, "PUT", "/customers/"+profiles[customer.actor]+"/billing", Object{
 			"address": customer.address, "tax_id": "", "phone": customer.phone, "email": customer.email, "expected_lock_version": 1,
 		}, false, nil); e != nil {
 			return e
 		}
-		if _, e := r.post(ctx, customer.key+"-address", customer.actor, "/customers/"+profiles[customer.actor]+"/addresses", Object{"address": customer.address}); e != nil {
+		if _, e := r.post(ctx, customer.key+"-address", customer.actor, "/customers/"+profiles[customer.actor]+"/addresses", Object{"address": customer.address, "contact_name": customer.contact}); e != nil {
 			return e
 		}
 	}
-	unitIDs := []string{}
-	for i, name := range []string{"ชิ้น", "กิโลกรัม", "แผ่น"} {
+	unitIDs := map[string]string{}
+	for i, name := range []string{"กิโลกรัม", "เมตร", "เส้น", "แผ่น"} {
 		u, e := r.post(ctx, fmt.Sprintf("unit-%d", i), admin, "/units", Object{"name": name})
 		if e != nil {
 			return e
 		}
-		unitIDs = append(unitIDs, str(u, "id"))
+		unitIDs[name] = str(u, "id")
 	}
 	materialIDs := map[string]string{}
-	for i, m := range []struct{ name, stock, cost string }{{"S45C", "100", "100"}, {"SUS304", "0", "250"}, {"AL6061", "60", "150"}, {"BRONZE", "40", "180"}, {"SS400", "50", "80"}, {"NBR", "20", "60"}} {
-		v, e := r.post(ctx, "material-"+m.name, admin, "/materials", Object{"name": m.name + " สำหรับงานกลึง", "unit_id": unitIDs[i%len(unitIDs)]})
+	for _, m := range materials {
+		v, e := r.post(ctx, "material-"+m.key, admin, "/materials", Object{"name": m.name, "unit_id": unitIDs["กิโลกรัม"]})
 		if e != nil {
 			return e
 		}
-		materialIDs[m.name] = str(v, "id")
+		materialIDs[m.key] = str(v, "id")
+		for _, c := range m.conversions {
+			if _, e = r.post(ctx, "conversion-"+m.key+"-"+c.unit, admin, "/materials/"+str(v, "id")+"/conversions", Object{"unit_id": unitIDs[c.unit], "factor": c.factor}); e != nil {
+				return e
+			}
+		}
 		if m.stock != "0" {
-			_, e = r.command(ctx, "stock-"+m.name, admin, "POST", "/materials/"+str(v, "id")+"/stock", v, Object{"mode": "addition", "quantity": m.stock, "unit_cost": m.cost, "reason": "ยอดยกมาสำหรับคลังทดสอบ"})
+			_, e = r.command(ctx, "stock-"+m.key, admin, "POST", "/materials/"+str(v, "id")+"/stock", v, Object{"mode": "addition", "quantity": m.stock, "unit_cost": m.cost, "reason": "ยอดยกมาสำหรับคลังทดสอบ"})
 			if e != nil {
 				return e
 			}
@@ -179,17 +208,11 @@ func (r *Runner) build(ctx context.Context) error {
 		}
 		jobID := str(job, "id")
 		jobs[s.key] = jobID
-		matID := materialIDs["S45C"]
+		// Each job draws on stock whose shape and size can produce the part (kg of the base unit).
+		matID := materialIDs[map[string]string{"r6": "SUS304", "r7": "S45C", "r8": "S45C16", "r9": "AL6061", "r10": "S45CPL", "r11": "BRONZE"}[s.key]]
 		quantity := "5"
 		if s.stage == 5 {
-			matID = materialIDs["SUS304"]
 			quantity = "10"
-		}
-		if s.key == "r9" {
-			matID = materialIDs["AL6061"]
-		}
-		if s.key == "r11" {
-			matID = materialIDs["BRONZE"]
 		}
 		plan, e := r.command(ctx, s.key+"-plan", worker, "PUT", "/jobs/"+jobID+"/materials", Object{"version": 0}, Object{"lines": []Object{{"material_id": matID, "quantity": quantity}}})
 		if e != nil {
@@ -299,25 +322,25 @@ func (r *Runner) finishCustomer(ctx context.Context, s scenario, jobID string) e
 func (r *Runner) orders(ctx context.Context, materials, jobs map[string]string) error {
 	for i := 1; i <= 3; i++ {
 		key := fmt.Sprintf("o%d", i)
-		supplierNames := []string{"บริษัท ไทยสแตนเลส ซัพพลาย จำกัด", "บริษัท เหล็กอุตสาหกรรมสยาม จำกัด", "บริษัท อลูมิเนียม พรีซิชั่น จำกัด"}
+		supplierNames := []string{"บริษัท ไทยสแตนเลส ซัพพลาย จำกัด", "บริษัท เหล็กอุตสาหกรรมสยาม จำกัด", "บริษัท อะลูมิเนียม พรีซิชั่น จำกัด"}
 		supplier, e := r.post(ctx, key+"-supplier", admin, "/suppliers", Object{"name": supplierNames[i-1], "email": fmt.Sprintf("sales%d@example.test", i), "phone": "02100000" + fmt.Sprint(i)})
 		if e != nil {
 			return e
 		}
 		materialID := materials["S45C"]
 		qty := "20"
-		price := "100.00"
+		price := "48.00"
 		refs := []string{}
 		if i == 1 {
 			materialID = materials["SUS304"]
 			qty = "100"
-			price = "250.00"
+			price = "165.00"
 			refs = []string{jobs["r6"]}
 		}
 		if i == 3 {
 			materialID = materials["AL6061"]
 			qty = "10"
-			price = "150.00"
+			price = "160.00"
 		}
 		order, e := r.step(ctx, key+"-order", admin, "POST", "/material-orders", Object{"idempotency_key": uuid.NewString(), "supplier_id": str(supplier, "id"), "job_ids": refs, "expected_at": r.started.Add(time.Duration(i) * 24 * time.Hour).UTC().Format(time.RFC3339Nano), "lines": []Object{{"material_id": materialID, "quantity": qty, "unit_cost": price}}}, true, nil)
 		if e != nil {
@@ -349,7 +372,7 @@ func (r *Runner) orders(ctx context.Context, materials, jobs map[string]string) 
 			if len(claims) != 1 {
 				return ErrGuard
 			}
-			_, e = r.command(ctx, key+"-claim", worker, "POST", base+"/claims/"+str(obj(claims[0]), "id")+"/submit", state, Object{"note": "พบวัสดุชำรุด 5 ชิ้น ขอเปลี่ยนสินค้า"})
+			_, e = r.command(ctx, key+"-claim", worker, "POST", base+"/claims/"+str(obj(claims[0]), "id")+"/submit", state, Object{"note": "พบเหล็กเพลาคดและผิวเป็นสนิม 5 กิโลกรัม ขอเปลี่ยนสินค้า"})
 			if e != nil {
 				return e
 			}

@@ -136,7 +136,7 @@ func (r *Runner) verify(ctx context.Context, initial bool) error {
 			if str(m, "id") == str(results["material-S45C"], "id") {
 				found = true
 			}
-			if str(m, "id") == str(results["material-S45C"], "id") && (str(m, "qty_on_hand") != "109.000000" || str(m, "qty_reserved") != "8.000000" || str(m, "avg_cost") != "100.000000") {
+			if str(m, "id") == str(results["material-S45C"], "id") && (str(m, "qty_on_hand") != "115.000000" || str(m, "qty_reserved") != "5.000000" || str(m, "avg_cost") != "48.000000") {
 				return fmt.Errorf("initial stock reconciliation mismatch")
 			}
 		}

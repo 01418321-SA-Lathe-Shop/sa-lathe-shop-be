@@ -22,7 +22,7 @@ was downloaded through the API's signed private URL and parsed successfully.
 There are no TXT request attachments in the refreshed database. Payment
 notices are clearly labelled as simulated records and are not bank-issued slips.
 The fixture also saves the shop profile, both customer billing profiles,
-both customer addresses,
+both customer addresses (with a fictional contact name each),
 quotation validity/notes and the structured details of all five customer POs
 through the new printed-document APIs introduced by migration17.
 The final local run completed 151 guarded API steps and verified all 20 private
@@ -62,19 +62,19 @@ backdated audit events. Nida and Ploy share the company; Somchai is isolated.
 | r3 | Ploy | Rejected first quotation and revised sent quotation; Customer decides |
 | r4 | Nida | THB18,000 accepted; submitted PO pending review, deposit missing |
 | r5 | Somchai | THB2,400 accepted; THB1,200 deposit pending review, no job yet |
-| r6 | Nida | THB8,000 PO approved; queued job, SUS304 shortage10 |
-| r7 | Ploy | THB6,400 PO approved; queued job, S45C5 fully reserved |
-| r8 | Somchai | THB4,800, deposit2,400 approved; running job, S45C2 used, time recorded |
+| r6 | Nida | THB8,000 PO approved; queued job, SUS304 25 mm plate shortage 10 kg |
+| r7 | Ploy | THB6,400 PO approved; queued job, S45C Ø45 5 kg fully reserved |
+| r8 | Somchai | THB4,800, deposit2,400 approved; running job, S45C Ø16 2 kg used, time recorded |
 | r9 | Nida | THB9,600 PO approved; completed job/costs, no invoice yet |
 | r10 | Somchai | THB7,200, deposit3,600; completed, invoiced, third-party delivery; bank3,600 pending Admin review |
 | r11 | Ploy | THB6,400, PO-only; completed/invoiced/self-delivered, cash paid and accepted; request closed |
-| o1 | Admin | SUS304100 supplier order awaiting external acceptance; references r6, excess stock permitted |
-| o2 | Admin/Worker | S45C20 accepted: good15/damaged5; replacement claim submitted, no payment |
-| o3 | Admin/Worker | AL6061 10 fully received, 14-day credit, unpaid |
+| o1 | Admin | SUS304 100 kg supplier order awaiting external acceptance; references r6, excess stock permitted |
+| o2 | Admin/Worker | S45C Ø45 20 kg accepted: good 15/damaged 5 kg; replacement claim submitted, no payment |
+| o3 | Admin/Worker | AL6061 10 kg fully received, 14-day credit, unpaid |
 
 `workflows-v2` adds 11 requests, 11 quotations (including the r3 revision), 6 jobs,
 5 customer PO submissions, 3 deposits, 2 invoices, 2 customer balance payments,
-3 units, 6 materials, 3 suppliers, 3 supplier orders, 2 receipts and 1 claim.
+4 units, 13 materials with 15 per-material unit conversions, 3 suppliers, 3 supplier orders, 2 receipts and 1 claim.
 There are 20 actual private PDF documents: 11 specifications, 5 customer POs,
 3 deposit notices and 1 balance-payment notice. Signed downloads open the
 actual stored PDF files. Quotation and invoice records remain structured system
@@ -197,3 +197,47 @@ UI test is claimed in this workflow-fixture follow-up.
 Frontend can use existing live screens, private-download endpoints and all six
 login buttons. Refresh real API data; never merge frontend mock rows into these
 lists. No frontend code or browser-to-real-API verification is included here.
+
+## Materials and units (2026-11-04)
+
+Customers, jobs, POs, quotations and prices are fictional. Materials, grades,
+sizes and units follow Thai machine-shop stockists. Every material keeps stock
+in กิโลกรัม (the unit steel is bought and priced in); alternative units are set
+per material because weight per metre depends on section and density, so no
+single kg-to-metre factor exists. Factors are theoretical weights rounded to the
+gram: section mm² × length mm × density g/cm³ ÷ 1,000,000 (steel 7.85, SUS304
+7.93, SUS316 7.98, AL6061 2.70, SAE660 bronze 8.93, C1100 copper 8.94, POM 1.41;
+the SS400 angle uses the JIS table weight). A เส้น is a 6 m bar; the SS400
+แผ่น is 4×8 ft (1219×2438 mm).
+
+| Key | Material (base unit kg) | Opening stock / cost per kg | Alternative units |
+| --- | --- | --- | --- |
+| S45C | เหล็กเพลา S45C Ø45 มม. | 100 / 48 | 1 เมตร = 12.485, 1 เส้น = 74.909 |
+| S45C16 | เหล็กเพลา S45C Ø16 มม. | 30 / 50 | 1 เมตร = 1.578, 1 เส้น = 9.470 |
+| S45CPL | เหล็กแผ่น S45C หนา 40 มม. | 60 / 52 | — |
+| SCM440 | เหล็กเพลา SCM440 Ø50 มม. | 0 | 1 เมตร = 15.413, 1 เส้น = 92.481 |
+| SS400 | เหล็กแผ่น SS400 หนา 12 มม. (4×8 ฟุต) | 300 / 32 | 1 แผ่น = 279.955 |
+| FLAT | เหล็กแบน SS400 50×6 มม. | 0 | 1 เมตร = 2.355, 1 เส้น = 14.130 |
+| ANGLE | เหล็กฉาก SS400 50×50×5 มม. | 0 | 1 เมตร = 3.770, 1 เส้น = 22.620 |
+| SUS304 | เหล็กกล้าไร้สนิม SUS304 แผ่นหนา 25 มม. | 0 | — |
+| SUS316 | เหล็กกล้าไร้สนิม SUS316 เพลากลม Ø25 มม. | 0 | 1 เมตร = 3.917 |
+| AL6061 | อะลูมิเนียม AL6061-T6 แผ่นหนา 20 มม. | 60 / 160 | — |
+| BRONZE | ทองบรอนซ์ SAE660 เพลากลมตัน Ø40 มม. | 40 / 380 | 1 เมตร = 11.222 |
+| COPPER | ทองแดง C1100 เพลากลม Ø20 มม. | 0 | 1 เมตร = 2.809 |
+| POM | พลาสติกวิศวกรรม POM (อะซีทัล) แท่งกลม Ø50 มม. | 20 / 220 | 1 เมตร = 2.769 |
+
+Jobs draw on stock that can make the part: r7 Ø40 bush from Ø45 bar, r8 Ø12
+pin from Ø16 bar, r10 100×80×35 block from 40 mm plate, r6 insert from 25 mm
+SUS304 plate, r9 15 mm plate from 20 mm AL6061, r11 Ø35 bush from Ø40 bronze.
+A fresh run's S45C Ø45 reconciliation is 115 kg on hand, 5 kg reserved, 48 THB/kg
+average. A database that already completed `workflows-v2` before this change
+keeps its earlier generic names and units: completed runs never rewrite tester
+data. Rename those materials in the Admin catalog or seed a fresh local database.
+
+Verification on 2026-11-04 (disposable PostgreSQL/S3/API, migrations through
+000022): every fixture step, the 15 conversions and the S45C Ø45 stock
+reconciliation passed. `verify-demo-workflows.ps1` still stops on two checks
+that predate this data change and need an owner decision, not a fixture edit:
+commit db8e61c lets Workers read `/material-orders` (the verifier and UC6 docs
+expect Admin-only 403), and now marks an order `received` when good + damaged
+equals the ordered quantity (the verifier expects o2 `partially_received`).
