@@ -593,3 +593,11 @@ Verification: `go build`, `go test ./...`, migration up/down/up in one rolled-ba
 - [ ] `job.estimated_time` / `actual_time`: not added (no source; needs an owner decision). Phase 3 structural mismatches: not started.
 
 Verification: `go build`, `go test ./...`; migration up, down 1, up on a fresh database and on the demo database; trigger behaviour exercised by hand (receipt line sync, rejected manual edits, partial invoice status). `scripts/verify-demo-workflows.ps1` reaches the same step (`o3-receipt`) as before the change, then fails at the same pre-existing point, so invoice and payment flows are not covered end to end.
+
+## ER alignment phase 3 (migration 000025)
+
+- [x] Added every remaining ER column name as a trigger-synced column (see docs/021); original columns, guards and API contracts unchanged. Customer `person_id`, staff `status`, quotation `decided_at` and the defect-log links included.
+- [x] Seed guards accept schema 13-25.
+- [ ] `job.estimated_time` / `actual_time` (no source), unused ER status values, double money and string ids: intentionally not changed.
+
+Verification: `go build`, `go test ./...`; migration up, down, up on a fresh database and up on the demo database; backfill checked in a rolled-back transaction. `scripts/verify-demo-workflows.ps1` completes the same 176 steps as before and ends at the same pre-existing failure after `o3-receipt`, so payments and invoices are still not covered end to end.

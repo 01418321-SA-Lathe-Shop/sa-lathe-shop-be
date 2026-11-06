@@ -125,3 +125,30 @@ These ER attributes are now stored columns. The database keeps each one equal to
 | `JOB.edited_at` | `job.edited_at` | Set on every update |
 
 Not added: `JOB.estimated_time` and `JOB.actual_time` (no stored source; the ER types them as timestamps but the names read as durations), `MATERIAL_ORDER_ITEM.edited_at` stays NULL until an item first changes, and the item statuses `preparing` and `in_transit` have no source. `worker.status` and `admin.status` are still derived from `account.is_active`.
+
+## Update: ER alignment phase 3 (migration 000025)
+
+Every remaining ER column name now exists. The original columns keep their names and meaning, so no query, guard or API contract changed. Each ER column is a plain column that a `zz_er_sync` trigger keeps equal to its source (the trigger runs after the table guards).
+
+| ER table | ER column | Source |
+| --- | --- | --- |
+| `JOB` | `due_date` | `due_at` |
+| `JOB_MATERIAL_USAGE` | `qty_used` | `quantity` |
+| `INVOICE` | `due_date`, `total_amount` | `due_at`, `amount` |
+| `MATERIAL_ORDER` | `ordered_at`, `edited_at` | `created_at`; time of the last update |
+| `MATERIAL_ORDER_ITEM` | `id`, `material_order_id` | new unique id; `order_id` |
+| `UNIT_CONVERSION` | `from_unit_id`, `to_unit_id` | `unit_id`; the material's base unit |
+| `STOCK_MOVEMENT` | `movement_type`, `qty`, `balance_qty`, `ref_type`, `ref_id`, `created_by` | `mode` (`PURCHASE_RECEIVE`, `JOB_ISSUE`, otherwise `ADJUSTMENT`), `quantity`, `after_quantity`, the receipt or job usage the movement came from (`ref_id` is the order or job id), `actor_id` |
+| `DELIVERY` | `delivered_at`, `created_at`, `edited_at`, `proof_url` | `decided_at` when delivered, `shipped_at`, `decided_at`; `proof_url` has no source and stays NULL |
+| `JOB_PHOTO`, `REQUEST_ATTACHMENT` | `url_photo` / `file_url`, `uploaded_at` | `object_key` (a private key, never a URL), `completed_at` |
+| `DEPOSIT` | `amount_applied`, `proof_file_url` | `amount`; the attachment key |
+| `PURCHASE_ORDER` | `file_url`, `uploaded_at` | the attachment key; `submitted_at` |
+| `MATERIAL_DEFECT_LOG` | `material_order_id`, `material_order_item_id`, `material_id`, `qty_damaged`, `unit_cost`, `reported_by`, `created_at` | the damaged receipt line, its item, and the receipt that recorded it |
+| `PAYMENT` | `proof_url` | the evidence object key |
+| `PAYMENT_ALLOCATION` | `id` | new unique id |
+| `QUOTATION_COST` | `id` | generated from `quotation_id` |
+| `QUOTATION` | `decided_at` | the latest `quotation_decision` |
+| `WORKER`, `ADMIN` | `status` | mirrors `account.is_active` |
+| `CUSTOMER` | `person_id` | the owner member's person; a company with several members still has one owner |
+
+Still different: `JOB.estimated_time` and `JOB.actual_time` (no source), the ER status values the app does not use (`requote`, `preparing`, `WRITTEN_OFF`, `RETURN`, item `preparing` / `in_transit`), money as `NUMERIC` instead of double, and ids as `uuid` instead of string. The ER `PAYMENT` has no invoice link or review fields, but the implemented table keeps them because payment approval needs them.
