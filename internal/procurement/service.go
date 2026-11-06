@@ -21,6 +21,15 @@ func admin(a auth.Account) error {
 	}
 	return nil
 }
+
+// staff may read suppliers and place/manage material orders (UC6: the Technician orders);
+// supplier master data stays Admin-only.
+func staff(a auth.Account) error {
+	if !a.Active || (a.Role != auth.RoleAdmin && a.Role != auth.RoleWorker) {
+		return req.ErrForbidden
+	}
+	return nil
+}
 func validID(s string) bool {
 	v, err := uuid.Parse(s)
 	return err == nil && len(s) == 36 && v != uuid.Nil
@@ -85,7 +94,7 @@ func page(term string, limit, offset int) error {
 	return nil
 }
 func (s *Service) Suppliers(ctx context.Context, a auth.Account, term string, limit, offset int) ([]Supplier, error) {
-	if err := admin(a); err != nil {
+	if err := staff(a); err != nil {
 		return nil, err
 	}
 	term = strings.TrimSpace(term)
@@ -95,7 +104,7 @@ func (s *Service) Suppliers(ctx context.Context, a auth.Account, term string, li
 	return s.repo.ListSuppliers(ctx, a.ID, term, limit, offset)
 }
 func (s *Service) RecommendSuppliers(ctx context.Context, a auth.Account, materialID, excludeSupplierID string) ([]SupplierRecommendation, error) {
-	if err := admin(a); err != nil {
+	if err := staff(a); err != nil {
 		return nil, err
 	}
 	materialID = strings.TrimSpace(materialID)
@@ -109,13 +118,13 @@ func (s *Service) RecommendSuppliers(ctx context.Context, a auth.Account, materi
 	return s.repo.RecommendSuppliers(ctx, a.ID, strings.ToLower(materialID), strings.ToLower(excludeSupplierID))
 }
 func (s *Service) Shortages(ctx context.Context, a auth.Account) ([]ShortageItem, error) {
-	if err := admin(a); err != nil {
+	if err := staff(a); err != nil {
 		return nil, err
 	}
 	return s.repo.ListShortages(ctx, a.ID)
 }
 func (s *Service) Place(ctx context.Context, a auth.Account, in OrderInput) (Order, error) {
-	if err := admin(a); err != nil {
+	if err := staff(a); err != nil {
 		return Order{}, err
 	}
 	if !validID(in.IdempotencyKey) || !validID(in.SupplierID) || len(in.Lines) < 1 || len(in.Lines) > 100 || len(in.JobIDs) > 100 {
@@ -158,7 +167,7 @@ func (s *Service) Place(ctx context.Context, a auth.Account, in OrderInput) (Ord
 	return s.repo.PlaceOrder(ctx, a.ID, in)
 }
 func (s *Service) Act(ctx context.Context, a auth.Account, id string, in ActionInput) (Order, error) {
-	if err := admin(a); err != nil {
+	if err := staff(a); err != nil {
 		return Order{}, err
 	}
 	in.Reason = strings.TrimSpace(in.Reason)
@@ -172,7 +181,7 @@ func (s *Service) Act(ctx context.Context, a auth.Account, id string, in ActionI
 	return s.repo.ActOnOrder(ctx, a.ID, strings.ToLower(id), in)
 }
 func (s *Service) Get(ctx context.Context, a auth.Account, id string) (Order, error) {
-	if err := admin(a); err != nil {
+	if err := staff(a); err != nil {
 		return Order{}, err
 	}
 	if !validID(id) {
@@ -181,7 +190,7 @@ func (s *Service) Get(ctx context.Context, a auth.Account, id string) (Order, er
 	return s.repo.ReadOrder(ctx, a.ID, strings.ToLower(id))
 }
 func (s *Service) Orders(ctx context.Context, a auth.Account, jobID string, limit, offset int) ([]Order, error) {
-	if err := admin(a); err != nil {
+	if err := staff(a); err != nil {
 		return nil, err
 	}
 	if err := page("", limit, offset); err != nil {

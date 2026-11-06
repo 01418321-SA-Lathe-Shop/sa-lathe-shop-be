@@ -38,21 +38,39 @@ func TestExactTotals(t *testing.T) {
 		t.Fatal("zero quantity accepted")
 	}
 }
-func TestOnlyAdmin(t *testing.T) {
+func TestRoleGates(t *testing.T) {
 	s := NewService(nil)
 	ctx := context.Background()
-	for _, role := range []string{auth.RoleWorker, auth.RoleCustomer, ""} {
-		a := auth.Account{Role: role, Active: true}
-		checks := []func() error{func() error { _, e := s.Place(ctx, a, OrderInput{}); return e }, func() error { _, e := s.Act(ctx, a, "", ActionInput{}); return e }, func() error { _, e := s.Get(ctx, a, ""); return e }, func() error { _, e := s.Orders(ctx, a, "", 1, 0); return e }, func() error { _, e := s.Suppliers(ctx, a, "", 1, 0); return e }, func() error { _, e := s.CreateSupplier(ctx, a, SupplierInput{}); return e }, func() error { _, e := s.UpdateSupplier(ctx, a, "", SupplierUpdate{}); return e }, func() error { _, e := s.Shortages(ctx, a); return e }, func() error { _, e := s.RecommendSuppliers(ctx, a, "", ""); return e }}
-		for _, check := range checks {
+	ordering := func(a auth.Account) []func() error {
+		return []func() error{func() error { _, e := s.Place(ctx, a, OrderInput{}); return e }, func() error { _, e := s.Act(ctx, a, "", ActionInput{}); return e }, func() error { _, e := s.Get(ctx, a, ""); return e }, func() error { _, e := s.Suppliers(ctx, a, "", 0, 0); return e }, func() error { _, e := s.Orders(ctx, a, "bad", 1, 0); return e }, func() error { _, e := s.RecommendSuppliers(ctx, a, "bad", ""); return e }}
+	}
+	suppliers := func(a auth.Account) []func() error {
+		return []func() error{func() error { _, e := s.CreateSupplier(ctx, a, SupplierInput{}); return e }, func() error { _, e := s.UpdateSupplier(ctx, a, "", SupplierUpdate{}); return e }}
+	}
+	for _, a := range []auth.Account{{Role: auth.RoleCustomer, Active: true}, {Role: "", Active: true}, {Role: auth.RoleWorker}, {Role: auth.RoleAdmin}} {
+		for _, check := range append(ordering(a), suppliers(a)...) {
 			if !errors.Is(check(), req.ErrForbidden) {
-				t.Fatal("non-admin allowed", role)
+				t.Fatal("forbidden account allowed", a.Role, a.Active)
 			}
 		}
 	}
-	a := auth.Account{Role: auth.RoleAdmin, Active: true}
-	if _, err := s.Place(ctx, a, OrderInput{}); !errors.Is(err, req.ErrInvalidInput) {
-		t.Fatal("admin should pass role gate", err)
+	// UC6: an active Worker (Technician) places and manages orders; supplier master data is Admin-only.
+	for _, role := range []string{auth.RoleWorker, auth.RoleAdmin} {
+		a := auth.Account{Role: role, Active: true}
+		for _, check := range ordering(a) {
+			if !errors.Is(check(), req.ErrInvalidInput) {
+				t.Fatal("staff should pass the ordering role gate", role)
+			}
+		}
+	}
+	worker := auth.Account{Role: auth.RoleWorker, Active: true}
+	for _, check := range suppliers(worker) {
+		if !errors.Is(check(), req.ErrForbidden) {
+			t.Fatal("worker must not manage suppliers")
+		}
+	}
+	if _, err := s.CreateSupplier(ctx, auth.Account{Role: auth.RoleAdmin, Active: true}, SupplierInput{}); !errors.Is(err, req.ErrInvalidInput) {
+		t.Fatal("admin should pass supplier gate", err)
 	}
 }
 func TestContactsAndCommands(t *testing.T) {
