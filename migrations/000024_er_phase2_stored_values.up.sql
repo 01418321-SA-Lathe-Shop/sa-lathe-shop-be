@@ -84,6 +84,9 @@ ALTER TABLE material_order ADD COLUMN payment_method text, ADD COLUMN paid_at ti
 ALTER TABLE material_order DISABLE TRIGGER material_order_guard;
 UPDATE material_order o SET payment_method=s.method, paid_at=s.paid_at, payment_proof_url=e.object_key
 FROM supplier_settlement s LEFT JOIN order_evidence e ON e.id=s.evidence_id WHERE s.order_id=o.id;
+-- The UPDATE above queues the deferred material_order_consistent trigger; run it now or ALTER TABLE
+-- fails with "pending trigger events" on any database that has settled supplier orders.
+SET CONSTRAINTS ALL IMMEDIATE;
 ALTER TABLE material_order ENABLE TRIGGER material_order_guard;
 
 -- JOB estimated / actual cost and last edit ------------------------------------------------------------

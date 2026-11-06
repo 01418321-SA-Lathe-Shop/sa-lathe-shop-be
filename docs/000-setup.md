@@ -82,6 +82,7 @@ docker compose down
   - Check current version: `./tasks.ps1 migrate-version`
   - Migrate up: `./tasks.ps1 migrate-up`
   - Migrate down (single step): `./tasks.ps1 migrate-down`
+  - Stuck on `24 (dirty)` from the old `pending trigger events` failure: that run rolled back, so after updating to the fixed migration run `migrate force 23`, then migrate up.
 
 ---
 
