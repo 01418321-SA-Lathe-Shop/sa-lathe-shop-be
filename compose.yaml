@@ -40,6 +40,7 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
       AUTH_SESSION_TTL: ${AUTH_SESSION_TTL:-12h}
       LOCAL_TEST_ACCOUNT_ENABLE: ${LOCAL_TEST_ACCOUNT_ENABLE:-false}
+      SQL_CONSOLE_ENABLE: ${SQL_CONSOLE_ENABLE:-false}
       S3_ENDPOINT: http://s3:8333
       S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:19000}
       S3_REGION: ${S3_REGION:-us-east-1}
