@@ -109,6 +109,33 @@ func (d *Database) DeletePending(ctx context.Context, accountID, id string) erro
 	return tx.Commit(ctx)
 }
 
+// Resubmit applies a customer correction to an information-requested request and clears the note.
+func (d *Database) Resubmit(ctx context.Context, accountID, id string, in req.Correction) (req.Request, error) {
+	tx, err := d.pool.Begin(ctx)
+	if err != nil {
+		return req.Request{}, err
+	}
+	defer tx.Rollback(ctx)
+	var r req.Request
+	err = tx.QueryRow(ctx, `UPDATE job_request AS r SET description=$3,qty=$4,material_spec=$5,deadline=$6,info_request_note='',info_requested_at=NULL,edited_at=clock_timestamp()
+ WHERE r.id=$2 AND r.status IN ('pending','ongoing') AND r.info_requested_at IS NOT NULL
+ AND EXISTS(SELECT 1 FROM customer_member m JOIN account a ON a.id=m.account_id WHERE m.account_id=$1 AND m.customer_id=r.customer_id AND a.is_active AND a.role='customer')
+ AND NOT EXISTS(SELECT 1 FROM quotation q WHERE q.request_id=r.id AND q.status IN ('sent','approved'))
+ RETURNING `+requestFields, accountID, id, in.Description, in.Quantity, in.MaterialSpec, in.Deadline).Scan(requestTargets(&r)...)
+	if errors.Is(err, pgx.ErrNoRows) {
+		var visible bool
+		_ = tx.QueryRow(ctx, `SELECT true FROM job_request r WHERE r.id=$2 AND `+accessibleRequest, accountID, id).Scan(&visible)
+		if !visible {
+			return req.Request{}, req.ErrNotFound
+		}
+		return req.Request{}, req.ErrConflict
+	}
+	if err != nil {
+		return req.Request{}, err
+	}
+	return r, tx.Commit(ctx)
+}
+
 // RequestInfo records a Worker request for more information on a pending or ongoing request (UC2 Alt-Step 5).
 func (d *Database) RequestInfo(ctx context.Context, accountID, id, note string) (req.Request, error) {
 	tx, err := d.pool.Begin(ctx)

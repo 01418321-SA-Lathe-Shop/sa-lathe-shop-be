@@ -85,6 +85,19 @@ func (h *Handler) Routes(r chi.Router, authenticate func(http.Handler) http.Hand
 			}
 			httpserver.JSON(w, 200, result)
 		})
+		r.Patch("/requests/{request_id}", func(w http.ResponseWriter, r *http.Request) {
+			var in Correction
+			if err := Decode(w, r, &in); err != nil {
+				WriteError(w, r, err)
+				return
+			}
+			result, err := h.service.Resubmit(r.Context(), principal(r), chi.URLParam(r, "request_id"), in)
+			if err != nil {
+				WriteError(w, r, err)
+				return
+			}
+			httpserver.JSON(w, 200, result)
+		})
 		r.Get("/requests", func(w http.ResponseWriter, r *http.Request) {
 			limit, offset, err := Pagination(r)
 			if err != nil {

@@ -110,6 +110,31 @@ func (s *Service) RollbackPending(ctx context.Context, p Principal, id string) e
 	return opt.DeletePending(ctx, p.AccountID, id)
 }
 
+// Resubmit lets a customer member correct a request after a Worker asked for more information.
+func (s *Service) Resubmit(ctx context.Context, p Principal, id string, in Correction) (Request, error) {
+	if !validPrincipal(p) {
+		return Request{}, ErrForbidden
+	}
+	in.Description = strings.TrimSpace(in.Description)
+	in.MaterialSpec = strings.TrimSpace(in.MaterialSpec)
+	if !validID(id) || !validation.Text(in.Description, 1, MaxDescriptionCharacters) ||
+		!validation.Text(in.MaterialSpec, 0, MaxMaterialSpecCharacters) || in.Quantity <= 0 {
+		return Request{}, ErrInvalidInput
+	}
+	if in.Deadline != nil {
+		if !in.Deadline.After(s.now().UTC()) || in.Deadline.Year() > 9999 {
+			return Request{}, ErrInvalidInput
+		}
+		deadline := in.Deadline.UTC()
+		in.Deadline = &deadline
+	}
+	repo, ok := s.repo.(ResubmitRepository)
+	if !ok {
+		return Request{}, ErrForbidden
+	}
+	return repo.Resubmit(ctx, p.AccountID, id, in)
+}
+
 // RequestInfo records a Worker request for additional customer details (UC2 Alt-Step 5).
 func (s *Service) RequestInfo(ctx context.Context, p Principal, id, note string) (Request, error) {
 	if !p.Active || !validID(p.AccountID) || p.Role != "worker" {

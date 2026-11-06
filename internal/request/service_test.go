@@ -128,3 +128,36 @@ func TestRepositoryAndCancellationErrors(t *testing.T) {
 		t.Fatal("canceled get touched repository")
 	}
 }
+
+type resubmitRepository struct {
+	fakeRepository
+	got Correction
+}
+
+func (f *resubmitRepository) Resubmit(_ context.Context, _, _ string, in Correction) (Request, error) {
+	f.calls++
+	f.got = in
+	return Request{Input: Input{Description: in.Description}}, nil
+}
+
+func TestResubmitValidatesCorrection(t *testing.T) {
+	repo := &resubmitRepository{}
+	s := NewService(repo)
+	customer := Principal{AccountID: accountID, Role: "customer", Active: true}
+	id := "8a7e3e8b-2f3d-4c55-9f8f-1d3b2f3a9c11"
+	past := time.Now().Add(-time.Hour)
+	for _, bad := range []Correction{{Description: " ", Quantity: 1}, {Description: "x", Quantity: 0}, {Description: "x", Quantity: 1, MaterialSpec: strings.Repeat("a", MaxMaterialSpecCharacters+1)}, {Description: "x", Quantity: 1, Deadline: &past}} {
+		if _, err := s.Resubmit(context.Background(), customer, id, bad); !errors.Is(err, ErrInvalidInput) {
+			t.Fatalf("invalid correction accepted: %+v", bad)
+		}
+	}
+	if _, err := s.Resubmit(context.Background(), Principal{AccountID: accountID, Role: "worker", Active: true}, id, Correction{Description: "x", Quantity: 1}); !errors.Is(err, ErrForbidden) {
+		t.Fatal("worker must not edit customer request content")
+	}
+	if repo.calls != 0 {
+		t.Fatal("invalid correction reached the repository")
+	}
+	if _, err := s.Resubmit(context.Background(), customer, id, Correction{Description: "  fixed  ", Quantity: 2}); err != nil || repo.got.Description != "fixed" {
+		t.Fatal("valid correction", err, repo.got)
+	}
+}

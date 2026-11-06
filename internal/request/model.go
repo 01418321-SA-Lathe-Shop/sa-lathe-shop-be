@@ -53,6 +53,20 @@ type Repository interface {
 	ListRequests(context.Context, string, int, int) ([]Request, error)
 }
 
+// Correction is what a customer may change after a Worker asks for more information (UC2 Alt-Step 5).
+type Correction struct {
+	Description  string     `json:"description"`
+	Quantity     int64      `json:"qty"`
+	MaterialSpec string     `json:"material_spec"`
+	Deadline     *time.Time `json:"deadline,omitempty"`
+}
+
+// ResubmitRepository updates a request whose information was requested and clears
+// the request-for-information note, only while no quotation awaits or holds acceptance.
+type ResubmitRepository interface {
+	Resubmit(ctx context.Context, accountID, id string, in Correction) (Request, error)
+}
+
 type OptionalRepository interface {
 	DeletePending(ctx context.Context, accountID, id string) error
 	RequestInfo(ctx context.Context, accountID, id, note string) (Request, error)
