@@ -18,6 +18,9 @@ type Config struct {
 	DBMaxConnections                            int32
 	SessionTTL                                  time.Duration
 	LocalTestAccountEnable                      bool
+	// SQLConsoleEnable exposes /admin/sql (Super Admin); SQLConsoleDatabaseURL optionally uses a separate least-privilege role.
+	SQLConsoleEnable      bool
+	SQLConsoleDatabaseURL string
 }
 
 func Load() (Config, error) { return load(os.Getenv) }
@@ -30,6 +33,14 @@ func load(get func(string) string) (Config, error) {
 		c.LocalTestAccountEnable = true
 	default:
 		return Config{}, fmt.Errorf("LOCAL_TEST_ACCOUNT_ENABLE must be true or false")
+	}
+	switch get("SQL_CONSOLE_ENABLE") {
+	case "", "false":
+	case "true":
+		c.SQLConsoleEnable = true
+		c.SQLConsoleDatabaseURL = get("SQL_CONSOLE_DATABASE_URL")
+	default:
+		return Config{}, fmt.Errorf("SQL_CONSOLE_ENABLE must be true or false")
 	}
 	var err error
 	c.SessionTTL, err = time.ParseDuration(value(get, "AUTH_SESSION_TTL", "12h"))

@@ -21,6 +21,7 @@ import (
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/quotation"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/receiving"
 	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/repository/postgres"
+	"github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/sqlconsole"
 	req "github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/request"
 	"github.com/go-chi/chi/v5"
 	"log/slog"
@@ -83,6 +84,14 @@ func main() {
 	requestService := req.NewService(db)
 	fileService := file.NewService(db, store, requestService)
 	customerService := auth.NewCustomerService(db, hasher)
+	consoleDB := db
+	if cfg.SQLConsoleEnable && cfg.SQLConsoleDatabaseURL != "" {
+		if consoleDB, err = postgres.Open(ctx, cfg.SQLConsoleDatabaseURL, 3); err != nil {
+			logger.Error("SQL console database configuration invalid")
+			os.Exit(1)
+		}
+		defer consoleDB.Close()
+	}
 	router := httpserver.RouterWithRoutes(logger, cfg.HTTPTimeout, cfg.CORSOrigins, health.Live, healthService.Handler, func(r chi.Router) {
 		authHandler.Routes(r)
 		localTestService.Routes(r)
@@ -100,6 +109,9 @@ func main() {
 		receiving.NewHandler(receiving.NewService(db), receiving.NewEvidenceService(db, store)).Routes(r, authHandler.Authenticate)
 		production.NewHandler(production.NewService(db), production.NewPhotoService(db, store)).Routes(r, authHandler.Authenticate)
 		delivery.NewHandler(delivery.NewService(db), delivery.NewEvidenceService(db, store)).Routes(r, authHandler.Authenticate)
+		if cfg.SQLConsoleEnable {
+			sqlconsole.NewHandler(consoleDB).Routes(r, authHandler.Authenticate)
+		}
 	})
 	if err := httpserver.Run(ctx, logger, cfg.HTTPAddr, cfg.ShutdownTimeout, router); err != nil {
 		logger.Error("api stopped", "error", err)
