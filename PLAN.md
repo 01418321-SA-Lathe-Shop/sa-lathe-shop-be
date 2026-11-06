@@ -601,3 +601,11 @@ Verification: `go build`, `go test ./...`; migration up, down 1, up on a fresh d
 - [ ] `job.estimated_time` / `actual_time` (no source), unused ER status values, double money and string ids: intentionally not changed.
 
 Verification: `go build`, `go test ./...`; migration up, down, up on a fresh database and up on the demo database; backfill checked in a rolled-back transaction. `scripts/verify-demo-workflows.ps1` completes the same 176 steps as before and ends at the same pre-existing failure after `o3-receipt`, so payments and invoices are still not covered end to end.
+
+## ER alignment phase 4 (verification)
+
+- [x] Integration fixtures use positive quotation costs (UC2 H-03); the obsolete zero-balance job block in `delivery_integration_test.go` was removed.
+- [x] Passing on fresh migrated databases (schema 25): `TestUC1Integration`, `TestDecisionIntegration`, `TestFulfillmentIntegration` (deposit / purchase_order split), `TestMaterialIntegration`, `TestProductionIntegration`, `TestCustomerFulfillmentIntegration` (invoices, payments, deliveries).
+- [ ] Still failing, and failing the same way before the ER work: `TestQuotationIntegration` ("sent request rejected via UC2", line 159), `TestReceivingIntegration` (line 147, "damaged units counted as full receipt"), `TestProcurementIntegration` (line 397 expects Worker `GET /suppliers` = 403, but the route allows Worker). These look like stale test expectations, not ER regressions, and need an owner decision on the intended rules.
+- [ ] `scripts/verify-demo-workflows.ps1` still stops after `o3-receipt` (journal diagnostics are withheld); not diagnosed.
+- [ ] UC1-UC12 Playwright suite (frontend `docs/uc-testing`) not run: it restores `sa_lathe_shop_demo` from a schema-21 dump, which would wipe the current demo database.
