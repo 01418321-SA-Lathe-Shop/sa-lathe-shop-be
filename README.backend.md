@@ -34,6 +34,8 @@ The existing README.md has been preserved exactly.
 - [UC12 — Add Admin (not approved)](docs/024-UC12.md)
 - [Use-case description alignment (UC1–UC12)](docs/025-uc-spec-alignment.md)
 - [ER-aligned demo dataset handoff](docs/027-demo-dataset-handoff.md)
+- [AI handoff for installing the demo dataset](docs/028-ai-demo-seed-handoff.md)
+- [Manual demo seed steps for macOS/zsh](docs/029-demo-seed-manual-steps.md)
 - [Architecture and open questions](AGENTS.md)
 - [Phased plan](PLAN.md)
 
