@@ -36,6 +36,7 @@ The existing README.md has been preserved exactly.
 - [ER-aligned demo dataset handoff](docs/027-demo-dataset-handoff.md)
 - [AI handoff for installing the demo dataset](docs/028-ai-demo-seed-handoff.md)
 - [Manual demo seed steps for macOS/zsh](docs/029-demo-seed-manual-steps.md)
+- [Manual demo seed steps for Windows/PowerShell 7](docs/030-demo-seed-windows-powershell.md)
 - [Architecture and open questions](AGENTS.md)
 - [Phased plan](PLAN.md)
 
