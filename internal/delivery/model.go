@@ -111,6 +111,16 @@ type State struct {
 	Payments       []Payment     `json:"payments,omitempty"`
 	Events         []Event       `json:"events"`
 	ReworkHistory  []ReworkCycle `json:"rework_history"`
+	Photos         []JobPhoto    `json:"photos"`
+}
+
+// JobPhoto is a ready UC8 production photo the job's customer may view.
+type JobPhoto struct {
+	ID          string `json:"id"`
+	FileName    string `json:"file_name"`
+	ContentType string `json:"content_type"`
+	ByteSize    int64  `json:"byte_size"`
+	State       string `json:"state"`
 }
 
 type ReworkCycle struct {

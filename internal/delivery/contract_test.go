@@ -36,7 +36,7 @@ func TestLegacyFulfillmentResponseContract(t *testing.T) {
 				JobID: id, RequestID: id, JobStatus: "completed", RequestStatus: "ongoing", Version: 4, Cycle: 1, CreditDays: &days,
 				OpeningBalance: money("100.00"), Deposit: money("50.00"),
 				Invoice:    &Invoice{ID: id, Number: "INV-1", Amount: money("100.00"), Paid: money("25.00"), Balance: money("75.00"), Status: "partial", CreditDays: days, IssuedAt: instant, DueAt: instant.Add(14 * 24 * time.Hour)},
-				Deliveries: []Shipment{}, Events: []Event{}, ReworkHistory: []ReworkCycle{},
+				Deliveries: []Shipment{}, Events: []Event{}, ReworkHistory: []ReworkCycle{}, Photos: []JobPhoto{},
 				Payments: []Payment{{ID: id, Method: "bank", Amount: money("25.00"), EvidenceID: ptrContract(id), PaidAt: instant}},
 			}}
 			service := NewService(repository)
@@ -53,7 +53,7 @@ func TestLegacyFulfillmentResponseContract(t *testing.T) {
 			if err = json.Unmarshal(data, &body); err != nil {
 				t.Fatal(err)
 			}
-			want := []string{"job_id", "request_id", "job_status", "request_status", "version", "cycle", "credit_days", "opening_balance", "deposit", "invoice", "deliveries", "events", "rework_history", "payments"}
+			want := []string{"job_id", "request_id", "job_status", "request_status", "version", "cycle", "credit_days", "opening_balance", "deposit", "invoice", "deliveries", "events", "rework_history", "payments", "photos"}
 			keys := make([]string, 0, len(body))
 			for key := range body {
 				keys = append(keys, key)
@@ -63,7 +63,7 @@ func TestLegacyFulfillmentResponseContract(t *testing.T) {
 			if !reflect.DeepEqual(keys, want) {
 				t.Fatalf("legacy keys changed: got %v want %v", keys, want)
 			}
-			for _, field := range []string{"deliveries", "events", "rework_history"} {
+			for _, field := range []string{"deliveries", "events", "rework_history", "photos"} {
 				if string(body[field]) != "[]" {
 					t.Fatalf("%s must remain an empty array", field)
 				}

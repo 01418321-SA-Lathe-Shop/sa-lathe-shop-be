@@ -98,8 +98,9 @@ func (s *PhotoService) Complete(ctx context.Context, a auth.Account, key string)
 	v.State = "ready"
 	return v, nil
 }
+// Download serves staff and the job's own customer members (the repository checks membership).
 func (s *PhotoService) Download(ctx context.Context, a auth.Account, key string) (file.Link, error) {
-	if e := permitted(a, "staff"); e != nil {
+	if e := permitted(a, "staff"); e != nil && (!a.Active || a.Role != auth.RoleCustomer) {
 		return file.Link{}, e
 	}
 	if !validID(key) {

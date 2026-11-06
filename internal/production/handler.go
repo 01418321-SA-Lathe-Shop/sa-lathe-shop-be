@@ -39,6 +39,12 @@ func jsonEndpoint[T any](fn func(*http.Request, T) (any, error)) http.HandlerFun
 	}
 }
 func (h *Handler) Routes(router chi.Router, authenticate func(http.Handler) http.Handler) {
+	// Job photos are also shown to the job's customer (UC8 owner change 2026-11-06); the service and repository gate access.
+	router.With(authenticate).Get("/job-photos/{photo_id}/download", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		v, e := h.photos.Download(r.Context(), auth.CurrentAccount(r.Context()), chi.URLParam(r, "photo_id"))
+		respond(w, r, v, e)
+	})
 	router.Group(func(router chi.Router) {
 		router.Use(authenticate)
 		router.Use(func(next http.Handler) http.Handler {
@@ -62,10 +68,6 @@ func (h *Handler) Routes(router chi.Router, authenticate func(http.Handler) http
 		})
 		router.Get("/production/jobs/{job_id}", func(w http.ResponseWriter, r *http.Request) {
 			v, e := h.service.Get(r.Context(), auth.CurrentAccount(r.Context()), chi.URLParam(r, "job_id"))
-			respond(w, r, v, e)
-		})
-		router.Get("/job-photos/{photo_id}/download", func(w http.ResponseWriter, r *http.Request) {
-			v, e := h.photos.Download(r.Context(), auth.CurrentAccount(r.Context()), chi.URLParam(r, "photo_id"))
 			respond(w, r, v, e)
 		})
 		router.With(auth.RequireRole(auth.RoleAdmin)).Put("/production/jobs/{job_id}/labor-cost", jsonEndpoint(func(r *http.Request, in LaborInput) (any, error) {

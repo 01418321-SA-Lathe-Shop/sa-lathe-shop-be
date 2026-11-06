@@ -88,11 +88,16 @@ func (d *Database) ReadJobPhoto(ctx context.Context, actor, id string) (p.Photo,
 		return p.Photo{}, e
 	}
 	defer tx.Rollback(ctx)
-	if _, e = receivingActor(ctx, tx, actor, false); e != nil {
-		return p.Photo{}, e
+	var role string
+	if e = tx.QueryRow(ctx, `SELECT role FROM account WHERE id=$1 AND is_active FOR SHARE`, actor).Scan(&role); e != nil {
+		return p.Photo{}, productionError(e)
+	}
+	if role != "admin" && role != "worker" && role != "customer" {
+		return p.Photo{}, req.ErrForbidden
 	}
 	var v p.Photo
-	e = tx.QueryRow(ctx, `SELECT `+jobPhotoFields+` FROM job_photo WHERE id=$1 AND state='ready'`, id).Scan(photoTargets(&v)...)
+	// Customers see only photos of jobs on a customer account they belong to; others get 404.
+	e = tx.QueryRow(ctx, `SELECT `+jobPhotoFields+` FROM job_photo WHERE id=$1 AND state='ready' AND ($3<>'customer' OR EXISTS(SELECT 1 FROM job j JOIN job_request r ON r.id=j.request_id JOIN customer_member m ON m.customer_id=r.customer_id WHERE j.id=job_photo.job_id AND m.account_id=$2))`, id, actor, role).Scan(photoTargets(&v)...)
 	if e != nil {
 		return v, productionError(e)
 	}
