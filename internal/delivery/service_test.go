@@ -59,8 +59,11 @@ func TestServiceValidationAndRoleGuards(t *testing.T) {
 	customer := auth.Account{ID: uuid.NewString(), Active: true, Role: "customer"}
 	command := Command{IdempotencyKey: uuid.NewString()}
 	days := 7
-	if _, e := s.Terms(ctx, worker, job, TermsInput{Command: command, CreditDays: &days}); e == nil {
-		t.Fatal("worker terms")
+	if _, e := s.Terms(ctx, customer, job, TermsInput{Command: command, CreditDays: &days}); e == nil {
+		t.Fatal("customer terms")
+	}
+	if _, e := s.Review(ctx, customer, job, ReviewInput{Command: command, PaymentID: uuid.NewString(), Outcome: "approved"}); e == nil {
+		t.Fatal("customer review")
 	}
 	if _, e := s.Inspect(ctx, admin, job, InspectInput{Command: command, Outcome: "accept"}); e == nil {
 		t.Fatal("staff proxy")
@@ -80,9 +83,20 @@ func TestServiceValidationAndRoleGuards(t *testing.T) {
 	if e != nil || r.last.Kind != "terms" {
 		t.Fatal("valid terms", e)
 	}
+	// UC9: the Worker sets terms, records cash, reviews transfers and sees payments.
+	if _, e = s.Terms(ctx, worker, job, TermsInput{Command: command, CreditDays: &days}); e != nil || r.last.Kind != "terms" {
+		t.Fatal("worker terms", e)
+	}
+	paid := time.Now().Add(-time.Minute)
+	if _, e = s.Pay(ctx, worker, job, PaymentInput{Command: command, Amount: &a, PaidAt: &paid}, true); e != nil || r.last.Kind != "cash" {
+		t.Fatal("worker cash", e)
+	}
+	if _, e = s.Review(ctx, worker, job, ReviewInput{Command: command, PaymentID: uuid.NewString(), Outcome: "approved"}); e != nil || r.last.Kind != "review" {
+		t.Fatal("worker review", e)
+	}
 	v, e := s.Get(ctx, worker, job)
-	if e != nil || len(v.Payments) != 0 {
-		t.Fatal("worker redaction")
+	if e != nil || len(v.Payments) != 1 {
+		t.Fatal("worker sees payments", e)
 	}
 	r.err = errors.New("repository failure")
 	if _, e = s.Issue(ctx, worker, job, command); !errors.Is(e, r.err) {

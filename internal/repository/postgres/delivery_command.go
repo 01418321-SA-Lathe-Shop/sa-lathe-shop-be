@@ -12,9 +12,7 @@ import (
 
 func fulfillmentRole(role, kind string) bool {
 	switch kind {
-	case "terms", "cash", "review":
-		return role == "admin"
-	case "invoice", "ship":
+	case "terms", "cash", "review", "invoice", "ship":
 		return role == "admin" || role == "worker"
 	case "accept", "return", "bank":
 		return role == "customer"
@@ -55,7 +53,7 @@ func (d *Database) ApplyFulfillment(ctx context.Context, actor, id string, in f.
 		if e = json.Unmarshal(data, &v); e != nil {
 			return v, e
 		}
-		return f.Redact(v, role), tx.Commit(ctx)
+		return v, tx.Commit(ctx)
 	}
 	if !errors.Is(e, pgx.ErrNoRows) {
 		return f.State{}, e
@@ -146,11 +144,7 @@ func writeFulfillment(ctx context.Context, tx pgx.Tx, actor, id string, in f.Act
 		}
 		_, e = tx.Exec(ctx, `INSERT INTO invoice(id,job_id,amount,credit_days,issued_at,due_at) SELECT $1,id,balance,COALESCE(invoice_credit_days,0),t,t+COALESCE(invoice_credit_days,0)*interval '24 hours' FROM job CROSS JOIN (SELECT clock_timestamp() t)x WHERE id=$2`, in.IdempotencyKey, id)
 	case "ship":
-		shippingCost := "0.00"
-		if in.ShippingCost != nil {
-			shippingCost = in.ShippingCost.String()
-		}
-		_, e = tx.Exec(ctx, `INSERT INTO delivery(id,job_id,cycle,method,shipping_cost,receiver_name) SELECT $1,id,production_cycle,$3,$4,$5 FROM job WHERE id=$2`, in.IdempotencyKey, id, in.Method, shippingCost, in.ReceiverName)
+		_, e = tx.Exec(ctx, `INSERT INTO delivery(id,job_id,cycle,method,receiver_name) SELECT $1,id,production_cycle,$3,$4 FROM job WHERE id=$2`, in.IdempotencyKey, id, in.Method, in.ReceiverName)
 	case "accept", "return":
 		last := v.Deliveries[len(v.Deliveries)-1]
 		status := "delivered"

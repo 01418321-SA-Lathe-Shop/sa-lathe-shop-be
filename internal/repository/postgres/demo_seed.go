@@ -62,7 +62,7 @@ func (r *DemoSeedRepository) Within(ctx context.Context, cfg demoseed.Config, fn
 	}
 	var version int
 	var dirty bool
-	if e = tx.QueryRow(ctx, `SELECT version,dirty FROM schema_migrations`).Scan(&version, &dirty); e != nil || (version < 13 || version > 26) || dirty {
+	if e = tx.QueryRow(ctx, `SELECT version,dirty FROM schema_migrations`).Scan(&version, &dirty); e != nil || (version < 13 || version > 27) || dirty {
 		return demoseed.ErrGuard
 	}
 	// Local operator command only. Freeze public tables against writes so the

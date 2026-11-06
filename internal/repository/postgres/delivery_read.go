@@ -9,7 +9,6 @@ import (
 	req "github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/request"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"strings"
 )
 
 var _ f.Repository = (*Database)(nil)
@@ -56,14 +55,14 @@ func fulfillmentActor(ctx context.Context, tx pgx.Tx, actor, job string) (string
 const fulfillmentDocument = `jsonb_build_object('job_id',j.id,'request_id',j.request_id,'job_status',j.status,'request_status',r.status,'version',j.fulfillment_version,'cycle',j.production_cycle,'credit_days',j.invoice_credit_days,'opening_balance',j.balance::text,'deposit',j.deposit_amount::text,
  'rework_history',COALESCE((SELECT jsonb_agg(jsonb_build_object('cycle',pr.cycle,'started_at',pr.prior_started_at,'completed_at',pr.prior_completed_at,'reopened_at',pr.reopened_at,'delivery_id',pr.delivery_id) ORDER BY pr.cycle) FROM production_return pr WHERE pr.job_id=j.id),'[]'::jsonb),
  'invoice',(SELECT jsonb_build_object('id',i.id,'number','INV-'||i.invoice_no::text,'amount',i.amount::text,'paid',p.paid::numeric(18,2)::text,'balance',(i.amount-p.paid)::numeric(18,2)::text,'status',CASE WHEN i.amount=p.paid THEN 'paid' WHEN p.paid>0 THEN 'partial' ELSE 'unpaid' END,'credit_days',i.credit_days,'issued_at',i.issued_at,'due_at',i.due_at) FROM invoice i CROSS JOIN LATERAL(SELECT COALESCE(sum(amount),0) AS paid FROM payment_allocation WHERE invoice_id=i.id)p WHERE i.job_id=j.id),
- 'deliveries',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',d.id,'cycle',d.cycle,'method',d.method,'shipping_cost',d.shipping_cost::text,'receiver_name',d.receiver_name,'status',d.status,'shipped_at',d.shipped_at,'decided_at',d.decided_at,'decided_by',d.decided_by,'reason',d.reason) ORDER BY d.cycle) FROM delivery d WHERE d.job_id=j.id),'[]'::jsonb),
- 'payments',CASE WHEN $2::text='worker' THEN '[]'::jsonb ELSE COALESCE((SELECT jsonb_agg(jsonb_build_object('id',p.id,'submitted_by',p.submitted_by,'method',p.method,'amount',p.amount::text,'paid_at',p.paid_at,'status',p.status,'evidence_id',p.evidence_id,'reason',p.reason,'reviewed_by',p.reviewed_by) ORDER BY p.submitted_at,p.id) FROM payment p JOIN invoice i ON i.id=p.invoice_id WHERE i.job_id=j.id),'[]'::jsonb) END,
+ 'deliveries',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',d.id,'cycle',d.cycle,'method',d.method,'receiver_name',d.receiver_name,'status',d.status,'shipped_at',d.shipped_at,'decided_at',d.decided_at,'decided_by',d.decided_by,'reason',d.reason) ORDER BY d.cycle) FROM delivery d WHERE d.job_id=j.id),'[]'::jsonb),
+ 'payments',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',p.id,'submitted_by',p.submitted_by,'method',p.method,'amount',p.amount::text,'paid_at',p.paid_at,'status',p.status,'evidence_id',p.evidence_id,'reason',p.reason,'reviewed_by',p.reviewed_by) ORDER BY p.submitted_at,p.id) FROM payment p JOIN invoice i ON i.id=p.invoice_id WHERE i.job_id=j.id),'[]'::jsonb),
  'events',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',e.id,'actor_id',e.actor_id,'action',e.action,'version',e.version,'created_at',e.created_at) ORDER BY e.version) FROM fulfillment_event e WHERE e.job_id=j.id),'[]'::jsonb))`
 
 func readFulfillment(ctx context.Context, tx pgx.Tx, id, role string) (f.State, error) {
 	var v f.State
 	var data []byte
-	e := tx.QueryRow(ctx, `SELECT `+fulfillmentDocument+` FROM job j JOIN job_request r ON r.id=j.request_id WHERE j.id=$1`, id, role).Scan(&data)
+	e := tx.QueryRow(ctx, `SELECT `+fulfillmentDocument+` FROM job j JOIN job_request r ON r.id=j.request_id WHERE j.id=$1`, id).Scan(&data)
 	if e != nil {
 		return v, customerFulfillmentError(e)
 	}
@@ -124,5 +123,5 @@ func (d *Database) FulfillmentJobs(ctx context.Context, actor string, limit, off
 var fulfillmentListQuery = `WITH viewer AS MATERIALIZED (SELECT role FROM account WHERE id=$1 AND is_active),
  page AS MATERIALIZED (SELECT j.* FROM job j JOIN job_request r ON r.id=j.request_id
  WHERE ` + accessibleRequest + ` ORDER BY j.created_at DESC,j.id LIMIT $2 OFFSET $3)
- SELECT ` + strings.ReplaceAll(fulfillmentDocument, "$2::text", "viewer.role") + `
+ SELECT ` + fulfillmentDocument + `
  FROM page j JOIN job_request r ON r.id=j.request_id CROSS JOIN viewer ORDER BY j.created_at DESC,j.id`

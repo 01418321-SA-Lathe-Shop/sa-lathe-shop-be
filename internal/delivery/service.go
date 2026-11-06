@@ -40,7 +40,7 @@ func (s *Service) Get(ctx context.Context, a auth.Account, id string) (State, er
 		return State{}, req.ErrInvalidInput
 	}
 	v, e := s.repo.FulfillmentState(ctx, a.ID, id)
-	return Redact(v, a.Role), e
+	return v, e
 }
 func (s *Service) List(ctx context.Context, a auth.Account, limit, offset int) ([]State, error) {
 	if e := permitted(a, "any"); e != nil {
@@ -50,9 +50,6 @@ func (s *Service) List(ctx context.Context, a auth.Account, limit, offset int) (
 		return nil, req.ErrInvalidInput
 	}
 	v, e := s.repo.FulfillmentJobs(ctx, a.ID, limit, offset)
-	for i := range v {
-		v[i] = Redact(v[i], a.Role)
-	}
 	return v, e
 }
 func (s *Service) apply(ctx context.Context, a auth.Account, id, role string, in Action) (State, error) {
@@ -63,13 +60,13 @@ func (s *Service) apply(ctx context.Context, a auth.Account, id, role string, in
 		return State{}, req.ErrInvalidInput
 	}
 	v, e := s.repo.ApplyFulfillment(ctx, a.ID, id, in)
-	return Redact(v, a.Role), e
+	return v, e
 }
 func (s *Service) Terms(ctx context.Context, a auth.Account, id string, in TermsInput) (State, error) {
 	if in.CreditDays == nil || *in.CreditDays < 0 || *in.CreditDays > 36500 {
 		return State{}, req.ErrInvalidInput
 	}
-	return s.apply(ctx, a, id, "admin", Action{Command: in.Command, Kind: "terms", CreditDays: in.CreditDays})
+	return s.apply(ctx, a, id, "staff", Action{Command: in.Command, Kind: "terms", CreditDays: in.CreditDays})
 }
 func (s *Service) Issue(ctx context.Context, a auth.Account, id string, in Command) (State, error) {
 	return s.apply(ctx, a, id, "staff", Action{Command: in, Kind: "invoice"})
@@ -79,10 +76,7 @@ func (s *Service) Ship(ctx context.Context, a auth.Account, id string, in ShipIn
 	if (in.Method != "self" && in.Method != "third_party" && in.Method != "pickup") || !validation.Text(in.ReceiverName, 1, 200) {
 		return State{}, req.ErrInvalidInput
 	}
-	if in.Method == "pickup" && in.ShippingCost != nil && in.ShippingCost.String() != "0.00" {
-		return State{}, req.ErrInvalidInput
-	}
-	return s.apply(ctx, a, id, "staff", Action{Command: in.Command, Kind: "ship", Method: in.Method, ShippingCost: in.ShippingCost, ReceiverName: in.ReceiverName})
+	return s.apply(ctx, a, id, "staff", Action{Command: in.Command, Kind: "ship", Method: in.Method, ReceiverName: in.ReceiverName})
 }
 func (s *Service) Inspect(ctx context.Context, a auth.Account, id string, in InspectInput) (State, error) {
 	in.Reason = strings.TrimSpace(in.Reason)
@@ -97,7 +91,7 @@ func (s *Service) Pay(ctx context.Context, a auth.Account, id string, in Payment
 	}
 	kind, role := "bank", "customer"
 	if cash {
-		kind, role = "cash", "admin"
+		kind, role = "cash", "staff"
 	}
 	t := in.PaidAt.UTC()
 	return s.apply(ctx, a, id, role, Action{Command: in.Command, Kind: kind, Amount: in.Amount, PaidAt: &t, EvidenceID: in.EvidenceID})
@@ -107,5 +101,5 @@ func (s *Service) Review(ctx context.Context, a auth.Account, id string, in Revi
 	if !validID(in.PaymentID) || (in.Outcome != "approved" && in.Outcome != "rejected") || (in.Outcome == "rejected" && in.Reason == "") || (in.Outcome == "approved" && in.Reason != "") || !validation.Text(in.Reason, 0, 2000) {
 		return State{}, req.ErrInvalidInput
 	}
-	return s.apply(ctx, a, id, "admin", Action{Command: in.Command, Kind: "review", PaymentID: in.PaymentID, Outcome: in.Outcome, Reason: in.Reason})
+	return s.apply(ctx, a, id, "staff", Action{Command: in.Command, Kind: "review", PaymentID: in.PaymentID, Outcome: in.Outcome, Reason: in.Reason})
 }

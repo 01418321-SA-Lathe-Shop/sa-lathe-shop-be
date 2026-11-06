@@ -107,7 +107,7 @@ func (d *Database) ReadCustomerEvidence(ctx context.Context, actor, id string) (
 	if e != nil {
 		return v, e
 	}
-	if role != "admin" && (role != "customer" || actor != v.UploadedBy) {
+	if role != "admin" && role != "worker" && (role != "customer" || actor != v.UploadedBy) {
 		return v, req.ErrForbidden
 	}
 	return v, tx.Commit(ctx)

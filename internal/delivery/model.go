@@ -21,9 +21,8 @@ type TermsInput struct {
 }
 type ShipInput struct {
 	Command
-	Method       string    `json:"method"`
-	ShippingCost *q.Amount `json:"shipping_cost,omitempty"`
-	ReceiverName string    `json:"receiver_name"`
+	Method       string `json:"method"`
+	ReceiverName string `json:"receiver_name"`
 }
 type InspectInput struct {
 	Command
@@ -49,7 +48,6 @@ type Action struct {
 	Kind         string     `json:"kind"`
 	CreditDays   *int       `json:"credit_days,omitempty"`
 	Method       string     `json:"method,omitempty"`
-	ShippingCost *q.Amount  `json:"shipping_cost,omitempty"`
 	ReceiverName string     `json:"receiver_name,omitempty"`
 	Outcome      string     `json:"outcome,omitempty"`
 	Reason       string     `json:"reason,omitempty"`
@@ -73,7 +71,6 @@ type Shipment struct {
 	ID           string     `json:"id"`
 	Cycle        int64      `json:"cycle"`
 	Method       string     `json:"method"`
-	ShippingCost q.Amount   `json:"shipping_cost"`
 	ReceiverName string     `json:"receiver_name"`
 	Status       string     `json:"status"`
 	ShippedAt    time.Time  `json:"shipped_at"`
@@ -143,11 +140,4 @@ type EvidenceRepository interface {
 	BeginCustomerEvidence(context.Context, string, string) (Evidence, error)
 	FinishCustomerEvidence(context.Context, string, string, bool) error
 	ReadCustomerEvidence(context.Context, string, string) (Evidence, error)
-}
-
-func Redact(v State, role string) State {
-	if role == "worker" {
-		v.Payments = nil
-	}
-	return v
 }

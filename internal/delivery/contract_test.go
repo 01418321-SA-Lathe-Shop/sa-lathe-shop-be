@@ -53,10 +53,7 @@ func TestLegacyFulfillmentResponseContract(t *testing.T) {
 			if err = json.Unmarshal(data, &body); err != nil {
 				t.Fatal(err)
 			}
-			want := []string{"job_id", "request_id", "job_status", "request_status", "version", "cycle", "credit_days", "opening_balance", "deposit", "invoice", "deliveries", "events", "rework_history"}
-			if role != auth.RoleWorker {
-				want = append(want, "payments")
-			}
+			want := []string{"job_id", "request_id", "job_status", "request_status", "version", "cycle", "credit_days", "opening_balance", "deposit", "invoice", "deliveries", "events", "rework_history", "payments"}
 			keys := make([]string, 0, len(body))
 			for key := range body {
 				keys = append(keys, key)

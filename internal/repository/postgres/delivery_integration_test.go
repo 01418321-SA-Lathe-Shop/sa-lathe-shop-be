@@ -217,8 +217,9 @@ func TestCustomerFulfillmentIntegration(t *testing.T) {
 		t.Fatal("acceptance closed unpaid request")
 	}
 	evidenceID := proof(job)
-	if _, e = evidence.Download(ctx, worker.Account, evidenceID); e == nil {
-		t.Fatal("worker proof leak")
+	// UC9 (2026-11-06): the Worker reviews transfers, so it may open the customer's proof.
+	if _, e = evidence.Download(ctx, worker.Account, evidenceID); e != nil {
+		t.Fatal("worker proof review", e)
 	}
 	if _, e = evidence.Download(ctx, stranger, evidenceID); e == nil {
 		t.Fatal("stranger proof leak")

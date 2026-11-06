@@ -60,7 +60,7 @@ func (h *Handler) Routes(router chi.Router, authenticate func(http.Handler) http
 			v, e := h.service.Get(r.Context(), auth.CurrentAccount(r.Context()), chi.URLParam(r, "job_id"))
 			respond(w, r, v, e)
 		})
-		r.With(auth.RequireRole(auth.RoleAdmin)).Put("/fulfillment/jobs/{job_id}/credit-terms", endpoint(func(r *http.Request, in TermsInput) (any, error) {
+		r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWorker)).Put("/fulfillment/jobs/{job_id}/credit-terms", endpoint(func(r *http.Request, in TermsInput) (any, error) {
 			return h.service.Terms(r.Context(), auth.CurrentAccount(r.Context()), chi.URLParam(r, "job_id"), in)
 		}))
 		r.Post("/fulfillment/jobs/{job_id}/invoice", endpoint(func(r *http.Request, in Command) (any, error) {
@@ -75,10 +75,10 @@ func (h *Handler) Routes(router chi.Router, authenticate func(http.Handler) http
 		r.With(auth.RequireRole(auth.RoleCustomer)).Post("/fulfillment/jobs/{job_id}/payments/bank", endpoint(func(r *http.Request, in PaymentInput) (any, error) {
 			return h.service.Pay(r.Context(), auth.CurrentAccount(r.Context()), chi.URLParam(r, "job_id"), in, false)
 		}))
-		r.With(auth.RequireRole(auth.RoleAdmin)).Post("/fulfillment/jobs/{job_id}/payments/cash", endpoint(func(r *http.Request, in PaymentInput) (any, error) {
+		r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWorker)).Post("/fulfillment/jobs/{job_id}/payments/cash", endpoint(func(r *http.Request, in PaymentInput) (any, error) {
 			return h.service.Pay(r.Context(), auth.CurrentAccount(r.Context()), chi.URLParam(r, "job_id"), in, true)
 		}))
-		r.With(auth.RequireRole(auth.RoleAdmin)).Post("/fulfillment/jobs/{job_id}/payments/review", endpoint(func(r *http.Request, in ReviewInput) (any, error) {
+		r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWorker)).Post("/fulfillment/jobs/{job_id}/payments/review", endpoint(func(r *http.Request, in ReviewInput) (any, error) {
 			return h.service.Review(r.Context(), auth.CurrentAccount(r.Context()), chi.URLParam(r, "job_id"), in)
 		}))
 		r.Post("/fulfillment/jobs/{job_id}/evidence/uploads", endpoint(func(r *http.Request, in file.Input) (any, error) {

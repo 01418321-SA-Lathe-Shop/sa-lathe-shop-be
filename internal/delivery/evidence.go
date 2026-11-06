@@ -101,8 +101,9 @@ func (s *EvidenceService) Complete(ctx context.Context, a auth.Account, id strin
 	v.State = "ready"
 	return v, nil
 }
+// Download also serves the Worker, who reviews customer transfer proof in UC9.
 func (s *EvidenceService) Download(ctx context.Context, a auth.Account, id string) (file.Link, error) {
-	if e := evidencePermission(a); e != nil {
+	if e := evidencePermission(a); e != nil && !(a.Active && a.Role == "worker") {
 		return file.Link{}, e
 	}
 	if !validID(id) {
