@@ -307,7 +307,7 @@ func TestFulfillmentIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 	pendingID := uuid.NewString()
-	if _, err = db.pool.Exec(ctx, `INSERT INTO term_evidence(id,quotation_id,attachment_id,submitted_by,idempotency_key,kind,submitted_at) VALUES($1,$2,$3,$4,$5,'po',$6)`, pendingID, pending, pastFile, member.ID, uuid.NewString(), past); err != nil {
+	if _, err = db.pool.Exec(ctx, `INSERT INTO purchase_order(id,quotation_id,attachment_id,submitted_by,idempotency_key,kind,submitted_at) VALUES($1,$2,$3,$4,$5,'po',$6)`, pendingID, pending, pastFile, member.ID, uuid.NewString(), past); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = db.ExpireUnfulfilled(ctx); err != nil {
@@ -337,7 +337,7 @@ func TestFulfillmentIntegration(t *testing.T) {
 	before := rt.DocumentsDueAt.Add(-time.Hour)
 	db.pool.Exec(ctx, `UPDATE request_attachment SET completed_at=$2 WHERE id=$1`, rf, before.Add(-time.Second))
 	rejectedID := uuid.NewString()
-	if _, err = db.pool.Exec(ctx, `INSERT INTO term_evidence(id,quotation_id,attachment_id,submitted_by,idempotency_key,kind,submitted_at) VALUES($1,$2,$3,$4,$5,'po',$6)`, rejectedID, rejected, rf, member.ID, uuid.NewString(), before); err != nil {
+	if _, err = db.pool.Exec(ctx, `INSERT INTO purchase_order(id,quotation_id,attachment_id,submitted_by,idempotency_key,kind,submitted_at) VALUES($1,$2,$3,$4,$5,'po',$6)`, rejectedID, rejected, rf, member.ID, uuid.NewString(), before); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = payments.Review(ctx, worker.Account, rejectedID, p.Review{Outcome: "rejected", Reason: "Not a company PO", ExpectedVersion: 1}); err != nil {
@@ -435,7 +435,7 @@ func TestFulfillmentIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 	racingID := uuid.NewString()
-	if _, err = db.pool.Exec(ctx, `INSERT INTO term_evidence(id,quotation_id,attachment_id,submitted_by,idempotency_key,kind,submitted_at) VALUES($1,$2,$3,$4,$5,'po',$6)`, racingID, racing, racingFile, member.ID, uuid.NewString(), racingAt); err != nil {
+	if _, err = db.pool.Exec(ctx, `INSERT INTO purchase_order(id,quotation_id,attachment_id,submitted_by,idempotency_key,kind,submitted_at) VALUES($1,$2,$3,$4,$5,'po',$6)`, racingID, racing, racingFile, member.ID, uuid.NewString(), racingAt); err != nil {
 		t.Fatal(err)
 	}
 	results = make(chan error, 2)
@@ -483,7 +483,7 @@ func TestFulfillmentIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal("one-connection status read deadlocked", err)
 	}
-	if _, err = db.pool.Exec(ctx, `UPDATE term_evidence SET reason='changed' WHERE id=$1`, deposit.ID); err == nil {
+	if _, err = db.pool.Exec(ctx, `UPDATE deposit SET reason='changed' WHERE id=$1`, deposit.ID); err == nil {
 		t.Fatal("reviewed evidence was mutable")
 	}
 	down, e := os.ReadFile("../../../migrations/000007_fulfillment.down.sql")

@@ -69,7 +69,7 @@ func (d *Database) RegisterCustomer(ctx context.Context, in auth.CustomerRegistr
 			return auth.Account{}, authError(err)
 		}
 		if in.Address != "" {
-			_, err = tx.Exec(ctx, `INSERT INTO customer_address(id,customer_id,address,address_line1,address_line2,district,province,postal_code,is_default,created_by,contact_name) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+			_, err = tx.Exec(ctx, `INSERT INTO address(id,customer_id,address,address_line1,address_line2,district,province,postal_code,is_default,created_by,contact_name) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
 				uuid.NewString(), in.CustomerID, in.Address, in.AddressLine1, in.AddressLine2, in.District, in.Province, in.PostalCode, in.IsDefault, a.ID, in.ContactName)
 			if err != nil {
 				return auth.Account{}, authError(err)
@@ -161,7 +161,7 @@ func (d *Database) CustomerAddresses(ctx context.Context, accountID, customerID 
 	if !member {
 		return nil, auth.ErrForbidden
 	}
-	rows, err := d.identityQueries().Query(ctx, `SELECT id::text,contact_name,address,address_line1,address_line2,district,province,postal_code,is_default,created_at FROM customer_address WHERE customer_id=$1 ORDER BY is_default DESC,created_at,id`, customerID)
+	rows, err := d.identityQueries().Query(ctx, `SELECT id::text,contact_name,address,address_line1,address_line2,district,province,postal_code,is_default,created_at FROM address WHERE customer_id=$1 ORDER BY is_default DESC,created_at,id`, customerID)
 	if err != nil {
 		return nil, err
 	}
@@ -177,13 +177,13 @@ func (d *Database) CustomerAddresses(ctx context.Context, accountID, customerID 
 	return result, rows.Err()
 }
 func (d *Database) AddCustomerAddress(ctx context.Context, accountID, customerID string, in auth.CustomerAddress) (auth.CustomerAddress, error) {
-	return d.saveCustomerAddress(ctx, accountID, customerID, in, `INSERT INTO customer_address(id,customer_id,address,address_line1,address_line2,district,province,postal_code,is_default,created_by,contact_name)
+	return d.saveCustomerAddress(ctx, accountID, customerID, in, `INSERT INTO address(id,customer_id,address,address_line1,address_line2,district,province,postal_code,is_default,created_by,contact_name)
  VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING created_at`)
 }
 
 // Only the owner's own customer rows match; another customer's address id reads as not found.
 func (d *Database) UpdateCustomerAddress(ctx context.Context, accountID, customerID string, in auth.CustomerAddress) (auth.CustomerAddress, error) {
-	return d.saveCustomerAddress(ctx, accountID, customerID, in, `UPDATE customer_address SET address=$3,address_line1=$4,address_line2=$5,district=$6,province=$7,postal_code=$8,is_default=$9,contact_name=$11
+	return d.saveCustomerAddress(ctx, accountID, customerID, in, `UPDATE address SET address=$3,address_line1=$4,address_line2=$5,district=$6,province=$7,postal_code=$8,is_default=$9,contact_name=$11,edited_at=now()
  WHERE id=$1 AND customer_id=$2 AND $10::uuid IS NOT NULL RETURNING created_at`) // $10 (creator) is unused here but typed so both queries share one argument list.
 }
 func (d *Database) saveCustomerAddress(ctx context.Context, accountID, customerID string, in auth.CustomerAddress, query string) (auth.CustomerAddress, error) {
@@ -200,7 +200,7 @@ func (d *Database) saveCustomerAddress(ctx context.Context, accountID, customerI
 		return auth.CustomerAddress{}, auth.ErrForbidden
 	}
 	if in.IsDefault {
-		if _, err = tx.Exec(ctx, `UPDATE customer_address SET is_default=false WHERE customer_id=$1`, customerID); err != nil {
+		if _, err = tx.Exec(ctx, `UPDATE address SET is_default=false WHERE customer_id=$1`, customerID); err != nil {
 			return auth.CustomerAddress{}, authError(err)
 		}
 		if _, err = tx.Exec(ctx, `UPDATE customer SET billing_address=$2 WHERE id=$1`, customerID, in.Address); err != nil {

@@ -110,7 +110,7 @@ func (d *Database) ClaimReplacement(ctx context.Context, actor, id, claimID stri
 	if replay {
 		return v, tx.Commit(ctx)
 	}
-	tag, err := tx.Exec(ctx, `UPDATE material_claim c SET claimed_by=$3,claimed_at=clock_timestamp(),note=$4 FROM material_receipt_line l WHERE c.id=$2 AND l.id=c.source_line_id AND l.order_id=$1 AND c.status='pending_claim'`, id, claimID, actor, in.Note)
+	tag, err := tx.Exec(ctx, `UPDATE material_defect_log c SET claimed_by=$3,claimed_at=clock_timestamp(),note=$4 FROM material_receipt_line l WHERE c.id=$2 AND l.id=c.source_line_id AND l.order_id=$1 AND c.status='pending_claim'`, id, claimID, actor, in.Note)
 	if err != nil {
 		return v, procurementError(err)
 	}

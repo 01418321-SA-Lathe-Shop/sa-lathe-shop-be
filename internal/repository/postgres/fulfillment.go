@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"strings"
 	"time"
 )
 
@@ -32,6 +33,15 @@ func fulfillmentError(err error) error {
 }
 
 const evidenceFields = `e.id::text,e.quotation_id::text,e.submitted_by::text,e.idempotency_key::text,e.attachment_id::text,e.kind,e.amount::text,e.paid_at,e.status,e.version,e.submitted_at,e.reviewed_by::text,e.reviewed_at,e.reason`
+
+// ER split: deposit and purchase_order are separate tables. kind is validated before any write, so the
+// table name below is never user input. Purchase orders carry no amount or paid_at.
+func evidenceTable(kind string) (table, fields string) {
+	if kind == "deposit" {
+		return "deposit", evidenceFields
+	}
+	return "purchase_order", strings.Replace(evidenceFields, "e.amount::text,e.paid_at", "NULL::text,NULL::timestamptz", 1)
+}
 
 func evidenceRow(row pgx.Row) (p.Evidence, error) {
 	var e p.Evidence
@@ -119,7 +129,14 @@ func (d *Database) SubmitEvidence(ctx context.Context, actor, id string, in p.Su
 	if in.Amount != nil {
 		amount = in.Amount.String()
 	}
-	e, err := evidenceRow(tx.QueryRow(ctx, `INSERT INTO term_evidence AS e(id,quotation_id,attachment_id,submitted_by,idempotency_key,kind,amount,paid_at,submitted_at) VALUES($1,$2,$3,$4,$5,$6,$7::numeric,$8,$9) RETURNING `+evidenceFields, uuid.NewString(), id, in.AttachmentID, actor, in.IdempotencyKey, in.Kind, amount, in.PaidAt, now))
+	table, fields := evidenceTable(in.Kind)
+	insert := `INSERT INTO ` + table + ` AS e(id,quotation_id,attachment_id,submitted_by,idempotency_key,kind,amount,paid_at,submitted_at) VALUES($1,$2,$3,$4,$5,$6,$7::numeric,$8,$9) RETURNING ` + fields
+	args := []any{uuid.NewString(), id, in.AttachmentID, actor, in.IdempotencyKey, in.Kind, amount, in.PaidAt, now}
+	if table == "purchase_order" {
+		insert = `INSERT INTO purchase_order AS e(id,quotation_id,attachment_id,submitted_by,idempotency_key,kind,submitted_at) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING ` + fields
+		args = []any{args[0], id, in.AttachmentID, actor, in.IdempotencyKey, in.Kind, now}
+	}
+	e, err := evidenceRow(tx.QueryRow(ctx, insert, args...))
 	if err != nil {
 		return p.Evidence{}, err
 	}
@@ -136,7 +153,12 @@ func (d *Database) ReviewEvidence(ctx context.Context, actor, id string, in p.Re
 	if err != nil {
 		return p.Evidence{}, fulfillmentError(err)
 	}
-	e, err := evidenceRow(tx.QueryRow(ctx, `SELECT `+evidenceFields+` FROM term_evidence e WHERE e.id=$1 FOR UPDATE`, id))
+	var kind string
+	if err = tx.QueryRow(ctx, `SELECT kind FROM term_evidence WHERE id=$1`, id).Scan(&kind); err != nil {
+		return p.Evidence{}, fulfillmentError(err)
+	}
+	table, fields := evidenceTable(kind)
+	e, err := evidenceRow(tx.QueryRow(ctx, `SELECT `+fields+` FROM `+table+` e WHERE e.id=$1 FOR UPDATE`, id))
 	if err != nil {
 		return e, err
 	}
@@ -152,7 +174,7 @@ func (d *Database) ReviewEvidence(ctx context.Context, actor, id string, in p.Re
 	if err = p.ValidateReview(in); err != nil {
 		return p.Evidence{}, err
 	}
-	e, err = evidenceRow(tx.QueryRow(ctx, `UPDATE term_evidence AS e SET status=$2,version=2,reviewed_by=$3,reviewed_at=clock_timestamp(),reason=$4 WHERE id=$1 RETURNING `+evidenceFields, id, in.Outcome, actor, in.Reason))
+	e, err = evidenceRow(tx.QueryRow(ctx, `UPDATE `+table+` AS e SET status=$2,version=2,reviewed_by=$3,reviewed_at=clock_timestamp(),reason=$4 WHERE id=$1 RETURNING `+fields, id, in.Outcome, actor, in.Reason))
 	if err != nil {
 		return e, err
 	}
@@ -167,8 +189,8 @@ func openFulfilledJob(ctx context.Context, tx pgx.Tx, id string) error {
 	_, err := tx.Exec(ctx, `INSERT INTO job(id,quotation_id,request_id,deposit_amount,balance,deposit_evidence_id,po_evidence_id,due_at)
  SELECT $2,t.quotation_id,r.id,COALESCE(d.amount,0),t.final_price-COALESCE(d.amount,0),d.id,po.id,r.deadline
  FROM quotation_acceptance_terms t JOIN quotation q ON q.id=t.quotation_id JOIN job_request r ON r.id=q.request_id
- LEFT JOIN term_evidence d ON d.quotation_id=t.quotation_id AND d.kind='deposit' AND d.status='approved'
- LEFT JOIN term_evidence po ON po.quotation_id=t.quotation_id AND po.kind='po' AND po.status='approved'
+ LEFT JOIN deposit d ON d.quotation_id=t.quotation_id AND d.status='approved'
+ LEFT JOIN purchase_order po ON po.quotation_id=t.quotation_id AND po.status='approved'
  WHERE t.quotation_id=$1 AND r.status='ongoing' AND (NOT t.deposit_required OR d.id IS NOT NULL) AND (NOT t.po_required OR po.id IS NOT NULL)
  AND NOT EXISTS(SELECT 1 FROM uc4_cancellation WHERE quotation_id=t.quotation_id)
  ON CONFLICT(quotation_id) DO NOTHING`, id, uuid.NewString())

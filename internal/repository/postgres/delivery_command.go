@@ -181,7 +181,7 @@ func writeFulfillment(ctx context.Context, tx pgx.Tx, actor, id string, in f.Act
 			reviewed = actor
 			reviewEvent = in.IdempotencyKey
 		}
-		_, e = tx.Exec(ctx, `INSERT INTO customer_payment(id,invoice_id,submitted_by,method,amount,paid_at,evidence_id,status,reviewed_by,reviewed_at,review_event_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,CASE WHEN $8='approved' THEN clock_timestamp() ELSE NULL END,$10)`, in.IdempotencyKey, v.Invoice.ID, actor, in.Kind, in.Amount.String(), in.PaidAt, proof, status, reviewed, reviewEvent)
+		_, e = tx.Exec(ctx, `INSERT INTO payment(id,invoice_id,submitted_by,method,amount,paid_at,evidence_id,status,reviewed_by,reviewed_at,review_event_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,CASE WHEN $8='approved' THEN clock_timestamp() ELSE NULL END,$10)`, in.IdempotencyKey, v.Invoice.ID, actor, in.Kind, in.Amount.String(), in.PaidAt, proof, status, reviewed, reviewEvent)
 		if e != nil {
 			return e
 		}
@@ -191,14 +191,14 @@ func writeFulfillment(ctx context.Context, tx pgx.Tx, actor, id string, in f.Act
 	case "review":
 		var amount string
 		var status string
-		e = tx.QueryRow(ctx, `SELECT amount::text,status FROM customer_payment WHERE id=$1 AND invoice_id=$2 FOR UPDATE`, in.PaymentID, v.Invoice.ID).Scan(&amount, &status)
+		e = tx.QueryRow(ctx, `SELECT amount::text,status FROM payment WHERE id=$1 AND invoice_id=$2 FOR UPDATE`, in.PaymentID, v.Invoice.ID).Scan(&amount, &status)
 		if e != nil {
 			return e
 		}
 		if status != "pending" {
 			return f.ErrConflict
 		}
-		_, e = tx.Exec(ctx, `UPDATE customer_payment SET status=$2,reviewed_by=$3,reviewed_at=clock_timestamp(),review_event_id=$4,reason=$5 WHERE id=$1`, in.PaymentID, in.Outcome, actor, in.IdempotencyKey, in.Reason)
+		_, e = tx.Exec(ctx, `UPDATE payment SET status=$2,reviewed_by=$3,reviewed_at=clock_timestamp(),review_event_id=$4,reason=$5 WHERE id=$1`, in.PaymentID, in.Outcome, actor, in.IdempotencyKey, in.Reason)
 		if e != nil {
 			return e
 		}

@@ -53,7 +53,7 @@ func (d *Database) Receive(ctx context.Context, actor, id string, in r.ReceiptIn
 			return v, procurementError(err)
 		}
 		if line.ReplacementClaimID == "" && !line.Damaged.IsZero() {
-			_, err = tx.Exec(ctx, `INSERT INTO material_claim(id,source_line_id,quantity) VALUES($1,$2,$3)`, uuid.NewString(), lineID, line.Damaged.String())
+			_, err = tx.Exec(ctx, `INSERT INTO material_defect_log(id,source_line_id,quantity) VALUES($1,$2,$3)`, uuid.NewString(), lineID, line.Damaged.String())
 			if err != nil {
 				return v, procurementError(err)
 			}
@@ -87,7 +87,7 @@ func (d *Database) Receive(ctx context.Context, actor, id string, in r.ReceiptIn
 			}
 		}
 		if line.ReplacementClaimID != "" {
-			_, err = tx.Exec(ctx, `UPDATE material_claim SET replaced=(SELECT COALESCE(sum(good),0) FROM material_receipt_line WHERE replacement_claim_id=$1) WHERE id=$1`, line.ReplacementClaimID)
+			_, err = tx.Exec(ctx, `UPDATE material_defect_log SET replaced=(SELECT COALESCE(sum(good),0) FROM material_receipt_line WHERE replacement_claim_id=$1) WHERE id=$1`, line.ReplacementClaimID)
 			if err != nil {
 				return v, procurementError(err)
 			}

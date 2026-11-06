@@ -19,7 +19,7 @@ func fulfillmentNotice(ctx context.Context, tx pgx.Tx, v f.State, in f.Action) e
 	case "review":
 		kind, audience = "review", "target"
 		var id string
-		if e := tx.QueryRow(ctx, `SELECT submitted_by::text FROM customer_payment WHERE id=$1`, in.PaymentID).Scan(&id); e != nil {
+		if e := tx.QueryRow(ctx, `SELECT submitted_by::text FROM payment WHERE id=$1`, in.PaymentID).Scan(&id); e != nil {
 			return e
 		}
 		target = id
