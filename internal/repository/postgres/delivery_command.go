@@ -137,11 +137,8 @@ func writeFulfillment(ctx context.Context, tx pgx.Tx, actor, id string, in f.Act
 	case "terms":
 		_, e = tx.Exec(ctx, `UPDATE job SET invoice_credit_days=$2,fulfillment_version=fulfillment_version+1 WHERE id=$1`, id, *in.CreditDays)
 	case "invoice":
-		if v.CreditDays == nil {
-			if _, e = tx.Exec(ctx, `UPDATE job SET invoice_credit_days=0 WHERE id=$1 AND invoice_credit_days IS NULL`, id); e != nil {
-				return e
-			}
-		}
+		// Unset terms default to 0 days on the invoice row only (migration 21);
+		// updating job terms here without a version bump trips guard_fulfillment_job.
 		_, e = tx.Exec(ctx, `INSERT INTO invoice(id,job_id,amount,credit_days,issued_at,due_at) SELECT $1,id,balance,COALESCE(invoice_credit_days,0),t,t+COALESCE(invoice_credit_days,0)*interval '24 hours' FROM job CROSS JOIN (SELECT clock_timestamp() t)x WHERE id=$2`, in.IdempotencyKey, id)
 	case "ship":
 		_, e = tx.Exec(ctx, `INSERT INTO delivery(id,job_id,cycle,method,receiver_name) SELECT $1,id,production_cycle,$3,$4 FROM job WHERE id=$2`, in.IdempotencyKey, id, in.Method, in.ReceiverName)
