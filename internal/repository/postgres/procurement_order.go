@@ -105,7 +105,7 @@ func (d *Database) PlaceOrder(ctx context.Context, actor string, in p.OrderInput
 		if err != nil {
 			return v, err
 		}
-		_, err = tx.Exec(ctx, `INSERT INTO material_order_item(order_id,material_id,material_name,unit_id,unit_name,qty_ordered,unit_cost) VALUES($1,$2,$3,$4,$5,$6,$7)`, v.ID, line.MaterialID, name, unitID, unitName, line.Quantity.String(), line.UnitCost.String())
+		_, err = tx.Exec(ctx, `INSERT INTO material_order_item(order_id,material_id,material_name,unit_id,unit_name,qty_ordered,unit_cost,expected_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`, v.ID, line.MaterialID, name, unitID, unitName, line.Quantity.String(), line.UnitCost.String(), in.ExpectedAt)
 		if err != nil {
 			return v, procurementError(err)
 		}

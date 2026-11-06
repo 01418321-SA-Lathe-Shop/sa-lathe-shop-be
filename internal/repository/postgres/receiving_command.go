@@ -65,7 +65,7 @@ func (d *Database) startReceiving(ctx context.Context, actor, id string, c r.Com
 	return tx, v, false, financial, payload, nil
 }
 func finishReceiving(ctx context.Context, tx pgx.Tx, actor, id string, c r.Command, action string, payload []byte, status string, credit *int, paymentStatus string, financial bool) (r.State, error) {
-	_, err := tx.Exec(ctx, `UPDATE material_order SET version=version+1,status=$2,credit_days=COALESCE(credit_days,$3::integer),payment_status=COALESCE(NULLIF($4,''),payment_status),full_received_at=CASE WHEN $2 IN ('received','damaged') THEN COALESCE(full_received_at,clock_timestamp()) ELSE full_received_at END WHERE id=$1`, id, status, credit, paymentStatus)
+	_, err := tx.Exec(ctx, `UPDATE material_order SET version=version+1,status=$2,credit_days=COALESCE(credit_days,$3::integer),payment_status=COALESCE(NULLIF($4,''),payment_status),payment_method=COALESCE((SELECT s.method FROM supplier_settlement s WHERE s.order_id=material_order.id),payment_method),paid_at=COALESCE((SELECT s.paid_at FROM supplier_settlement s WHERE s.order_id=material_order.id),paid_at),payment_proof_url=COALESCE((SELECT e.object_key FROM supplier_settlement s JOIN order_evidence e ON e.id=s.evidence_id WHERE s.order_id=material_order.id),payment_proof_url),full_received_at=CASE WHEN $2 IN ('received','damaged') THEN COALESCE(full_received_at,clock_timestamp()) ELSE full_received_at END WHERE id=$1`, id, status, credit, paymentStatus)
 	if err != nil {
 		return r.State{}, procurementError(err)
 	}
