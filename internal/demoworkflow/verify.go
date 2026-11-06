@@ -169,7 +169,8 @@ func (r *Runner) verify(ctx context.Context, initial bool) error {
 			if number(obj(financial["finance"]), "credit_days") != 14 {
 				return fmt.Errorf("supplier credit term mismatch")
 			}
-			if key == "o2" && str(financial, "status") != "partially_received" {
+			// o2 receives 15 good + 5 damaged of 20: everything arrived, so the order is received while the claim stays open (docs/02-frontend.md UC7).
+			if key == "o2" && str(financial, "status") != "received" {
 				return fmt.Errorf("partial receipt mismatch")
 			}
 			if key == "o3" && (str(financial, "status") != "received" || str(obj(financial["finance"]), "payment_status") != "pending") {
