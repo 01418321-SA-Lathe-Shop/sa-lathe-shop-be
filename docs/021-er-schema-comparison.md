@@ -95,3 +95,17 @@ These were not confirmed by reading the migrations and should be checked with a 
 - Shipping cost and proof fields on `delivery`.
 - Whether `tax_id` sits on `customer` itself.
 - Whether any `estimated_*` columns exist on `job`.
+
+## Update: ER alignment phase 1 (migration 000023)
+
+Three tables were renamed to their ER names and one was split. Behaviour, constraints and data are unchanged.
+
+| ER entity | Table now | Was |
+| --- | --- | --- |
+| `PAYMENT` | `payment` | `customer_payment` |
+| `ADDRESS` | `address` | `customer_address` (also gained `edited_at`) |
+| `MATERIAL_DEFECT_LOG` | `material_defect_log` | `material_claim` |
+| `DEPOSIT` | `deposit` | `term_evidence` where `kind='deposit'` (also gained `percent`) |
+| `PURCHASE_ORDER` | `purchase_order` | `term_evidence` where `kind='po'` |
+
+`term_evidence` remains as a read-only union view of `deposit` and `purchase_order`. `material_reservation` gained an `id`. The attribute differences listed above (stored statuses, estimated and actual job fields, payment columns and so on) are unchanged and are the scope of later phases.

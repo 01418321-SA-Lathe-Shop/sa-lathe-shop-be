@@ -577,3 +577,11 @@ Verification: `go build`, `go vet` and `go test ./...` pass. On the local demo D
 - [ ] Promoting an Admin to Super Admin, or a second Super Admin: not built.
 
 Verification: `go build`, `go vet` and unit tests pass. On disposable PostgreSQL and S3, 000020 ran up, down and up, and `TestStaffAuthIntegration` covers the Super Admin flag, create, 403 for regular Admins and Workers, list, deactivation with session revocation, and refusal to deactivate a Super Admin. A separate disposable DB at version 19 with two Admins confirmed the backfill picks the earliest one.
+
+## ER alignment phase 1 (migration 000023)
+
+- [x] Renamed `customer_payment`, `customer_address`, `material_claim` to `payment`, `address`, `material_defect_log`; split `term_evidence` into `deposit` and `purchase_order` (read-only `term_evidence` view kept).
+- [x] Added `address.edited_at`, `deposit.percent`, `material_reservation.id`; Go queries, trigger functions, seed guards (schema 13-23) and docs updated.
+- [ ] Later phases (stored derived values, structural ER mismatches): not started.
+
+Verification: `go build`, `go test ./...`, migration up/down/up in one rolled-back transaction, up applied to the demo DB. The per-phase `*_DATABASE_URL` integration tests and `scripts/verify-demo-workflows.ps1` fail identically before and after this change (fixture error at the same step), so they could not confirm payments; trigger functions were exercised by hand.
