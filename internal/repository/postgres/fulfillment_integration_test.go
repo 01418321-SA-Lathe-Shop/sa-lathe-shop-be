@@ -102,7 +102,7 @@ func TestFulfillmentIntegration(t *testing.T) {
 		if e != nil {
 			t.Fatal(e)
 		}
-		draft, e := quotes.Create(ctx, worker.Account, r.ID, q.DraftInput{MaterialCost: amount("0"), LaborCost: amount("0"), FinalPrice: amount(price)})
+		draft, e := quotes.Create(ctx, worker.Account, r.ID, q.DraftInput{MaterialCost: amount("1"), LaborCost: amount("1"), FinalPrice: amount(price)})
 		if e != nil {
 			t.Fatal(e)
 		}

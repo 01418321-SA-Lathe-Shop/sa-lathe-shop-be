@@ -113,7 +113,7 @@ func TestCustomerFulfillmentIntegration(t *testing.T) {
 		t.Helper()
 		r, e := requests.Submit(ctx, principal, req.Input{CustomerID: profiles[0].ID, Description: "UC9 mould", Quantity: 1})
 		check(e)
-		draft, e := quotes.Create(ctx, worker.Account, r.ID, q.DraftInput{MaterialCost: amount("0"), LaborCost: amount("0"), FinalPrice: amount(price)})
+		draft, e := quotes.Create(ctx, worker.Account, r.ID, q.DraftInput{MaterialCost: amount("1"), LaborCost: amount("1"), FinalPrice: amount(price)})
 		check(e)
 		sent, e := quotes.Send(ctx, worker.Account, draft.ID, draft.LockVersion)
 		check(e)
@@ -292,16 +292,7 @@ func TestCustomerFulfillmentIntegration(t *testing.T) {
 	if _, e = service.Pay(ctx, admin, job, f.PaymentInput{Command: cmd(v.Version), Amount: amount("0.01"), PaidAt: now()}, true); e == nil {
 		t.Fatal("overpayment")
 	}
-	// Zero balance closes on acceptance without inventing a payment.
-	zero := newJob("0")
-	z := prepare(zero)
-	z, e = service.Ship(ctx, worker.Account, zero, f.ShipInput{Command: cmd(z.Version), Method: "self", ReceiverName: "Buyer"})
-	check(e)
-	z, e = service.Inspect(ctx, customer, zero, f.InspectInput{Command: cmd(z.Version), Outcome: "accept"})
-	check(e)
-	if z.RequestStatus != "completed" || z.Invoice.Balance.String() != "0.00" || len(z.Payments) != 0 {
-		t.Fatal("zero balance fabricated payment")
-	}
+	// A zero-balance job can no longer be created: quotations must have a positive price (UC2 H-03).
 	// Approval race cannot overpay, even with two pending proofs for the same balance.
 	race := newJob("1000")
 	r := prepare(race)

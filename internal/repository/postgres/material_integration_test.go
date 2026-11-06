@@ -147,7 +147,7 @@ func TestMaterialIntegration(t *testing.T) {
 		if e != nil {
 			t.Fatal(e)
 		}
-		draft, e := quotes.Create(ctx, worker.Account, r.ID, q.DraftInput{MaterialCost: price("0"), LaborCost: price("0"), FinalPrice: price("1000")})
+		draft, e := quotes.Create(ctx, worker.Account, r.ID, q.DraftInput{MaterialCost: price("1"), LaborCost: price("1"), FinalPrice: price("1000")})
 		if e != nil {
 			t.Fatal(e)
 		}

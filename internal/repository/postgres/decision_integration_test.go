@@ -107,7 +107,7 @@ func TestDecisionIntegration(t *testing.T) {
 	}
 	sentQuote := func(requestID, price string) q.Quotation {
 		t.Helper()
-		draft, e := quotes.Create(ctx, worker.Account, requestID, q.DraftInput{MaterialCost: parse("0"), LaborCost: parse("0"), FinalPrice: parse(price)})
+		draft, e := quotes.Create(ctx, worker.Account, requestID, q.DraftInput{MaterialCost: parse("1"), LaborCost: parse("1"), FinalPrice: parse(price)})
 		if e != nil {
 			t.Fatal(e)
 		}
@@ -278,7 +278,7 @@ func TestDecisionIntegration(t *testing.T) {
 	if err != nil || len(rejectionHistory) != 6 {
 		t.Fatal("incorrect rejection audit history")
 	}
-	if _, err = quotes.Create(ctx, worker.Account, repeatedRequest.ID, q.DraftInput{MaterialCost: parse("0"), LaborCost: parse("0"), FinalPrice: parse("1600")}); !errors.Is(err, q.ErrConflict) {
+	if _, err = quotes.Create(ctx, worker.Account, repeatedRequest.ID, q.DraftInput{MaterialCost: parse("1"), LaborCost: parse("1"), FinalPrice: parse("1600")}); !errors.Is(err, q.ErrConflict) {
 		t.Fatal("new revision after sixth rejection")
 	}
 	// Sixth quotation revision can be accepted after only five rejections.

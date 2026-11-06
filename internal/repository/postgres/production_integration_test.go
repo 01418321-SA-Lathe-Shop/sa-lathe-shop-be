@@ -95,7 +95,7 @@ func TestProductionIntegration(t *testing.T) {
 		principal := req.Principal{AccountID: customer.ID, Role: customer.Role, Active: true}
 		request, e := requests.Submit(ctx, principal, req.Input{CustomerID: profiles[0].ID, Description: "UC8 mould", Quantity: 1})
 		check(e)
-		draft, e := quotes.Create(ctx, worker.Account, request.ID, q.DraftInput{MaterialCost: price("0"), LaborCost: price("0"), FinalPrice: price("1000")})
+		draft, e := quotes.Create(ctx, worker.Account, request.ID, q.DraftInput{MaterialCost: price("1"), LaborCost: price("1"), FinalPrice: price("1000")})
 		check(e)
 		sent, e := quotes.Send(ctx, worker.Account, draft.ID, draft.LockVersion)
 		check(e)
