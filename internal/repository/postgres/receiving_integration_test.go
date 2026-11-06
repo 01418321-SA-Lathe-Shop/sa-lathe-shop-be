@@ -143,8 +143,9 @@ func TestReceivingIntegration(t *testing.T) {
 	}
 	v, e = service.Receive(ctx, admin, order.ID, receipt(v.Version, "4", "0", ""))
 	check(e)
-	if v.Status != "partially_received" || v.FullReceivedAt != nil {
-		t.Fatal("damaged units counted as full receipt")
+	// docs/02-frontend.md UC7: a fully accounted-for order (everything arrived) may still include damaged units.
+	if v.Status != "received" || v.FullReceivedAt == nil {
+		t.Fatal("fully accounted-for order not received", v.Status)
 	}
 	v, e = service.Receive(ctx, worker.Account, order.ID, receipt(v.Version, "2", "0", claim.ID))
 	check(e)
