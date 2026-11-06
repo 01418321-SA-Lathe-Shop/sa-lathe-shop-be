@@ -585,3 +585,11 @@ Verification: `go build`, `go vet` and unit tests pass. On disposable PostgreSQL
 - [ ] Later phases (stored derived values, structural ER mismatches): not started.
 
 Verification: `go build`, `go test ./...`, migration up/down/up in one rolled-back transaction, up applied to the demo DB. The per-phase `*_DATABASE_URL` integration tests and `scripts/verify-demo-workflows.ps1` fail identically before and after this change (fixture error at the same step), so they could not confirm payments; trigger functions were exercised by hand.
+
+## ER alignment phase 2 (migration 000024)
+
+- [x] Stored, database-maintained columns: `invoice.status`; `material_order_item` received/damaged quantities, status, dates; `material_order` payment method, paid date, proof key; `job.estimated_cost`, `actual_cost`, `edited_at`.
+- [x] History guards on invoice and order items now allow only the exact computed values; the order guard ignores the new payment columns; seed guards accept schema 13-24.
+- [ ] `job.estimated_time` / `actual_time`: not added (no source; needs an owner decision). Phase 3 structural mismatches: not started.
+
+Verification: `go build`, `go test ./...`; migration up, down 1, up on a fresh database and on the demo database; trigger behaviour exercised by hand (receipt line sync, rejected manual edits, partial invoice status). `scripts/verify-demo-workflows.ps1` reaches the same step (`o3-receipt`) as before the change, then fails at the same pre-existing point, so invoice and payment flows are not covered end to end.

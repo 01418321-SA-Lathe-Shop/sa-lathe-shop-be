@@ -109,3 +109,19 @@ Three tables were renamed to their ER names and one was split. Behaviour, constr
 | `PURCHASE_ORDER` | `purchase_order` | `term_evidence` where `kind='po'` |
 
 `term_evidence` remains as a read-only union view of `deposit` and `purchase_order`. `material_reservation` gained an `id`. The attribute differences listed above (stored statuses, estimated and actual job fields, payment columns and so on) are unchanged and are the scope of later phases.
+
+## Update: ER alignment phase 2 (migration 000024)
+
+These ER attributes are now stored columns. The database keeps each one equal to the value computed from the source tables, and its history guard rejects any other value, so it cannot drift.
+
+| ER attribute | Column | How it is kept in sync |
+| --- | --- | --- |
+| `INVOICE.status` | `invoice.status` (`unpaid`, `partial`, `paid`) | Trigger on `payment_allocation` insert |
+| `MATERIAL_ORDER_ITEM.qty_received`, `qty_damaged`, `status`, `received_at` | same names on `material_order_item` | Trigger on `material_receipt_line` insert and on order cancellation. `qty_received` is good plus damaged; `status` is `received`, `damaged`, `cancelled` or `ordered` |
+| `MATERIAL_ORDER_ITEM.expected_at`, `created_at` | same names | Set when the item is inserted (`created_at` equals the order time because both use the transaction time) |
+| `MATERIAL_ORDER.payment_method`, `paid_at`, `payment_proof_url` | same names on `material_order` | Copied from the supplier settlement when it is recorded; `payment_proof_url` holds the private object key, never a URL |
+| `JOB.estimated_cost` | `job.estimated_cost` | Quotation material plus labor cost, set when the job is created |
+| `JOB.actual_cost` | `job.actual_cost` | Actual labor plus issued material, set when the job completes and cleared if a return reopens it |
+| `JOB.edited_at` | `job.edited_at` | Set on every update |
+
+Not added: `JOB.estimated_time` and `JOB.actual_time` (no stored source; the ER types them as timestamps but the names read as durations), `MATERIAL_ORDER_ITEM.edited_at` stays NULL until an item first changes, and the item statuses `preparing` and `in_transit` have no source. `worker.status` and `admin.status` are still derived from `account.is_active`.
