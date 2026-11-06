@@ -602,7 +602,7 @@ Verification: `go build`, `go test ./...`; migration up, down 1, up on a fresh d
 
 ## ER alignment phase 3 (migration 000025)
 
-- [x] Added every remaining ER column name as a trigger-synced column (see docs/021); original columns, guards and API contracts unchanged. Customer `person_id`, staff `status`, quotation `decided_at` and the defect-log links included.
+- [x] Added every remaining ER column name except the two job timestamps as a trigger-synced column (see docs/021); original columns, guards and API contracts unchanged. Customer `person_id`, staff `status`, quotation `decided_at` and the defect-log links included.
 - [x] Seed guards accept schema 13-25.
 - [ ] `job.estimated_time` / `actual_time` (no source), unused ER status values, double money and string ids: intentionally not changed.
 
@@ -617,3 +617,13 @@ Verification: `go build`, `go test ./...`; migration up, down, up on a fresh dat
 - [x] Procurement is Admin-only again (owner decision 2026-11-06): the db8e61c widening to Workers was reverted in `service.go`, `handler.go` and the unit test. `TestProcurementIntegration` passes.
 - [x] `scripts/verify-demo-workflows.ps1` now passes end to end (`DEMO_WORKFLOWS_VERIFICATION_PASSED`). Its o2 check was stale: 15 good + 5 damaged of 20 means everything arrived, so the order is `received` with the claim still open.
 - [ ] UC1-UC12 Playwright suite (frontend `docs/uc-testing`) not run: it restores `sa_lathe_shop_demo` from a schema-21 dump, which would wipe the current demo database.
+
+## ER-complete transferable demo dataset (migration 000026) — done (2026-11-06)
+
+- [x] Compared a fresh migration 1–26 database against all 27 tables and field names in the supplied ER reference; `scripts/check-er-schema.sql` reports zero missing names.
+- [x] Added `job.estimated_time` (synchronized from `due_at`) and `job.actual_time` (synchronized from `completed_at` while complete), the final two missing ER field names.
+- [x] Expanded the guarded workflow fixture to 14 realistic requests, 26 private PDFs, six supplier orders and current states for rejected payment, returned delivery/rework, cancelled request/order, partial receipt and fully damaged receipt.
+- [x] Added the read-only status matrix and the reset/seed/handoff guide; unsupported ER-only states are documented rather than inserted outside real use-case transitions.
+- [x] Backed up and reset only the local `sa_lathe_shop_seed_test` database and its project S3 volume, migrated to 26, seeded through real APIs and passed the built-in workflow verifier (235 checkpointed operations).
+
+Verification: `go test ./...` and all builds pass; a fresh temporary database migrated through 26 and returned zero missing ER names. The local seeded stack passed workflow isolation, private-document, finance-redaction, inventory, receiving, payment and rework assertions. The prior local DB/S3 snapshots are recoverable from `/private/tmp/sa-lathe-pre-demo-20261106.dump` and `/private/tmp/sa-lathe-s3-pre-demo-20261106.tgz` during this workstation session.

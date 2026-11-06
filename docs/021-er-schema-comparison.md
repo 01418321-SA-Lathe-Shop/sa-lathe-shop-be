@@ -124,11 +124,11 @@ These ER attributes are now stored columns. The database keeps each one equal to
 | `JOB.actual_cost` | `job.actual_cost` | Actual labor plus issued material, set when the job completes and cleared if a return reopens it |
 | `JOB.edited_at` | `job.edited_at` | Set on every update |
 
-Not added: `JOB.estimated_time` and `JOB.actual_time` (no stored source; the ER types them as timestamps but the names read as durations), `MATERIAL_ORDER_ITEM.edited_at` stays NULL until an item first changes, and the item statuses `preparing` and `in_transit` have no source. `worker.status` and `admin.status` are still derived from `account.is_active`.
+At this phase, `JOB.estimated_time` and `JOB.actual_time` were still absent. `MATERIAL_ORDER_ITEM.edited_at` stays NULL until an item first changes, and the item statuses `preparing` and `in_transit` have no source. `worker.status` and `admin.status` are still derived from `account.is_active`.
 
 ## Update: ER alignment phase 3 (migration 000025)
 
-Every remaining ER column name now exists. The original columns keep their names and meaning, so no query, guard or API contract changed. Each ER column is a plain column that a `zz_er_sync` trigger keeps equal to its source (the trigger runs after the table guards).
+Every remaining ER column name except the two job timestamps was added here. The original columns keep their names and meaning, so no query, guard or API contract changed. Each ER column is a plain column that a `zz_er_sync` trigger keeps equal to its source (the trigger runs after the table guards).
 
 | ER table | ER column | Source |
 | --- | --- | --- |
@@ -151,4 +151,8 @@ Every remaining ER column name now exists. The original columns keep their names
 | `WORKER`, `ADMIN` | `status` | mirrors `account.is_active` |
 | `CUSTOMER` | `person_id` | the owner member's person; a company with several members still has one owner |
 
-Still different: `JOB.estimated_time` and `JOB.actual_time` (no source), the ER status values the app does not use (`requote`, `preparing`, `WRITTEN_OFF`, `RETURN`, item `preparing` / `in_transit`), money as `NUMERIC` instead of double, and ids as `uuid` instead of string. The ER `PAYMENT` has no invoice link or review fields, but the implemented table keeps them because payment approval needs them.
+## Update: ER job timestamps (migration 000026)
+
+Migration `000026_er_job_times` adds the last two ER field names: `JOB.estimated_time` mirrors the durable `due_at` estimate and `JOB.actual_time` mirrors `completed_at` while the job is complete (and clears during rework). It also permits the separately owned `workflows-v3` demo journal key; rollback refuses to discard v3 provenance.
+
+The ER status values the app does not use (`requote`, `preparing`, `WRITTEN_OFF`, `RETURN`, item `preparing` / `in_transit`) are intentionally not fabricated. Money remains `NUMERIC` instead of double, and ids remain `uuid` instead of string. The ER `PAYMENT` has no invoice link or review fields, but the implemented table keeps them because payment approval needs them.

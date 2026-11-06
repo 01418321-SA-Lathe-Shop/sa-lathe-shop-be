@@ -111,10 +111,19 @@ func (r *Runner) verify(ctx context.Context, initial bool) error {
 				if s.stage == 7 {
 					expected = "in_progress"
 				}
+				if s.stage == 12 {
+					expected = "in_progress"
+				}
 				if str(state, "status") != expected {
 					return fmt.Errorf("initial job state mismatch for %s", s.key)
 				}
 			}
+		}
+	}
+	if initial {
+		cancelled, e := r.get(ctx, "somchai", "/requests/"+str(results["cancelled-request"], "id"))
+		if e != nil || str(cancelled, "status") != "canceled" {
+			return fmt.Errorf("cancelled request fixture mismatch")
 		}
 	}
 	for _, actor := range []string{worker, "nida.company", "ploy.company", "somchai"} {
@@ -136,7 +145,7 @@ func (r *Runner) verify(ctx context.Context, initial bool) error {
 			if str(m, "id") == str(results["material-S45C"], "id") {
 				found = true
 			}
-			if str(m, "id") == str(results["material-S45C"], "id") && (str(m, "qty_on_hand") != "115.000000" || str(m, "qty_reserved") != "5.000000" || str(m, "avg_cost") != "48.000000") {
+			if str(m, "id") == str(results["material-S45C"], "id") && (str(m, "qty_on_hand") != "112.000000" || str(m, "qty_reserved") != "5.000000" || str(m, "avg_cost") != "48.000000") {
 				return fmt.Errorf("initial stock reconciliation mismatch")
 			}
 		}
@@ -190,6 +199,32 @@ func (r *Runner) verify(ctx context.Context, initial bool) error {
 		}
 		if str(state, "request_status") != "completed" || str(obj(state["invoice"]), "balance") != "0.00" {
 			return fmt.Errorf("paid/accepted closure mismatch")
+		}
+		state, e = r.get(ctx, admin, "/fulfillment/jobs/"+str(results["r12-job"], "id"))
+		if e != nil {
+			return e
+		}
+		payments, _ := state["payments"].([]any)
+		if len(payments) == 0 || str(obj(payments[len(payments)-1]), "status") != "rejected" {
+			return fmt.Errorf("rejected bank payment fixture mismatch")
+		}
+		state, e = r.get(ctx, admin, "/fulfillment/jobs/"+str(results["r13-job"], "id"))
+		if e != nil {
+			return e
+		}
+		deliveries, _ := state["deliveries"].([]any)
+		if len(deliveries) == 0 || str(obj(deliveries[len(deliveries)-1]), "status") != "returned" || str(state, "job_status") != "in_progress" {
+			return fmt.Errorf("returned delivery fixture mismatch")
+		}
+		cancelledOrder, e := r.get(ctx, admin, "/material-orders/"+str(results["o4-order"], "id"))
+		if e != nil || str(cancelledOrder, "status") != "cancelled" || str(cancelledOrder, "supplier_response") != "rejected" {
+			return fmt.Errorf("cancelled supplier order fixture mismatch")
+		}
+		for key, expected := range map[string]string{"o5": "partially_received", "o6": "damaged"} {
+			orderState, e := r.get(ctx, admin, "/receiving/orders/"+str(results[key+"-order"], "id"))
+			if e != nil || str(orderState, "status") != expected {
+				return fmt.Errorf("%s supplier order fixture mismatch", expected)
+			}
 		}
 	}
 	return nil

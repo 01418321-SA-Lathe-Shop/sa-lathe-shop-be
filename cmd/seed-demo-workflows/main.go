@@ -30,7 +30,7 @@ func run() error {
 		return e
 	}
 	if os.Args[1] == "plan" {
-		fmt.Println("workflows-v2: adds 11 realistic requests, 20 private item-specific PDF documents, quotations/revision, PO/deposit evidence, 6 jobs, 13 Thai stockist materials with per-material unit conversions, 3 supplier orders, receipts/claim, 2 invoices and pending/settled customer payments; completed reruns preserve tester edits")
+		fmt.Println("workflows-v3: adds 14 realistic requests, 26 private item-specific PDF documents, quotations/revision/rejection, PO/deposit evidence, 8 jobs, 13 Thai stockist materials with per-material unit conversions, 6 supplier orders, partial/damaged receipts and claims, 4 invoices, pending/rejected/settled payments and a returned delivery; completed reruns preserve tester edits")
 		return nil
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

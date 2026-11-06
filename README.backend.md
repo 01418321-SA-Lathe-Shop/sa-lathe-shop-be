@@ -33,6 +33,7 @@ The existing README.md has been preserved exactly.
 - [UC11 — Add Worker](docs/023-UC11.md)
 - [UC12 — Add Admin (not approved)](docs/024-UC12.md)
 - [Use-case description alignment (UC1–UC12)](docs/025-uc-spec-alignment.md)
+- [ER-aligned demo dataset handoff](docs/027-demo-dataset-handoff.md)
 - [Architecture and open questions](AGENTS.md)
 - [Phased plan](PLAN.md)
 

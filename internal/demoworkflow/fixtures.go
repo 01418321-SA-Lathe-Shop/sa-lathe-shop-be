@@ -20,7 +20,8 @@ type scenario struct {
 
 // Stage 0=request; 1=draft; 2=revised/sent; 3=accepted awaiting evidence;
 // 4=pending deposit; 5=queued shortage; 6=queued ready; 7=running;
-// 8=completed; 9=invoiced/shipped pending bank review; 10=settled/accepted.
+// 8=completed; 9=invoiced/shipped pending bank review; 10=settled/accepted;
+// 11=bank payment rejected; 12=customer returned the delivered work for rework.
 var scenarios = []scenario{
 	{"r1", "somchai", "ปลอกบูชเพลาเครื่องผสม S45C", "S45C Ø30 x 45 มม.; ค่าคลาดเคลื่อน ±0.10 มม.", "2400.00", 0},
 	{"r2", "nida.company", "ฐานแม่พิมพ์อัดยางรุ่น CM-120", "SS400 120 x 80 x 30 มม.; ค่าคลาดเคลื่อน ±0.10 มม.", "6400.00", 1},
@@ -33,6 +34,8 @@ var scenarios = []scenario{
 	{"r9", "nida.company", "เพลทจับชิ้นงานรุ่น FP-90", "AL6061 90 x 70 x 15 มม.; ค่าคลาดเคลื่อน ±0.10 มม.", "9600.00", 8},
 	{"r10", "somchai", "บล็อกแม่พิมพ์ NBR-45", "S45C 100 x 80 x 35 มม.; ค่าคลาดเคลื่อน ±0.10 มม.", "7200.00", 9},
 	{"r11", "ploy.company", "ปลอกบูชบรอนซ์เครื่องบรรจุ", "บรอนซ์ Ø35 x 40 มม.; ค่าคลาดเคลื่อน ±0.10 มม.", "6400.00", 10},
+	{"r12", "somchai", "ลูกกลิ้งไกด์ POM สำหรับสายพาน", "POM Ø50 x 85 มม.; รูเพลา Ø12 H7", "5200.00", 11},
+	{"r13", "ploy.company", "เพลาขับชุดป้อนชิ้นงาน", "S45C Ø32 x 280 มม.; ร่องลิ่ม 10 มม.", "12800.00", 12},
 }
 
 type conversion struct{ unit, factor string }
@@ -209,7 +212,7 @@ func (r *Runner) build(ctx context.Context) error {
 		jobID := str(job, "id")
 		jobs[s.key] = jobID
 		// Each job draws on stock whose shape and size can produce the part (kg of the base unit).
-		matID := materialIDs[map[string]string{"r6": "SUS304", "r7": "S45C", "r8": "S45C16", "r9": "AL6061", "r10": "S45CPL", "r11": "BRONZE"}[s.key]]
+		matID := materialIDs[map[string]string{"r6": "SUS304", "r7": "S45C", "r8": "S45C16", "r9": "AL6061", "r10": "S45CPL", "r11": "BRONZE", "r12": "POM", "r13": "S45C"}[s.key]]
 		quantity := "5"
 		if s.stage == 5 {
 			quantity = "10"
@@ -225,7 +228,7 @@ func (r *Runner) build(ctx context.Context) error {
 		if e != nil {
 			return e
 		}
-		used := map[int]string{7: "2", 8: "3", 9: "4", 10: "1"}[s.stage]
+		used := map[int]string{7: "2", 8: "3", 9: "4", 10: "1", 11: "2", 12: "3"}[s.stage]
 		production, e = r.command(ctx, s.key+"-usage", worker, "POST", "/production/jobs/"+jobID+"/usage", production, Object{"lines": []Object{{"material_id": matID, "quantity": used}}, "note": "เบิกวัตถุดิบตามใบงาน"})
 		if e != nil {
 			return e
@@ -251,6 +254,16 @@ func (r *Runner) build(ctx context.Context) error {
 		if e = r.finishCustomer(ctx, s, jobID); e != nil {
 			return e
 		}
+	}
+	cancelled, e := r.post(ctx, "cancelled-request", "somchai", "/requests", Object{
+		"customer_id": profiles["somchai"], "description": "เฟืองเฉียงโมดูล 2 สำหรับชุดทดลอง", "qty": int64(1),
+		"material_spec": "SCM440 ชุบแข็ง 45 HRC; ต้องการใบรับรองวัสดุ", "deadline": r.started.Add(2 * 24 * time.Hour).UTC().Format(time.RFC3339Nano),
+	})
+	if e != nil {
+		return e
+	}
+	if _, e = r.post(ctx, "cancelled-request-reject", worker, "/requests/"+str(cancelled, "id")+"/reject", Object{"reason": "กำหนดส่งสั้นกว่าระยะจัดหาวัตถุดิบและชุบแข็ง"}); e != nil {
+		return e
 	}
 	return r.orders(ctx, materialIDs, jobs)
 }
@@ -304,12 +317,24 @@ func (r *Runner) finishCustomer(ctx context.Context, s scenario, jobID string) e
 	if e != nil {
 		return e
 	}
-	if s.stage == 9 {
+	if s.stage == 9 || s.stage == 11 {
 		proof, e := r.document(ctx, s.key+"-balance-proof", s.customer, base+"/evidence/uploads", "/customer-evidence/", "")
 		if e != nil {
 			return e
 		}
-		_, e = r.command(ctx, s.key+"-bank", s.customer, "POST", base+"/payments/bank", state, Object{"amount": obj(state["invoice"])["balance"], "paid_at": obj(state["invoice"])["issued_at"], "evidence_id": str(proof, "id")})
+		state, e = r.command(ctx, s.key+"-bank", s.customer, "POST", base+"/payments/bank", state, Object{"amount": obj(state["invoice"])["balance"], "paid_at": obj(state["invoice"])["issued_at"], "evidence_id": str(proof, "id")})
+		if e != nil || s.stage == 9 {
+			return e
+		}
+		payments, _ := state["payments"].([]any)
+		if len(payments) == 0 {
+			return ErrGuard
+		}
+		_, e = r.command(ctx, s.key+"-bank-reject", admin, "POST", base+"/payments/review", state, Object{"payment_id": str(obj(payments[len(payments)-1]), "id"), "outcome": "rejected", "reason": "ยอดในหลักฐานไม่ตรงกับรายการเดินบัญชี"})
+		return e
+	}
+	if s.stage == 12 {
+		_, e = r.command(ctx, s.key+"-inspection-return", s.customer, "POST", base+"/inspection", state, Object{"outcome": "return", "reason": "ขนาดร่องลิ่มกว้างเกินแบบ ขอแก้ไขก่อนรับงาน"})
 		return e
 	}
 	state, e = r.command(ctx, s.key+"-cash", admin, "POST", base+"/payments/cash", state, Object{"amount": obj(state["invoice"])["balance"], "paid_at": obj(state["invoice"])["issued_at"]})
@@ -320,9 +345,9 @@ func (r *Runner) finishCustomer(ctx context.Context, s scenario, jobID string) e
 	return e
 }
 func (r *Runner) orders(ctx context.Context, materials, jobs map[string]string) error {
-	for i := 1; i <= 3; i++ {
+	for i := 1; i <= 6; i++ {
 		key := fmt.Sprintf("o%d", i)
-		supplierNames := []string{"บริษัท ไทยสแตนเลส ซัพพลาย จำกัด", "บริษัท เหล็กอุตสาหกรรมสยาม จำกัด", "บริษัท อะลูมิเนียม พรีซิชั่น จำกัด"}
+		supplierNames := []string{"บริษัท ไทยสแตนเลส ซัพพลาย จำกัด", "บริษัท เหล็กอุตสาหกรรมสยาม จำกัด", "บริษัท อะลูมิเนียม พรีซิชั่น จำกัด", "บริษัท เมทัลวัน เซอร์วิส จำกัด", "ห้างหุ้นส่วน วัตถุดิบโรงกลึง", "บริษัท สตีลโปร กรุงเทพ จำกัด"}
 		supplier, e := r.post(ctx, key+"-supplier", admin, "/suppliers", Object{"name": supplierNames[i-1], "email": fmt.Sprintf("sales%d@example.test", i), "phone": "02100000" + fmt.Sprint(i)})
 		if e != nil {
 			return e
@@ -342,11 +367,27 @@ func (r *Runner) orders(ctx context.Context, materials, jobs map[string]string) 
 			qty = "10"
 			price = "160.00"
 		}
+		if i == 4 {
+			materialID, qty, price = materials["COPPER"], "12", "420.00"
+		}
+		if i == 5 {
+			materialID, qty, price = materials["FLAT"], "30", "30.00"
+		}
+		if i == 6 {
+			materialID, qty, price = materials["SCM440"], "25", "85.00"
+		}
 		order, e := r.step(ctx, key+"-order", admin, "POST", "/material-orders", Object{"idempotency_key": uuid.NewString(), "supplier_id": str(supplier, "id"), "job_ids": refs, "expected_at": r.started.Add(time.Duration(i) * 24 * time.Hour).UTC().Format(time.RFC3339Nano), "lines": []Object{{"material_id": materialID, "quantity": qty, "unit_cost": price}}}, true, nil)
 		if e != nil {
 			return e
 		}
 		if i == 1 {
+			continue
+		}
+		if i == 4 {
+			_, e = r.command(ctx, key+"-rejected", admin, "POST", "/material-orders/"+str(order, "id")+"/actions", order, Object{"action": "reject", "reason": "ผู้ขายแจ้งว่าวัตถุดิบหมดและไม่มีกำหนดเข้า"})
+			if e != nil {
+				return e
+			}
 			continue
 		}
 		order, e = r.command(ctx, key+"-accepted", admin, "POST", "/material-orders/"+str(order, "id")+"/actions", order, Object{"action": "accept", "reason": "ผู้ขายยืนยันราคาและกำหนดส่งแล้ว"})
@@ -362,6 +403,12 @@ func (r *Runner) orders(ctx context.Context, materials, jobs map[string]string) 
 		if i == 3 {
 			good = "10"
 			damaged = "0"
+		}
+		if i == 5 {
+			good, damaged = "12", "0"
+		}
+		if i == 6 {
+			good, damaged = "0", "25"
 		}
 		state, e = r.command(ctx, key+"-receipt", worker, "POST", base+"/receipts", state, Object{"note": "ตรวจรับและนับจำนวนวัตถุดิบเข้าคลัง", "lines": []Object{{"material_id": materialID, "good": good, "damaged": damaged}}})
 		if e != nil {

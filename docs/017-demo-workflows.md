@@ -1,5 +1,9 @@
 # Real-backend workflow testing data
 
+## Current ER-complete dataset (2026-11-06)
+
+The current fixture is `workflows-v3`. It supersedes the v2 counts recorded in the historical sections below and is intended for a freshly recreated local/test database. It contains 14 requests, 8 jobs, 6 supplier orders, 4 invoices and 26 private PDFs across 235 checkpointed API operations. New current-state fixtures cover a rejected customer bank payment, returned delivery/rework, shop-rejected request, supplier-rejected/cancelled order, partial receipt and fully damaged receipt. See [ER-aligned demo dataset handoff](027-demo-dataset-handoff.md) for the current reset, seed and verification commands.
+
 ## Local realistic dataset refresh (2026-11-03)
 
 The owner requested replacement of all visible sample business data and actual
@@ -96,9 +100,9 @@ receiving states and pending/settled customer-payment states.
 - Explicit CLI only; never called by API/worker startup. No new HTTP endpoint.
 - Requires existing account provenance, an active matching identity manifest,
   loopback API/S3 origins, guarded local/test DB URL/name and opt-ins below.
-- Requires clean migration19. Account seeding accepts clean13 through19; no schema
-  change to business rules or demo login. Migration14 adds the operation journal;
-  migration19 only permits the separately owned `workflows-v2` journal key.
+- The current v3 dataset requires clean migration26. Account seeding accepts clean13
+  through26; no schema change weakens business rules or demo login. Migration14 adds
+  the operation journal, and migration26 permits the separately owned `workflows-v3` key.
 - Repository validates actual DB, then login checks all six real API account UUIDs
   against that DB; wrong-target/name matches are never adopted.
 - Session advisory lock permits only one workflow seed process per DB. Normal
@@ -229,10 +233,10 @@ the SS400 angle uses the JIS table weight). A เส้น is a 6 m bar; the SS4
 Jobs draw on stock that can make the part: r7 Ø40 bush from Ø45 bar, r8 Ø12
 pin from Ø16 bar, r10 100×80×35 block from 40 mm plate, r6 insert from 25 mm
 SUS304 plate, r9 15 mm plate from 20 mm AL6061, r11 Ø35 bush from Ø40 bronze.
-A fresh run's S45C Ø45 reconciliation is 115 kg on hand, 5 kg reserved, 48 THB/kg
-average. A database that already completed `workflows-v2` before this change
-keeps its earlier generic names and units: completed runs never rewrite tester
-data. Rename those materials in the Admin catalog or seed a fresh local database.
+A fresh v3 run's S45C Ø45 reconciliation is 112 kg on hand, 5 kg reserved, 48 THB/kg
+average. A database that already completed an older fixture keeps its earlier
+data: completed runs never rewrite tester changes. Recreate a dedicated local/test
+database to install the complete v3 dataset without mixing fixture generations.
 
 Verification on 2026-11-04 (disposable PostgreSQL/S3/API, migrations through
 000022): every fixture step, the 15 conversions and the S45C Ø45 stock
