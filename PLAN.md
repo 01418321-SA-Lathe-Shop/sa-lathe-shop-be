@@ -627,3 +627,14 @@ Verification: `go build`, `go test ./...`; migration up, down, up on a fresh dat
 - [x] Backed up and reset only the local `sa_lathe_shop_seed_test` database and its project S3 volume, migrated to 26, seeded through real APIs and passed the built-in workflow verifier (235 checkpointed operations).
 
 Verification: `go test ./...` and all builds pass; a fresh temporary database migrated through 26 and returned zero missing ER names. The local seeded stack passed workflow isolation, private-document, finance-redaction, inventory, receiving, payment and rework assertions. The prior local DB/S3 snapshots are recoverable from `/private/tmp/sa-lathe-pre-demo-20261106.dump` and `/private/tmp/sa-lathe-s3-pre-demo-20261106.tgz` during this workstation session.
+
+## UC testing fixes and browser session cookie (migration 000027) — done (2026-11-06)
+
+- [x] HttpOnly `sa_session` cookie on login (guarded by `X-Session-Cookie`), `POST /auth/session` resume, scoped cookie clearing on logout, CORS credentials, `AUTH_COOKIE_SAMESITE`/`AUTH_COOKIE_SECURE`.
+- [x] UC2 `PATCH /requests/{id}` customer correction after a Worker send-back.
+- [x] UC6 Worker ordering (supplier master data Admin-only).
+- [x] UC9 shipping cost dropped (migration 000027) and Worker credit terms/cash/review/proof access, including the DB triggers.
+- [x] Local `sa_lathe_shop_demo` backed up, migrated to 27 and checked through the real API (Worker terms→invoice→ship→review→cash; Customer 403; stale `shipping_cost` → 400).
+- [ ] DB integration suites (`PHASE12_DATABASE_URL` etc.) updated but not run against a dedicated database.
+
+Verification: `go build ./...`, `go vet ./...`, `go test ./...` pass for every commit snapshot.
