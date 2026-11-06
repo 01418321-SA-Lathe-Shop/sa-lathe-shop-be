@@ -1,5 +1,11 @@
 # Implementation plan
 
+## Registration contact-name compatibility — 2026-11-06
+
+- Accept and persist the frontend `contact_name` field on customer registration and address creation instead of rejecting the request as an unknown JSON field.
+- Migration 000022 adds the contact name to customer addresses; unit, build and live local HTTP registration verify the contract.
+- Keep this work local until the owner explicitly asks to publish it.
+
 ## Local test data and PDF refresh (2026-11-03) — done
 
 - [x] Compare the supplied data dictionary with the live backend schema and identify the active API database.
