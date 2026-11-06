@@ -68,6 +68,7 @@ func (s *LocalTestService) Routes(r chi.Router) {
 			writeAuthError(w, r, err)
 			return
 		}
+		setSessionCookie(w, result.AccessToken, result.ExpiresAt)
 		httpserver.JSON(w, http.StatusOK, result)
 	})
 }

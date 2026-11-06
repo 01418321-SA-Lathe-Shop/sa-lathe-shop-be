@@ -65,24 +65,31 @@ func (s *Service) Login(ctx context.Context, username, password string) (LoginRe
 	return LoginResult{AccessToken: token, TokenType: "Bearer", ExpiresAt: expires, Account: account}, nil
 }
 func (s *Service) Authenticate(ctx context.Context, token string) (Account, error) {
+	result, err := s.Resume(ctx, token)
+	return result.Account, err
+}
+
+// Resume validates an existing session token without extending it (used to
+// restore a browser's cookie session into memory after reload).
+func (s *Service) Resume(ctx context.Context, token string) (LoginResult, error) {
 	if !validToken(token) {
-		return Account{}, ErrUnauthenticated
+		return LoginResult{}, ErrUnauthenticated
 	}
 	session, err := s.repo.FindSession(ctx, digest(token))
 	if errors.Is(err, ErrNotFound) {
-		return Account{}, ErrUnauthenticated
+		return LoginResult{}, ErrUnauthenticated
 	}
 	if err != nil {
-		return Account{}, err
+		return LoginResult{}, err
 	}
 	if !session.Account.Active || session.RevokedAt != nil || !s.now().Before(session.ExpiresAt) {
-		return Account{}, ErrUnauthenticated
+		return LoginResult{}, ErrUnauthenticated
 	}
 	if session.Account.Role != RoleAdmin && session.Account.Role != RoleWorker && session.Account.Role != RoleCustomer {
-		return Account{}, ErrUnauthenticated
+		return LoginResult{}, ErrUnauthenticated
 	}
 	session.Account.PasswordHash = ""
-	return session.Account, nil
+	return LoginResult{AccessToken: token, TokenType: "Bearer", ExpiresAt: session.ExpiresAt, Account: session.Account}, nil
 }
 func (s *Service) Logout(ctx context.Context, token string) error {
 	if !validToken(token) {

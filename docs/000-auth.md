@@ -1,5 +1,20 @@
 # Authentication & Staff Management
 
+## 0. Browser session cookie (2026-11-06)
+
+Login and local-test login also set `sa_session` (HttpOnly, Path=/, SameSite from
+`AUTH_COOKIE_SAMESITE` = `lax` default or `none`; Secure when `none` or
+`AUTH_COOKIE_SECURE=true`; expires with the session). The cookie authenticates only
+when the request also carries `X-Session-Cookie: 1` (custom header ⇒ CORS preflight,
+blocking cross-site forgery); an explicit Bearer header always wins. CORS now allows
+credentials for the configured origins. `POST /auth/session` returns the caller's
+current session (same token and unchanged `expires_at`, no new session) so a reloaded
+browser can keep it in memory. Logout revokes the session and clears the cookie only
+when the cookie holds the revoked token (account switching keeps the new cookie).
+Cross-site hosting (e.g. Vercel + Railway) needs `AUTH_COOKIE_SAMESITE=none` and a
+browser that allows third-party cookies; a same-site proxy avoids that limitation.
+
+
 ## 1. Authentication Architecture
 
 Optional password-free local testing: only `LOCAL_TEST_ACCOUNT_ENABLE=true`

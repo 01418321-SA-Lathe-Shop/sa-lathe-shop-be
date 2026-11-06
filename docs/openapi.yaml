@@ -121,6 +121,13 @@ paths:
         '404': {description: Disabled endpoint is not registered}
         '429': {$ref: '#/components/responses/Error'}
         '500': {$ref: '#/components/responses/Error'}
+  /auth/session:
+    post:
+      summary: Resume the caller's current session (Bearer or guarded HttpOnly cookie)
+      description: Requires `X-Session-Cookie: 1` when authenticating with the `sa_session` cookie. Returns the same token and unchanged expiry; creates no new session.
+      responses:
+        "200": { description: Current session (same shape as login) }
+        "401": { description: No valid session }
   /auth/me:
     get:
       tags: [Authentication]

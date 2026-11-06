@@ -22,7 +22,7 @@ func RouterWithRoutes(logger *slog.Logger, timeout time.Duration, origins []stri
 	r.Use(middleware.RequestID)
 	r.Use(RequestLogger(logger))
 	r.Use(Recoverer(logger))
-	r.Use(cors.Handler(cors.Options{AllowedOrigins: origins, AllowedMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}, AllowedHeaders: []string{"Accept", "Authorization", "Content-Type", "X-Request-ID"}, ExposedHeaders: []string{"X-Request-ID"}, MaxAge: 300}))
+	r.Use(cors.Handler(cors.Options{AllowedOrigins: origins, AllowedMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}, AllowedHeaders: []string{"Accept", "Authorization", "Content-Type", "X-Request-ID", "X-Session-Cookie"}, ExposedHeaders: []string{"X-Request-ID"}, AllowCredentials: true, MaxAge: 300}))
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("X-Request-ID", middleware.GetReqID(r.Context()))

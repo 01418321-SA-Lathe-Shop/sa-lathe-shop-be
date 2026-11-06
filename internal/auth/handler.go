@@ -15,6 +15,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Group(func(r chi.Router) {
 		r.Use(h.Authenticate)
 		r.Get("/auth/me", h.me)
+		r.Post("/auth/session", h.resume)
 		r.Post("/auth/logout", h.logout)
 		r.With(NewLoginLimiter().Middleware).Post("/auth/password", h.changePassword)
 		r.Route("/admin/workers", func(r chi.Router) {
@@ -75,16 +76,30 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 		writeAuthError(w, r, err)
 		return
 	}
+	setSessionCookie(w, result.AccessToken, result.ExpiresAt)
+	httpserver.JSON(w, 200, result)
+}
+// resume returns the caller's current session (token and unchanged expiry) so a
+// reloaded browser keeps it in memory like a fresh login; no new session is created.
+func (h *Handler) resume(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	result, err := h.service.Resume(r.Context(), sessionToken(r))
+	if err != nil {
+		writeAuthError(w, r, err)
+		return
+	}
 	httpserver.JSON(w, 200, result)
 }
 func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 	httpserver.JSON(w, 200, CurrentAccount(r.Context()))
 }
 func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
-	if err := h.service.Logout(r.Context(), bearer(r)); err != nil {
+	token := sessionToken(r)
+	if err := h.service.Logout(r.Context(), token); err != nil {
 		writeAuthError(w, r, err)
 		return
 	}
+	clearIfCurrent(w, r, token)
 	w.WriteHeader(http.StatusNoContent)
 }
 func (h *Handler) changePassword(w http.ResponseWriter, r *http.Request) {
@@ -97,7 +112,7 @@ func (h *Handler) changePassword(w http.ResponseWriter, r *http.Request) {
 		writeAuthError(w, r, err)
 		return
 	}
-	if err := h.service.ChangePassword(r.Context(), CurrentAccount(r.Context()), bearer(r), input.CurrentPassword, input.NewPassword); err != nil {
+	if err := h.service.ChangePassword(r.Context(), CurrentAccount(r.Context()), sessionToken(r), input.CurrentPassword, input.NewPassword); err != nil {
 		writeAuthError(w, r, err)
 		return
 	}

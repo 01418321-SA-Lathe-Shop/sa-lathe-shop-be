@@ -22,7 +22,7 @@ func bearer(r *http.Request) string {
 func (h *Handler) Authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
-		account, err := h.service.Authenticate(r.Context(), bearer(r))
+		account, err := h.service.Authenticate(r.Context(), sessionToken(r))
 		if err != nil {
 			writeAuthError(w, r, err)
 			return

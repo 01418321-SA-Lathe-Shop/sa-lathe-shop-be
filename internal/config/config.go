@@ -18,6 +18,8 @@ type Config struct {
 	DBMaxConnections                            int32
 	SessionTTL                                  time.Duration
 	LocalTestAccountEnable                      bool
+	// CookieSameSiteNone is for a frontend on another site (e.g. Vercel + Railway); it forces Secure.
+	CookieSameSiteNone, CookieSecure bool
 	// SQLConsoleEnable exposes /admin/sql (Super Admin); SQLConsoleDatabaseURL optionally uses a separate least-privilege role.
 	SQLConsoleEnable      bool
 	SQLConsoleDatabaseURL string
@@ -33,6 +35,20 @@ func load(get func(string) string) (Config, error) {
 		c.LocalTestAccountEnable = true
 	default:
 		return Config{}, fmt.Errorf("LOCAL_TEST_ACCOUNT_ENABLE must be true or false")
+	}
+	switch get("AUTH_COOKIE_SAMESITE") {
+	case "", "lax":
+	case "none":
+		c.CookieSameSiteNone, c.CookieSecure = true, true
+	default:
+		return Config{}, fmt.Errorf("AUTH_COOKIE_SAMESITE must be lax or none")
+	}
+	switch get("AUTH_COOKIE_SECURE") {
+	case "", "false":
+	case "true":
+		c.CookieSecure = true
+	default:
+		return Config{}, fmt.Errorf("AUTH_COOKIE_SECURE must be true or false")
 	}
 	switch get("SQL_CONSOLE_ENABLE") {
 	case "", "false":

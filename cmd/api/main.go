@@ -25,6 +25,7 @@ import (
 	req "github.com/Yoshi4489/SA-Lathe-Shop-BE/internal/request"
 	"github.com/go-chi/chi/v5"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -71,6 +72,10 @@ func main() {
 	}
 	healthService := health.NewService(db, cfg.DBPingTimeout)
 	authHandler := auth.NewHandler(authService)
+	auth.CookiePolicy.Secure = cfg.CookieSecure
+	if cfg.CookieSameSiteNone {
+		auth.CookiePolicy.SameSite = http.SameSiteNoneMode
+	}
 	localTestService := auth.NewLocalTestService(db, cfg.LocalTestAccountEnable, cfg.SessionTTL)
 	if cfg.LocalTestAccountEnable {
 		logger.Warn("Password-free demo account login enabled; restrict this API to trusted local testers")
