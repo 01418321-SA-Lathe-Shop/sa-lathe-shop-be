@@ -155,8 +155,17 @@ func TestQuotationIntegration(t *testing.T) {
 	if _, err = quotes.Edit(ctx, w.Account, draft.ID, q.EditInput{DraftInput: input, ExpectedLockVersion: 3}); !errors.Is(err, q.ErrConflict) {
 		t.Fatal("sent quote mutated")
 	}
-	if err = quotes.Reject(ctx, w.Account, job.ID, "no capacity"); !errors.Is(err, q.ErrConflict) {
-		t.Fatal("sent request rejected via UC2")
+	// UC2 Q2.E1/Q2.E2 (M-02): staff may reject a request whose quotation is sent but not yet accepted.
+	sentRequest := createRequest()
+	sentQuote, err := quotes.Create(ctx, w.Account, sentRequest.ID, input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = quotes.Send(ctx, w.Account, sentQuote.ID, 1); err != nil {
+		t.Fatal(err)
+	}
+	if err = quotes.Reject(ctx, w.Account, sentRequest.ID, "no capacity"); err != nil {
+		t.Fatal("sent but unaccepted request could not be rejected", err)
 	}
 	var status string
 	db.pool.QueryRow(ctx, `SELECT status FROM job_request WHERE id=$1`, job.ID).Scan(&status)
@@ -214,28 +223,27 @@ func TestQuotationIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	race := make(chan error, 2)
+	raceSend := make(chan error, 1)
+	raceReject := make(chan error, 1)
 	wg.Add(2)
-	go func() { defer wg.Done(); _, e := quotes.Send(ctx, w.Account, raceQuote.ID, 1); race <- e }()
-	go func() { defer wg.Done(); race <- quotes.Reject(ctx, w.Account, raceRequest.ID, "No capacity") }()
+	go func() { defer wg.Done(); _, e := quotes.Send(ctx, w.Account, raceQuote.ID, 1); raceSend <- e }()
+	go func() { defer wg.Done(); raceReject <- quotes.Reject(ctx, w.Account, raceRequest.ID, "No capacity") }()
 	wg.Wait()
-	close(race)
+	// Rejection may now follow a send (M-02), so it always wins; a send that loses the race fails cleanly.
+	if e := <-raceReject; e != nil {
+		t.Fatal("rejection lost the race", e)
+	}
+	if e := <-raceSend; e != nil && !errors.Is(e, q.ErrConflict) && !errors.Is(e, q.ErrInvalidInput) {
+		t.Fatal(e)
+	}
+	var raceRequestStatus, raceQuoteStatus string
+	if err = db.pool.QueryRow(ctx, `SELECT r.status,q.status FROM job_request r JOIN quotation q ON q.request_id=r.id WHERE r.id=$1 AND q.id=$2`, raceRequest.ID, raceQuote.ID).Scan(&raceRequestStatus, &raceQuoteStatus); err != nil || raceRequestStatus != "canceled" || (raceQuoteStatus != "rejected" && raceQuoteStatus != "draft") {
+		t.Fatal("send/reject race broke state", raceRequestStatus, raceQuoteStatus, err)
+	}
 	success, conflict = 0, 0
-	for e := range race {
-		if e == nil {
-			success++
-		} else if errors.Is(e, q.ErrConflict) {
-			conflict++
-		} else {
-			t.Fatal(e)
-		}
-	}
-	if success != 1 || conflict != 1 {
-		t.Fatal("send/reject race broke state")
-	}
 	// Same request row lock also protects simultaneous draft creation.
 	newRequest := createRequest()
-	race = make(chan error, 2)
+	race := make(chan error, 2)
 	for range 2 {
 		wg.Add(1)
 		go func() { defer wg.Done(); _, e := quotes.Create(ctx, w.Account, newRequest.ID, input); race <- e }()

@@ -212,7 +212,8 @@ func (d *Database) RejectRequest(ctx context.Context, actor, requestID, reason s
 	if hasApprovedOrJob {
 		return q.ErrConflict
 	}
-	if _, err = tx.Exec(ctx, `UPDATE quotation SET status='rejected',edited_by=$2,edited_at=now(),lock_version=lock_version+1 WHERE request_id=$1 AND status IN ('draft','sent')`, requestID, actor); err != nil {
+	// Only sent quotations can become rejected: quotation_check2 requires sent_at for every non-draft, so an unsent draft stays a draft under the canceled request.
+	if _, err = tx.Exec(ctx, `UPDATE quotation SET status='rejected',edited_by=$2,edited_at=now(),lock_version=lock_version+1 WHERE request_id=$1 AND status='sent'`, requestID, actor); err != nil {
 		return quoteError(err)
 	}
 	_, err = tx.Exec(ctx, `INSERT INTO request_rejection(request_id,rejected_by,reason) VALUES($1,$2,$3)`, requestID, actor, reason)
