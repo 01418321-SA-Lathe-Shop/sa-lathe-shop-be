@@ -20,6 +20,7 @@ type Registration struct {
 	CompanyName  string `json:"company_name,omitempty"`
 	TaxID        string `json:"tax_id,omitempty"`
 	Invitation   string `json:"invitation,omitempty"`
+	ContactName  string `json:"contact_name,omitempty"`
 	Address      string `json:"address,omitempty"`
 	AddressLine1 string `json:"address_line1,omitempty"`
 	AddressLine2 string `json:"address_line2,omitempty"`
@@ -35,15 +36,16 @@ type CustomerProfile struct {
 	Owner bool   `json:"is_owner"`
 }
 type CustomerRegistration struct {
-	Account                                                            Account
-	CustomerID, Type, CompanyName, Address                             string
-	Phone, Email, TaxID                                                string
-	AddressLine1, AddressLine2, District, Province, PostalCode         string
-	IsDefault                                                          bool
-	InvitationHash                                                     []byte
+	Account                                                    Account
+	CustomerID, Type, CompanyName, ContactName, Address        string
+	Phone, Email, TaxID                                        string
+	AddressLine1, AddressLine2, District, Province, PostalCode string
+	IsDefault                                                  bool
+	InvitationHash                                             []byte
 }
 type CustomerAddress struct {
 	ID           string    `json:"id"`
+	ContactName  string    `json:"contact_name,omitempty"`
 	Address      string    `json:"address"`
 	AddressLine1 string    `json:"address_line1,omitempty"`
 	AddressLine2 string    `json:"address_line2,omitempty"`
@@ -152,6 +154,12 @@ func (s *CustomerService) Register(ctx context.Context, in Registration) (Accoun
 	if taxID != "" && !validation.Text(taxID, 1, 30) {
 		return Account{}, ErrInvalidInput
 	}
+	contactName := strings.TrimSpace(in.ContactName)
+	if contactName != "" {
+		if err = validateName(contactName); err != nil {
+			return Account{}, fmt.Errorf("%w: contact_name must contain 1-200 characters", ErrInvalidInput)
+		}
+	}
 	// Invitation joins use the company's existing addresses.
 	address, line1, line2, district, province, postalCode, err := normalizeStructuredAddress(in.Address, in.AddressLine1, in.AddressLine2, in.District, in.Province, in.PostalCode)
 	if err != nil {
@@ -180,6 +188,7 @@ func (s *CustomerService) Register(ctx context.Context, in Registration) (Accoun
 		CustomerID:     uuid.NewString(),
 		Type:           in.CustomerType,
 		CompanyName:    company,
+		ContactName:    contactName,
 		Address:        address,
 		Phone:          phone,
 		Email:          email,
@@ -249,6 +258,12 @@ func (s *CustomerService) AddStructuredAddress(ctx context.Context, a Account, c
 	if err := validateID(customerID); err != nil {
 		return CustomerAddress{}, err
 	}
+	contactName := strings.TrimSpace(in.ContactName)
+	if contactName != "" {
+		if err := validateName(contactName); err != nil {
+			return CustomerAddress{}, fmt.Errorf("%w: contact_name must contain 1-200 characters", ErrInvalidInput)
+		}
+	}
 	address, line1, line2, district, province, postalCode, err := normalizeStructuredAddress(in.Address, in.AddressLine1, in.AddressLine2, in.District, in.Province, in.PostalCode)
 	if err != nil || address == "" {
 		if err != nil {
@@ -258,6 +273,7 @@ func (s *CustomerService) AddStructuredAddress(ctx context.Context, a Account, c
 	}
 	return s.repo.AddCustomerAddress(ctx, a.ID, customerID, CustomerAddress{
 		ID:           uuid.NewString(),
+		ContactName:  contactName,
 		Address:      address,
 		AddressLine1: line1,
 		AddressLine2: line2,

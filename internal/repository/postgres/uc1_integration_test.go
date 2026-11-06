@@ -116,7 +116,7 @@ func TestUC1Integration(t *testing.T) {
 		if invite == "" {
 			address = "1 Test Road, Bangkok"
 		}
-		call("POST", "/auth/register", "", auth.Registration{Username: username, Name: username, Password: password, CustomerType: kind, CompanyName: company, Invitation: invite, Address: address}, 201)
+		call("POST", "/auth/register", "", auth.Registration{Username: username, Name: username, Password: password, CustomerType: kind, CompanyName: company, Invitation: invite, ContactName: username, Address: address}, 201)
 		return login(username)
 	}
 	owner := register("company_owner", "company", "Example Company", "")
@@ -145,14 +145,14 @@ func TestUC1Integration(t *testing.T) {
 		Items []auth.CustomerAddress `json:"items"`
 	}
 	decode(call("GET", "/customers/"+companyID+"/addresses", coworker.AccessToken, nil, 200), &addresses)
-	if len(addresses.Items) != 1 || addresses.Items[0].Address != "1 Test Road, Bangkok" {
+	if len(addresses.Items) != 1 || addresses.Items[0].Address != "1 Test Road, Bangkok" || addresses.Items[0].ContactName != "company_owner" {
 		t.Fatal("sign-up address not recorded")
 	}
-	call("POST", "/customers/"+companyID+"/addresses", owner.AccessToken, map[string]string{"address": "2 Warehouse Road"}, 201)
+	call("POST", "/customers/"+companyID+"/addresses", owner.AccessToken, map[string]string{"contact_name": "Warehouse", "address": "2 Warehouse Road"}, 201)
 	call("POST", "/customers/"+companyID+"/addresses", coworker.AccessToken, map[string]string{"address": "3 Member Road"}, 403)
 	call("GET", "/customers/"+companyID+"/addresses", outsider.AccessToken, nil, 403)
 	decode(call("GET", "/customers/"+companyID+"/addresses", owner.AccessToken, nil, 200), &addresses)
-	if len(addresses.Items) != 2 || addresses.Items[1].Address != "2 Warehouse Road" {
+	if len(addresses.Items) != 2 || addresses.Items[1].Address != "2 Warehouse Road" || addresses.Items[1].ContactName != "Warehouse" {
 		t.Fatal("added address missing")
 	}
 	call("POST", "/customers/"+companyID+"/invitations", coworker.AccessToken, nil, 403)

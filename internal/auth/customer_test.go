@@ -48,8 +48,8 @@ func (customerHasher) Verify(context.Context, string, string) (bool, error) { re
 func TestCustomerRegistration(t *testing.T) {
 	repo := &customerFake{}
 	s := NewCustomerService(repo, customerHasher{})
-	a, err := s.Register(context.Background(), Registration{Username: " User.Name ", Password: "a-long-test-password", Name: " ลูกค้า ", CustomerType: "company", CompanyName: " Example Company ", Address: " 1 ถนนสุขุมวิท\nกรุงเทพฯ "})
-	if err != nil || a.Role != RoleCustomer || a.PasswordHash != "" || repo.input.Account.PasswordHash == "" || repo.input.CompanyName != "Example Company" || a.Username != "user.name" || repo.input.Address != "1 ถนนสุขุมวิท\nกรุงเทพฯ" {
+	a, err := s.Register(context.Background(), Registration{Username: " User.Name ", Password: "a-long-test-password", Name: " ลูกค้า ", CustomerType: "company", CompanyName: " Example Company ", ContactName: " ฝ่ายรับสินค้า ", Address: " 1 ถนนสุขุมวิท\nกรุงเทพฯ "})
+	if err != nil || a.Role != RoleCustomer || a.PasswordHash != "" || repo.input.Account.PasswordHash == "" || repo.input.CompanyName != "Example Company" || repo.input.ContactName != "ฝ่ายรับสินค้า" || a.Username != "user.name" || repo.input.Address != "1 ถนนสุขุมวิท\nกรุงเทพฯ" {
 		t.Fatalf("registration failed: %v", err)
 	}
 }
@@ -94,7 +94,7 @@ func TestAddAddressValidatesInput(t *testing.T) {
 	if _, err := s.AddAddress(context.Background(), Account{ID: id, Active: true, Role: RoleWorker}, id, "1 Road"); !errors.Is(err, ErrForbidden) {
 		t.Fatal(err)
 	}
-	if a, err := s.AddAddress(context.Background(), customer, id, " 1 Road "); err != nil || a.Address != "1 Road" || repo.calls != 1 {
+	if a, err := s.AddStructuredAddress(context.Background(), customer, id, CustomerAddress{ContactName: " ผู้รับสินค้า ", Address: " 1 Road "}); err != nil || a.Address != "1 Road" || a.ContactName != "ผู้รับสินค้า" || repo.calls != 1 {
 		t.Fatalf("address not saved: %v", err)
 	}
 }

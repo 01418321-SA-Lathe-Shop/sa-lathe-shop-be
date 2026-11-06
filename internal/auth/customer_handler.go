@@ -57,6 +57,7 @@ func (h *Handler) CustomerRoutes(r chi.Router, service *CustomerService) {
 		})
 		r.Post("/customers/{customer_id}/addresses", func(w http.ResponseWriter, r *http.Request) {
 			var in struct {
+				ContactName  string `json:"contact_name"`
 				Address      string `json:"address"`
 				AddressLine1 string `json:"address_line1"`
 				AddressLine2 string `json:"address_line2"`
@@ -70,6 +71,7 @@ func (h *Handler) CustomerRoutes(r chi.Router, service *CustomerService) {
 				return
 			}
 			item, err := service.AddStructuredAddress(r.Context(), CurrentAccount(r.Context()), chi.URLParam(r, "customer_id"), CustomerAddress{
+				ContactName:  in.ContactName,
 				Address:      in.Address,
 				AddressLine1: in.AddressLine1,
 				AddressLine2: in.AddressLine2,

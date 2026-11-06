@@ -69,8 +69,8 @@ func (d *Database) RegisterCustomer(ctx context.Context, in auth.CustomerRegistr
 			return auth.Account{}, authError(err)
 		}
 		if in.Address != "" {
-			_, err = tx.Exec(ctx, `INSERT INTO customer_address(id,customer_id,address,address_line1,address_line2,district,province,postal_code,is_default,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-				uuid.NewString(), in.CustomerID, in.Address, in.AddressLine1, in.AddressLine2, in.District, in.Province, in.PostalCode, in.IsDefault, a.ID)
+			_, err = tx.Exec(ctx, `INSERT INTO customer_address(id,customer_id,contact_name,address,address_line1,address_line2,district,province,postal_code,is_default,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+				uuid.NewString(), in.CustomerID, in.ContactName, in.Address, in.AddressLine1, in.AddressLine2, in.District, in.Province, in.PostalCode, in.IsDefault, a.ID)
 			if err != nil {
 				return auth.Account{}, authError(err)
 			}
@@ -161,7 +161,7 @@ func (d *Database) CustomerAddresses(ctx context.Context, accountID, customerID 
 	if !member {
 		return nil, auth.ErrForbidden
 	}
-	rows, err := d.identityQueries().Query(ctx, `SELECT id::text,address,address_line1,address_line2,district,province,postal_code,is_default,created_at FROM customer_address WHERE customer_id=$1 ORDER BY is_default DESC,created_at,id`, customerID)
+	rows, err := d.identityQueries().Query(ctx, `SELECT id::text,contact_name,address,address_line1,address_line2,district,province,postal_code,is_default,created_at FROM customer_address WHERE customer_id=$1 ORDER BY is_default DESC,created_at,id`, customerID)
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +169,7 @@ func (d *Database) CustomerAddresses(ctx context.Context, accountID, customerID 
 	result := make([]auth.CustomerAddress, 0)
 	for rows.Next() {
 		var v auth.CustomerAddress
-		if err = rows.Scan(&v.ID, &v.Address, &v.AddressLine1, &v.AddressLine2, &v.District, &v.Province, &v.PostalCode, &v.IsDefault, &v.CreatedAt); err != nil {
+		if err = rows.Scan(&v.ID, &v.ContactName, &v.Address, &v.AddressLine1, &v.AddressLine2, &v.District, &v.Province, &v.PostalCode, &v.IsDefault, &v.CreatedAt); err != nil {
 			return nil, err
 		}
 		result = append(result, v)
@@ -197,9 +197,9 @@ func (d *Database) AddCustomerAddress(ctx context.Context, accountID, customerID
 			return auth.CustomerAddress{}, authError(err)
 		}
 	}
-	err = tx.QueryRow(ctx, `INSERT INTO customer_address(id,customer_id,address,address_line1,address_line2,district,province,postal_code,is_default,created_by)
- VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING created_at`,
-		in.ID, customerID, in.Address, in.AddressLine1, in.AddressLine2, in.District, in.Province, in.PostalCode, in.IsDefault, accountID).Scan(&in.CreatedAt)
+	err = tx.QueryRow(ctx, `INSERT INTO customer_address(id,customer_id,contact_name,address,address_line1,address_line2,district,province,postal_code,is_default,created_by)
+ VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING created_at`,
+		in.ID, customerID, in.ContactName, in.Address, in.AddressLine1, in.AddressLine2, in.District, in.Province, in.PostalCode, in.IsDefault, accountID).Scan(&in.CreatedAt)
 	if err != nil {
 		return auth.CustomerAddress{}, authError(err)
 	}

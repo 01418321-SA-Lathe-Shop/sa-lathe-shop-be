@@ -888,6 +888,7 @@ components:
               customer_type: {type: string, enum: [individual, company]}
               company_name: {type: string, description: Required for a new company account; omit when joining with an invitation.}
               invitation: {type: string, description: One-use company invitation token.}
+              contact_name: {type: string, maxLength: 200, description: Recipient/contact name for the first address. Omit when joining with an invitation.}
               address: {type: string, maxLength: 500, description: Required for a new individual or company customer (1-500 characters, newlines allowed); also fills the billing address. Omit when joining with an invitation.}
     RequestCreate:
       required: true
