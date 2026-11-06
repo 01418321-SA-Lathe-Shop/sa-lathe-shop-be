@@ -25,7 +25,7 @@ func respond(w http.ResponseWriter, r *http.Request, v any, err error) {
 }
 func (h *Handler) Routes(r chi.Router, authenticate func(http.Handler) http.Handler) {
 	r.Group(func(r chi.Router) {
-		r.Use(authenticate, auth.RequireRole(auth.RoleAdmin, auth.RoleWorker))
+		r.Use(authenticate, auth.RequireRole(auth.RoleAdmin))
 		r.Use(func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Cache-Control", "no-store")
