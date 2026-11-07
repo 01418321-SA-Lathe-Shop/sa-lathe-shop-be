@@ -126,12 +126,13 @@ func (r *Runner) verify(ctx context.Context, initial bool) error {
 			return fmt.Errorf("cancelled request fixture mismatch")
 		}
 	}
-	for _, actor := range []string{worker, "nida.company", "ploy.company", "somchai"} {
+	// UC6 owner change 2026-11-06: Workers place and manage orders; customers stay out.
+	for actor, want := range map[string]int{worker: 200, "nida.company": 403, "ploy.company": 403, "somchai": 403} {
 		status, e := r.api.status(ctx, actor, "/material-orders")
 		if e != nil {
 			return e
 		}
-		if status != 403 {
+		if status != want {
 			return fmt.Errorf("procurement permission mismatch")
 		}
 	}

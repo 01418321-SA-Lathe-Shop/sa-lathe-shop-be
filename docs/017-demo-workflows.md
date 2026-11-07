@@ -245,3 +245,11 @@ that predate this data change and need an owner decision, not a fixture edit:
 commit db8e61c lets Workers read `/material-orders` (the verifier and UC6 docs
 expect Admin-only 403), and now marks an order `received` when good + damaged
 equals the ordered quantity (the verifier expects o2 `partially_received`).
+
+Update 2026-11-07 (fresh `sa_lathe_shop_demo`, migrations through 000027): the
+owner's UC6 change made Worker ordering intended, so the verifier now expects
+200 for `anan.staff` and 403 for the three customers on `/material-orders`.
+`apply` completed 235 steps and `verify` exited 0 (the o2 check passed); counts
+were `14|8|6|4|3`, 13 materials and 26 private PDFs. Restart the API before
+`verify` when `apply` ran in the same process lifetime: a second run in a row
+hits the local-test login limiter (429).
